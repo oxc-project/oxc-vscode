@@ -35,8 +35,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
+      - name: Compile
+        run: pnpm run compile
+
+      - name: Package
+        run: pnpm exec vsce package --no-dependencies ${{ inputs.pre-release && '--pre-release' || '' }} -o oxc_language_server.vsix
 
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
