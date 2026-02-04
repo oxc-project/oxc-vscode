@@ -48,7 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - e3c4108 vscode: Add more supported languages to extension (#17812) (Alexander Lichter)
 - 4a46678 vscode: Activate extension on more languages (#17717) (Sysix)
-- b1298fc vscode: Sync formatter with supported files  (#17615) (Alexander Lichter)
+- b1298fc vscode: Sync formatter with supported files (#17615) (Alexander Lichter)
 
 ### 🐛 Bug Fixes
 
@@ -84,7 +84,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 ### 📚 Documentation
 
-- c14afd3 editor: Improve description for 'no-unused-disable-directives'  settings options (#17236) (connorshea)
+- c14afd3 editor: Improve description for 'no-unused-disable-directives' settings options (#17236) (connorshea)
 
 ## [1.34.0] - 2025-12-19
 
@@ -160,7 +160,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 - baaeca8 editor: Skip `changing oxc.typeAware` test for the moment (#15167) (Sysix)
 - 1c4444c editor: Wait longer for "detects diagnostics on run" fixture (#15156) (Sysix)
 
-
 ## [1.25.0] - 2025-10-30
 
 ### 💥 BREAKING CHANGES
@@ -174,7 +173,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 ### 🚜 Refactor
 
 - 8d8d508 editor: Flatten `flags` options (#15006) (Sysix)
-
 
 ## [1.24.0] - 2025-10-22
 
@@ -190,10 +188,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - faada4d editor: Reduce sleep time (#14749) (Sysix)
 
-
-
-
-
 ## [1.20.0] - 2025-10-06
 
 ### 🚀 Features
@@ -203,7 +197,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 ### 🐛 Bug Fixes
 
 - adff069 language_server: Don't apply "ignore this rule" fixes for fixAll code action + command (#14243) (Sysix)
-
 
 ## [1.19.0] - 2025-09-29
 
@@ -216,8 +209,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - d985aeb editor: Remove cross-module tests, covered by language server (#14156) (Sysix)
 
-
-
 ## [1.17.0] - 2025-09-23
 
 ### 🚀 Features
@@ -228,15 +219,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - ad14a41 editor: Fix test setup (#13929) (Sysix)
 
-
 ## [1.16.0] - 2025-09-16
 
 ### 🐛 Bug Fixes
 
-- 50e6e3c editor: Restrict servers paths for  `oxc.path.server` (#13740) (Sysix)
+- 50e6e3c editor: Restrict servers paths for `oxc.path.server` (#13740) (Sysix)
 - b45077d editor: Strip leading slash for bin path on windows (#13738) (Sysix)
 - 8fa6227 editor: Don't allow `oxc.path.server` for untrusted workspaces (#13734) (Sysix)
-
 
 ## [1.15.0] - 2025-09-11
 
@@ -249,9 +238,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 - 2f36350 editor: Add notice for a possible restart when fixing `filename-case` (#13557) (Sysix)
 - b677376 language_server: Include the diagnostic of the other linter (#13490) (Sysix)
 
-
-
-
 ## [1.12.0] - 2025-08-17
 
 ### 🚀 Features
@@ -262,16 +248,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - b638371 language_server: Do not check twice for supported extension (#13130) (Sysix)
 
-
-
-
-
 ## [1.10.0] - 2025-08-06
 
 ### 🚀 Features
 
 - 5475075 vscode/language_server: Add `tsConfigPath` option (#12484) (Sysix)
-
 
 ## [1.9.0] - 2025-07-29
 
@@ -279,18 +260,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - cc19c8b vscode: Fix statusbar icon order (#12544) (Christian Fehmer)
 
-
-
-
-
-
-
 ## [1.3.0] - 2025-06-23
 
 ### 🚀 Features
 
 - 1a54184 linter: Add fix for unused disable directive (#11708) (Sysix)
-
 
 ## [1.2.0] - 2025-06-19
 
@@ -298,8 +272,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 - 0b4261b vscode: Add `oxc.requireConfig` configuration (#11700) (Sysix)
 - 094b81c language_server: Add `unusedDisableDirectives` option (#11645) (Sysix)
-
-
 
 ## [1.0.0] - 2025-06-10
 
@@ -465,7 +437,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 ### Bug Fixes
 
-
 ## [0.16.1] - 2025-03-20
 
 ### Features
@@ -523,7 +494,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 - b04041d vscode: [**BREAKING**] Use `.oxlintrc.json` as default value for `oxc.configPath` (#7442) (Alexander S.)
 
 ### Bug Fixes
-
 
 ## [0.13.1] - 2024-11-23
 
@@ -584,7 +554,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 ### Features
 
-
 ### Bug Fixes
 
 - cf92730 editor: Use human-readable output channel names (#6629) (DonIsaac)
@@ -643,12 +612,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 ### Features
 
-- 6a90cd4 linter: Add  jsx-a11y settings (#1668) (msdlisper)
+- 6a90cd4 linter: Add jsx-a11y settings (#1668) (msdlisper)
 - 37d5152 vscode: Use icon to represent enabled status (#1675) (IWANABETHATGUY)- e529b38 Add option to control enable/disable oxc linter (#1665) (IWANABETHATGUY)
 
 ### Bug Fixes
 
-- ef08892 vscode: Report problem more accurately  (#1681) (IWANABETHATGUY)
+- ef08892 vscode: Report problem more accurately (#1681) (IWANABETHATGUY)
 
 ## [0.0.20] - 2023-12-13
 
@@ -664,11 +633,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0).
 
 ### Bug Fixes
 
-- 8251a34 oxc_vscode: Vscode extension - check on file change (not on file save)  (#1525) (IWANABETHATGUY)
+- 8251a34 oxc_vscode: Vscode extension - check on file change (not on file save) (#1525) (IWANABETHATGUY)
 
 ## [0.0.18] - 2023-11-22
 
 ### Refactor
 
 - 1a576f6 rust: Move to workspace lint table (#1444) (Boshen)
-

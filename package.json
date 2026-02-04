@@ -2,7 +2,6 @@
   "name": "oxc-vscode",
   "displayName": "Oxc",
   "version": "1.43.0",
-  "packageManager": "pnpm@10.28.2",
   "description": "Oxlint and Oxfmt editor integration",
   "categories": [
     "Formatters",
@@ -41,7 +40,10 @@
     "test:oxlint": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxlint-lsp vscode-test",
     "test:oxlint-js": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxlint-js vscode-test",
     "test:oxlint-multi-root": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxlint-lsp-multi-root vscode-test",
-    "test:oxfmt": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxfmt-lsp vscode-test"
+    "test:oxfmt": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxfmt-lsp vscode-test",
+    "lint": "oxlint --type-check --type-aware --ignore-pattern fixtures",
+    "fmt": "oxfmt --write '!fixtures'",
+    "fmt:check": "oxfmt --check '!fixtures'"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -57,6 +59,7 @@
     "ovsx": "^0.10.0",
     "oxfmt": "latest",
     "oxlint": "latest",
+    "oxlint-tsgolint": "^0.11.4",
     "rolldown": "1.0.0-rc.2",
     "tinyglobby": "^0.2.15"
   },
@@ -305,6 +308,7 @@
   "engines": {
     "vscode": "^1.93.0"
   },
+  "packageManager": "pnpm@10.28.2",
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
