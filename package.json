@@ -52,14 +52,14 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.9",
-    "@types/node": "catalog:",
+    "@types/node": "24.1.0",
     "@types/vscode": "1.93.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.0.0",
-    "cross-env": "catalog:",
+    "cross-env": "^10.1.0",
     "ovsx": "^0.10.0",
-    "rolldown": "catalog:",
+    "rolldown": "1.0.0-rc.2",
     "tinyglobby": "^0.2.15"
   },
   "contributes": {
