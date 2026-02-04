@@ -1,0 +1,47 @@
+name: CI
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: taiki-e/checkout-action@v1
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Compile
+        run: pnpm run compile
+
+      - name: Unit Tests
+        run: xvfb-run -a pnpm run test:unit
+
+      - name: Oxlint LSP Tests
+        run: xvfb-run -a pnpm run test:oxlint && xvfb-run -a pnpm run test:oxlint-multi-root
+
+      - name: Oxlint JS Plugin Test (flaky)
+        continue-on-error: true
+        run: xvfb-run -a pnpm run test:oxlint-js
+
+      - name: Oxfmt LSP Tests
+        run: xvfb-run -a pnpm run test:oxfmt

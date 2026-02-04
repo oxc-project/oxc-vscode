@@ -1,0 +1,84 @@
+name: Release
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: version without leading `v`
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: taiki-e/checkout-action@v1
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: vsix
+          path: ./oxc_language_server.vsix
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: taiki-e/checkout-action@v1
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish to Microsoft Marketplace
+        run: pnpm exec vsce publish --packagePath oxc_language_server.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PERSONAL_ACCESS_TOKEN }}
+
+      - name: Publish to Open VSX Registry
+        run: pnpm exec ovsx publish --packagePath oxc_language_server.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          name: v${{ inputs.version }}
+          tag_name: v${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
