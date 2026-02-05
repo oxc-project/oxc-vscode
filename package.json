@@ -307,6 +307,7 @@
   ],
   "icon": "icon.png",
   "engines": {
+    "node": ">=22.6.0",
     "vscode": "^1.93.0"
   },
   "packageManager": "pnpm@10.28.2",

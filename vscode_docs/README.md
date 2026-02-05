@@ -33,4 +33,4 @@ The CI workflow verifies the README is up-to-date by:
 - Generates properly formatted markdown tables with Key, Default Value, Possible Values, and Description columns
 - Includes FixKind enum values if referenced in any configuration
 - Sorts configuration options alphabetically for consistent output
-- Uses Node 22+ native TypeScript type stripping (no transpilation required)
+- Uses Node 22.6+ native TypeScript type stripping (no transpilation required)
