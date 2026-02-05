@@ -36,6 +36,9 @@ jobs:
       - name: Format check
         run: pnpm run fmt:check
 
+      - name: Docs check
+        run: pnpm run docs:check
+
   test:
     name: Test
     runs-on: ubuntu-latest

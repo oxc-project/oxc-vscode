@@ -7,16 +7,16 @@ This task generates the Configuration section of the VSCode extension README.md 
 ### Update the README
 
 ```bash
-cargo run --manifest-path vscode_docs/Cargo.toml -- update
+pnpm run docs:update
 ```
 
 ## CI Verification
 
 The CI workflow verifies the README is up-to-date by:
 
-1. Running `cargo run --manifest-path vscode_docs/Cargo.toml -- update` to regenerate the configuration
-2. Running `pnpm fmt` to format the entire project
-3. Running `git diff --exit-code` to ensure no changes were made
+1. Running `pnpm run docs:update` to regenerate the configuration
+2. Running `pnpm run fmt` to format the entire project
+3. Running `git diff --exit-code README.md` to ensure no changes were made
 
 ## How it works
 
