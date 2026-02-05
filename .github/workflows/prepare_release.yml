@@ -8,7 +8,12 @@ on:
       version:
         type: string
         required: true
-        description: Version to release (e.g., 1.44.0 or 1.44.0-alpha.1)
+        description: Version to release (e.g., 1.44.0)
+      pre-release:
+        type: boolean
+        required: false
+        default: false
+        description: Publish as pre-release (not tagged as latest)
 
 jobs:
   prepare:
@@ -26,12 +31,14 @@ jobs:
       - uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.OXC_BOT_PAT }}
-          commit-message: "release: v${{ inputs.version }}"
-          title: "release: v${{ inputs.version }}"
+          commit-message: "release: v${{ inputs.version }}${{ inputs.pre-release && ' [pre-release]' || '' }}"
+          title: "release: v${{ inputs.version }}${{ inputs.pre-release && ' (pre-release)' || '' }}"
           branch: release/v${{ inputs.version }}
           base: main
           body: |
             ## Release v${{ inputs.version }}
+
+            ${{ inputs.pre-release && '⚠️ This is a **pre-release** version.' || '' }}
 
             Merging this PR will trigger the release workflow.
           assignees: Boshen

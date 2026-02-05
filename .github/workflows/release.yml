@@ -41,8 +41,8 @@ jobs:
         id: check_pre_release
         if: steps.version.outputs.changed == 'true'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ "$VERSION" == *"-"* ]]; then
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ "$COMMIT_MSG" == *"[pre-release]"* ]]; then
             echo "is_pre_release=true" >> $GITHUB_OUTPUT
           else
             echo "is_pre_release=false" >> $GITHUB_OUTPUT
