@@ -37,7 +37,7 @@ jobs:
         run: pnpm run fmt:check
 
       - name: Docs check
-        run: pnpm run docs:check
+        run: pnpm run docs:update && git diff --exit-code README.md
 
   test:
     name: Test

@@ -44,8 +44,7 @@
     "lint": "oxlint --type-check --type-aware --ignore-pattern fixtures",
     "fmt": "oxfmt --write '!fixtures'",
     "fmt:check": "oxfmt --check '!fixtures'",
-    "docs:update": "tsx vscode_docs.ts update",
-    "docs:check": "pnpm run docs:update && pnpm run fmt && git diff --exit-code README.md"
+    "docs:update": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON vscode_docs.ts update && pnpm run fmt"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -63,8 +62,7 @@
     "oxlint": "latest",
     "oxlint-tsgolint": "^0.11.4",
     "rolldown": "1.0.0-rc.3",
-    "tinyglobby": "^0.2.15",
-    "tsx": "^4.19.2"
+    "tinyglobby": "^0.2.15"
   },
   "contributes": {
     "commands": [

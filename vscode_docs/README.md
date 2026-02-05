@@ -10,13 +10,14 @@ This task generates the Configuration section of the VSCode extension README.md 
 pnpm run docs:update
 ```
 
+This command runs the TypeScript script using Node's native type stripping feature and then formats the entire project.
+
 ## CI Verification
 
 The CI workflow verifies the README is up-to-date by:
 
-1. Running `pnpm run docs:update` to regenerate the configuration
-2. Running `pnpm run fmt` to format the entire project
-3. Running `git diff --exit-code README.md` to ensure no changes were made
+1. Running `pnpm run docs:update` to regenerate the configuration and format the project
+2. Running `git diff --exit-code README.md` to ensure no changes were made
 
 ## How it works
 
@@ -32,3 +33,4 @@ The CI workflow verifies the README is up-to-date by:
 - Generates properly formatted markdown tables with Key, Default Value, Possible Values, and Description columns
 - Includes FixKind enum values if referenced in any configuration
 - Sorts configuration options alphabetically for consistent output
+- Uses Node 22+ native TypeScript type stripping (no transpilation required)
