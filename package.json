@@ -34,7 +34,7 @@
     "compile": "rolldown -c rolldown.config.ts",
     "watch": "pnpm run compile --watch",
     "package": "vsce package --no-dependencies -o oxc_language_server.vsix",
-    "package:pre-release": "pnpm run package -- --pre-release",
+    "package:pre-release": "vsce package --no-dependencies --pre-release -o oxc_language_server.vsix",
     "install-extension": "code --install-extension oxc_language_server.vsix --force",
     "test": "cross-env TEST=true pnpm run compile && vscode-test",
     "test:unit": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=unit vscode-test",
