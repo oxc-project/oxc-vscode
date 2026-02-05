@@ -26,7 +26,9 @@ jobs:
       version_changed: ${{ steps.version.outputs.changed }}
       is_pre_release: ${{ steps.check_pre_release.outputs.is_pre_release }}
     steps:
-      - uses: taiki-e/checkout-action@3ab630d442e198ebb0ca30872832406ca01c46eb # v1.4.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
 
       - name: Check version changes
         uses: EndBug/version-check@5102328418c0130d66ca712d755c303e93368ce2 # v2.1.7
