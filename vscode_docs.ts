@@ -36,7 +36,7 @@ function main() {
   const args = process.argv.slice(2);
 
   if (args.length < 1) {
-    console.error("Usage: vscode_docs <update>");
+    console.error("Usage: pnpm run docs:update");
     process.exit(1);
   }
 
