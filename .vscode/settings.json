@@ -6,5 +6,5 @@
   "editor.formatOnSaveMode": "file", // oxfmt can only format whole files
   "editor.codeActionsOnSave": {
     "source.organizeImports": "never" // let oxfmt handle import organization
-  },
+  }
 }
