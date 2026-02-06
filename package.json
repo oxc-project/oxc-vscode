@@ -115,7 +115,19 @@
           "type": "boolean",
           "default": true,
           "scope": "window",
-          "markdownDescription": "Enable oxc language server"
+          "markdownDescription": "Enable oxc language server. This is a master toggle for both oxlint and oxfmt."
+        },
+        "oxc.enable.oxlint": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Enable oxlint (linter). Falls back to `oxc.enable` if not set."
+        },
+        "oxc.enable.oxfmt": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Enable oxfmt (formatter). Falls back to `oxc.enable` if not set."
         },
         "oxc.requireConfig": {
           "scope": "resource",

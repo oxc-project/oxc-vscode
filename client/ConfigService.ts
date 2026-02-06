@@ -98,7 +98,7 @@ export class ConfigService implements IDisposable {
     textDocumentUri: Uri,
     diagnosticPullMode: DiagnosticPullMode,
   ): boolean {
-    if (!this.vsCodeConfig.enable) {
+    if (!this.vsCodeConfig.enableOxlint) {
       return false;
     }
 
