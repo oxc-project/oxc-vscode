@@ -43,7 +43,8 @@
     "test:oxfmt": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxfmt-lsp vscode-test",
     "lint": "oxlint --type-check --type-aware --ignore-pattern fixtures",
     "fmt": "oxfmt --write '!fixtures'",
-    "fmt:check": "oxfmt --check '!fixtures'"
+    "fmt:check": "oxfmt --check '!fixtures'",
+    "docs:update": "node scripts/vscode_docs.ts update && pnpm run fmt"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
