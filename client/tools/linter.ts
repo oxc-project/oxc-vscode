@@ -275,8 +275,10 @@ export default class LinterTool implements ToolInterface {
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
   ): Promise<void> {
-    if (event.affectsConfiguration(`${ConfigService.namespace}.enable`) || 
-        event.affectsConfiguration(`${ConfigService.namespace}.enable.oxlint`)) {
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.enable.oxlint`)
+    ) {
       await this.toggleClient(configService); // update the client state
     }
     this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);

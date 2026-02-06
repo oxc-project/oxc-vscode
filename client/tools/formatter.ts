@@ -364,8 +364,10 @@ export default class FormatterTool implements ToolInterface {
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
   ): Promise<void> {
-    if (event.affectsConfiguration(`${ConfigService.namespace}.enable`) || 
-        event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)) {
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)
+    ) {
       await this.toggleClient(configService); // update the client state
     }
     this.updateStatusBar(statusBarItemHandler, configService);
@@ -384,9 +386,12 @@ export default class FormatterTool implements ToolInterface {
     }
   }
 
-  private updateStatusBar(statusBarItemHandler: StatusBarItemHandler, configService: ConfigService) {
+  private updateStatusBar(
+    statusBarItemHandler: StatusBarItemHandler,
+    configService: ConfigService,
+  ) {
     const enable = configService.vsCodeConfig.enableOxfmt;
-    
+
     let text =
       `[$(terminal) Open Output](command:${OxcCommands.ShowOutputChannelFmt})\n\n` +
       `[$(refresh) Restart Server](command:${OxcCommands.RestartServerFmt})\n\n`;
