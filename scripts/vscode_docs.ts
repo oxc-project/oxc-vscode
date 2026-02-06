@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,11 +63,11 @@ function updateReadme(): void {
 }
 
 function getReadmePath(): string {
-  return join(__dirname, "README.md");
+  return join(__dirname, "..", "README.md");
 }
 
 function getPackageJsonPath(): string {
-  return join(__dirname, "package.json");
+  return join(__dirname, "..", "package.json");
 }
 
 function replaceGeneratedSection(readme: string, generated: string): string {
