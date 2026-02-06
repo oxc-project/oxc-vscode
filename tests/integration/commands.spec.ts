@@ -42,7 +42,7 @@ suite("commands", () => {
       process.env.SKIP_FORMATTER_TEST !== "true" &&
       !process.env.SERVER_PATH_DEV?.includes("oxc_language_server")
     ) {
-      expectedCommands.push("oxc.restartServerFormatter");
+      expectedCommands.push("oxc.restartServerFormatter", "oxc.toggleEnableFormatter");
     }
 
     deepStrictEqual(expectedCommands, oxcCommands);
@@ -85,6 +85,27 @@ suite("commands", () => {
 
     // enable it for other tests
     await commands.executeCommand("oxc.toggleEnable");
+    await sleep(500);
+  });
+
+  testSingleFolderMode("oxc.toggleEnableFormatter", async () => {
+    if (process.env.SKIP_FORMATTER_TEST === "true") {
+      return;
+    }
+    // Get the current state (fallback to main enable if not set)
+    const isEnabledBefore =
+      workspace.getConfiguration("oxc").get<boolean>("enable.oxfmt") ??
+      workspace.getConfiguration("oxc").get<boolean>("enable") ??
+      true;
+
+    await commands.executeCommand("oxc.toggleEnableFormatter");
+    await sleep(500);
+
+    const isEnabledAfter = workspace.getConfiguration("oxc").get<boolean>("enable.oxfmt");
+    strictEqual(isEnabledAfter, !isEnabledBefore);
+
+    // restore it for other tests
+    await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
   });
 
