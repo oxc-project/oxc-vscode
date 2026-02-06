@@ -92,11 +92,10 @@ suite("commands", () => {
     if (process.env.SKIP_FORMATTER_TEST === "true") {
       return;
     }
+    const config = workspace.getConfiguration("oxc");
     // Get the current state (fallback to main enable if not set)
     const isEnabledBefore =
-      workspace.getConfiguration("oxc").get<boolean>("enable.oxfmt") ??
-      workspace.getConfiguration("oxc").get<boolean>("enable") ??
-      true;
+      config.get<boolean>("enable.oxfmt") ?? config.get<boolean>("enable") ?? true;
 
     await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
