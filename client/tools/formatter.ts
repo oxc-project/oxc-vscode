@@ -64,7 +64,14 @@ export default class FormatterTool implements ToolInterface {
 
     const restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
       await this.restartClient();
-      this.updateStatsBar(statusBarItemHandler, configService);
+      this.updateStatusBar(statusBarItemHandler, configService);
+    });
+
+    const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
+      await configService.vsCodeConfig.updateEnableOxfmt(!configService.vsCodeConfig.enableOxfmt);
+
+      await this.toggleClient(configService);
+      this.updateStatusBar(statusBarItemHandler, configService);
     });
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
@@ -301,13 +308,13 @@ export default class FormatterTool implements ToolInterface {
       },
     );
 
-    context.subscriptions.push(restartCommand, onNotificationDispose);
+    context.subscriptions.push(restartCommand, toggleEnable, onNotificationDispose);
 
-    if (configService.vsCodeConfig.enable) {
+    if (configService.vsCodeConfig.enableOxfmt) {
       await this.client.start();
     }
 
-    this.updateStatsBar(statusBarItemHandler, configService);
+    this.updateStatusBar(statusBarItemHandler, configService);
   }
 
   async deactivate(): Promise<void> {
@@ -342,11 +349,11 @@ export default class FormatterTool implements ToolInterface {
     }
 
     if (this.client.isRunning()) {
-      if (!configService.vsCodeConfig.enable) {
+      if (!configService.vsCodeConfig.enableOxfmt) {
         await this.client.stop();
       }
     } else {
-      if (configService.vsCodeConfig.enable) {
+      if (configService.vsCodeConfig.enableOxfmt) {
         await this.client.start();
       }
     }
@@ -357,7 +364,11 @@ export default class FormatterTool implements ToolInterface {
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
   ): Promise<void> {
-    this.updateStatsBar(statusBarItemHandler, configService);
+    if (event.affectsConfiguration(`${ConfigService.namespace}.enable`) || 
+        event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)) {
+      await this.toggleClient(configService); // update the client state
+    }
+    this.updateStatusBar(statusBarItemHandler, configService);
 
     if (this.client === undefined) {
       return;
@@ -373,14 +384,27 @@ export default class FormatterTool implements ToolInterface {
     }
   }
 
-  private updateStatsBar(statusBarItemHandler: StatusBarItemHandler, configService: ConfigService) {
-    const text =
+  private updateStatusBar(statusBarItemHandler: StatusBarItemHandler, configService: ConfigService) {
+    const enable = configService.vsCodeConfig.enableOxfmt;
+    
+    let text =
       `[$(terminal) Open Output](command:${OxcCommands.ShowOutputChannelFmt})\n\n` +
       `[$(refresh) Restart Server](command:${OxcCommands.RestartServerFmt})\n\n`;
 
+    if (enable) {
+      text += `[$(stop) Stop Server](command:${OxcCommands.ToggleEnableFmt})\n\n`;
+    } else {
+      text += `[$(play) Start Server](command:${OxcCommands.ToggleEnableFmt})\n\n`;
+    }
+
+    const tooltipText = enable ? undefined : "`oxc.enable.oxfmt` or `oxc.enable` is false";
+    if (tooltipText) {
+      text = `${tooltipText}\n\n` + text;
+    }
+
     statusBarItemHandler.updateTool(
       "formatter",
-      configService.vsCodeConfig.enable,
+      enable,
       text,
       this.client?.initializeResult?.serverInfo?.version,
     );
