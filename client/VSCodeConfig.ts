@@ -26,7 +26,8 @@ export class VSCodeConfig implements VSCodeConfigInterface {
       binPathOxlint = this.configuration.get<string>("path.server");
     }
     let enable =
-      this.configuration.get<boolean | { oxlint?: boolean; oxfmt?: boolean }>("enable") ?? true;
+      this.configuration.get<boolean | null | { oxlint?: boolean; oxfmt?: boolean }>("enable") ??
+      true;
 
     this._enableOxlint =
       (typeof enable === "object" && "oxlint" in enable
@@ -55,10 +56,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   updateEnableOxlint(value: boolean): PromiseLike<void> {
     this._enableOxlint = value;
-    return this.configuration.update("enable", {
-      oxlint: value,
-      oxfmt: this._enableOxfmt,
-    });
+    return this.configuration.update("enable.oxlint", value);
   }
 
   get enableOxfmt(): boolean {
@@ -68,10 +66,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   updateEnableOxfmt(value: boolean): PromiseLike<void> {
     this._enableOxfmt = value;
-    return this.configuration.update("enable", {
-      oxlint: this._enableOxlint,
-      oxfmt: value,
-    });
+    return this.configuration.update("enable.oxfmt", value);
   }
 
   get trace(): TraceLevel {

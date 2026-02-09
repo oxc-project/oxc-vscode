@@ -1,5 +1,6 @@
 import { deepStrictEqual, notEqual, strictEqual } from "assert";
 import { commands, Uri, window, workspace, WorkspaceEdit } from "vscode";
+import { ConfigService } from "../../client/ConfigService";
 import {
   activateExtension,
   deleteFixtures,
@@ -74,20 +75,16 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    const enabledBefore = workspace.getConfiguration("oxc").get("enable");
-    strictEqual(enabledBefore, true);
+    const service = new ConfigService();
+    strictEqual(service.vsCodeConfig.enableOxlint, true);
 
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
 
-    const enabledAfter = workspace
-      .getConfiguration("oxc")
-      .get<{ oxlint?: boolean; oxfmt?: boolean }>("enable")!;
-    deepStrictEqual(enabledAfter.oxlint, false);
-    deepStrictEqual(enabledAfter.oxfmt, true);
+    strictEqual(service.vsCodeConfig.enableOxlint, false);
 
     // enable it for other tests
-    await workspace.getConfiguration("oxc").update("enable", undefined);
+    await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
   });
 
@@ -95,20 +92,16 @@ suite("commands", () => {
     if (process.env.SKIP_FORMATTER_TEST === "true") {
       return;
     }
-    const enabledBefore = workspace.getConfiguration("oxc").get("enable");
-    strictEqual(enabledBefore, true);
+    const service = new ConfigService();
+    strictEqual(service.vsCodeConfig.enableOxfmt, true);
 
     await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
 
-    const enabledAfter = workspace
-      .getConfiguration("oxc")
-      .get<{ oxlint?: boolean; oxfmt?: boolean }>("enable")!;
-    deepStrictEqual(enabledAfter.oxlint, true);
-    deepStrictEqual(enabledAfter.oxfmt, false);
+    strictEqual(service.vsCodeConfig.enableOxfmt, false);
 
     // restore it for other tests
-    await workspace.getConfiguration("oxc").update("enable", undefined);
+    await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
   });
 
