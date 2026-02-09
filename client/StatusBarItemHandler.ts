@@ -69,11 +69,9 @@ export default class StatusBarItemHandler {
       })
       .join("\n\n---\n\n");
 
-    if (!(this.statusBarItem.tooltip instanceof MarkdownString)) {
-      this.statusBarItem.tooltip = new MarkdownString("", true);
-      this.statusBarItem.tooltip.isTrusted = true;
-    }
-
+    // reset the tooltip to ensure the UI updates correctly
+    this.statusBarItem.tooltip = new MarkdownString("", true);
+    this.statusBarItem.tooltip.isTrusted = true;
     this.statusBarItem.tooltip.value = `VS Code Extension v${this.extensionVersion}\n\n---\n\n${text}`;
   }
 
