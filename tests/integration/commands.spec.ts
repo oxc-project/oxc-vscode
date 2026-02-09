@@ -74,13 +74,15 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    const isEnabledBefore = workspace.getConfiguration("oxc").get<boolean>("enable");
+    const config = workspace.getConfiguration("oxc");
+    const isEnabledBefore =
+      config.get<boolean>("enable.oxlint") ?? config.get<boolean>("enable") ?? true;
     strictEqual(isEnabledBefore, true);
 
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
 
-    const isEnabledAfter = workspace.getConfiguration("oxc").get<boolean>("enable");
+    const isEnabledAfter = config.get<boolean>("enable.oxlint");
     strictEqual(isEnabledAfter, false);
 
     // enable it for other tests

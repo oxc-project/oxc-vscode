@@ -50,7 +50,9 @@ Following configurations are supported via `settings.json` and affect the window
 
 | Key                 | Default Value | Possible Values                  | Description                                                                             |
 | ------------------- | ------------- | -------------------------------- | --------------------------------------------------------------------------------------- |
-| `oxc.enable`        | `true`        | `true` \| `false`                | Enable oxc language server                                                              |
+| `oxc.enable`        | `true`        | `true` \| `false`                | This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`.            |
+| `oxc.enable.oxfmt`  | `true`        | `true` \| `false`                | Enable oxfmt (formatter). Falls back to `oxc.enable` if not set.                        |
+| `oxc.enable.oxlint` | `true`        | `true` \| `false`                | Enable oxlint (linter). Falls back to `oxc.enable` if not set.                          |
 | `oxc.path.node`     | -             | `<string>`                       | Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment. |
 | `oxc.path.oxfmt`    | -             | `<string>`                       | Path to an Oxc formatter binary. Default: auto detection in `node_modules`.             |
 | `oxc.path.oxlint`   | -             | `<string>`                       | Path to an Oxc linter binary. Default: auto detection in `node_modules`.                |

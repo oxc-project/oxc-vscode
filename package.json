@@ -115,7 +115,7 @@
           "type": "boolean",
           "default": true,
           "scope": "window",
-          "markdownDescription": "Enable oxc language server. This is a master toggle for both oxlint and oxfmt."
+          "markdownDescription": "This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`."
         },
         "oxc.enable.oxlint": {
           "type": "boolean",
