@@ -7,6 +7,8 @@ const conf = workspace.getConfiguration("oxc");
 suite("VSCodeConfig", () => {
   const keys = [
     "enable",
+    "enable.oxlint",
+    "enable.oxfmt",
     "requireConfig",
     "trace.server",
     "path.server",
@@ -26,7 +28,8 @@ suite("VSCodeConfig", () => {
   test("default values on initialization", () => {
     const config = new VSCodeConfig();
 
-    strictEqual(config.enable, true);
+    strictEqual(config.enableOxlint, true, "enableOxlint should default to true");
+    strictEqual(config.enableOxfmt, true, "enableOxfmt should default to true");
     strictEqual(config.requireConfig, false);
     strictEqual(config.trace, "off");
     strictEqual(config.binPathOxlint, "");
@@ -37,16 +40,20 @@ suite("VSCodeConfig", () => {
 
   test("deprecated values are respected", async () => {
     await conf.update("path.server", "./deprecatedBinary");
+    await conf.update("enable", false);
     const config = new VSCodeConfig();
 
     strictEqual(config.binPathOxlint, "./deprecatedBinary");
+    strictEqual(config.enableOxlint, false);
+    strictEqual(config.enableOxfmt, false);
   });
 
   test("updating values updates the workspace configuration", async () => {
     const config = new VSCodeConfig();
 
     await Promise.all([
-      config.updateEnable(false),
+      config.updateEnableOxlint(false),
+      config.updateEnableOxfmt(false),
       config.updateRequireConfig(true),
       config.updateTrace("messages"),
       config.updateBinPathOxlint("./binary"),
@@ -57,7 +64,8 @@ suite("VSCodeConfig", () => {
 
     const wsConfig = workspace.getConfiguration("oxc");
 
-    strictEqual(wsConfig.get("enable"), false);
+    strictEqual(wsConfig.get("enable.oxlint"), false);
+    strictEqual(wsConfig.get("enable.oxfmt"), false);
     strictEqual(wsConfig.get("requireConfig"), true);
     strictEqual(wsConfig.get("trace.server"), "messages");
     strictEqual(wsConfig.get("path.oxlint"), "./binary");
