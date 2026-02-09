@@ -25,10 +25,21 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     if (!binPathOxlint) {
       binPathOxlint = this.configuration.get<string>("path.server");
     }
-    let enable = this.configuration.get<boolean | null | {oxlint?: boolean, oxfmt?: boolean}>("enable") ?? true;
+    let enable =
+      this.configuration.get<boolean | { oxlint?: boolean; oxfmt?: boolean }>("enable") ?? true;
 
-    this._enableOxlint = (typeof enable === "object" && "oxlint" in enable ? enable.oxlint : (typeof enable === "boolean" ? enable : true)) ?? true;
-    this._enableOxfmt = (typeof enable === "object" && "oxfmt" in enable ? enable.oxfmt : (typeof enable === "boolean" ? enable : true)) ?? true;
+    this._enableOxlint =
+      (typeof enable === "object" && "oxlint" in enable
+        ? enable.oxlint
+        : typeof enable === "boolean"
+          ? enable
+          : true) ?? true;
+    this._enableOxfmt =
+      (typeof enable === "object" && "oxfmt" in enable
+        ? enable.oxfmt
+        : typeof enable === "boolean"
+          ? enable
+          : true) ?? true;
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
@@ -44,7 +55,10 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   updateEnableOxlint(value: boolean): PromiseLike<void> {
     this._enableOxlint = value;
-    return this.configuration.update("enable.oxlint", value);
+    return this.configuration.update("enable", {
+      oxlint: value,
+      oxfmt: this._enableOxfmt,
+    });
   }
 
   get enableOxfmt(): boolean {
@@ -54,7 +68,10 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   updateEnableOxfmt(value: boolean): PromiseLike<void> {
     this._enableOxfmt = value;
-    return this.configuration.update("enable.oxfmt", value);
+    return this.configuration.update("enable", {
+      oxlint: this._enableOxlint,
+      oxfmt: value,
+    });
   }
 
   get trace(): TraceLevel {

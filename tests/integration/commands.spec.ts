@@ -74,19 +74,20 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    const config = workspace.getConfiguration("oxc");
-    const isEnabledBefore =
-      config.get<boolean>("enable.oxlint") ?? config.get<boolean>("enable") ?? true;
-    strictEqual(isEnabledBefore, true);
+    const enabledBefore = workspace.getConfiguration("oxc").get("enable");
+    strictEqual(enabledBefore, true);
 
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
 
-    const isEnabledAfter = config.get<boolean>("enable.oxlint");
-    strictEqual(isEnabledAfter, false);
+    const enabledAfter = workspace
+      .getConfiguration("oxc")
+      .get<{ oxlint?: boolean; oxfmt?: boolean }>("enable")!;
+    deepStrictEqual(enabledAfter.oxlint, false);
+    deepStrictEqual(enabledAfter.oxfmt, true);
 
     // enable it for other tests
-    await commands.executeCommand("oxc.toggleEnable");
+    await workspace.getConfiguration("oxc").update("enable", undefined);
     await sleep(500);
   });
 
@@ -94,19 +95,20 @@ suite("commands", () => {
     if (process.env.SKIP_FORMATTER_TEST === "true") {
       return;
     }
-    const config = workspace.getConfiguration("oxc");
-    // Get the current state (fallback to main enable if not set)
-    const isEnabledBefore =
-      config.get<boolean>("enable.oxfmt") ?? config.get<boolean>("enable") ?? true;
+    const enabledBefore = workspace.getConfiguration("oxc").get("enable");
+    strictEqual(enabledBefore, true);
 
     await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
 
-    const isEnabledAfter = workspace.getConfiguration("oxc").get<boolean>("enable.oxfmt");
-    strictEqual(isEnabledAfter, !isEnabledBefore);
+    const enabledAfter = workspace
+      .getConfiguration("oxc")
+      .get<{ oxlint?: boolean; oxfmt?: boolean }>("enable")!;
+    deepStrictEqual(enabledAfter.oxlint, true);
+    deepStrictEqual(enabledAfter.oxfmt, false);
 
     // restore it for other tests
-    await commands.executeCommand("oxc.toggleEnableFormatter");
+    await workspace.getConfiguration("oxc").update("enable", undefined);
     await sleep(500);
   });
 
