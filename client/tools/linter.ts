@@ -87,9 +87,7 @@ export default class LinterTool implements ToolInterface {
 
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
       await configService.vsCodeConfig.updateEnableOxlint(!configService.vsCodeConfig.enableOxlint);
-
-      await this.toggleClient(configService);
-      this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
+      // all future changes are handled by the onConfigChange listener, so we don't need to do it here
     });
 
     const applyAllFixesFile = commands.registerCommand(OxcCommands.ApplyAllFixesFile, async () => {
