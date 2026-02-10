@@ -40,12 +40,26 @@ suite("VSCodeConfig", () => {
 
   test("deprecated values are respected", async () => {
     await conf.update("path.server", "./deprecatedBinary");
-    await conf.update("enable", false);
     const config = new VSCodeConfig();
 
     strictEqual(config.binPathOxlint, "./deprecatedBinary");
+  });
+
+  test("update enable, will update enable.oxlint and enable.oxfmt respectively", async () => {
+    await conf.update("enable", false);
+    const config = new VSCodeConfig();
+
     strictEqual(config.enableOxlint, false);
     strictEqual(config.enableOxfmt, false);
+  });
+
+  test("update `enable.oxlint` to false, while `enable` is true", async () => {
+    await conf.update("enable", true);
+    await conf.update("enable.oxlint", false);
+    const config = new VSCodeConfig();
+
+    strictEqual(config.enableOxlint, false);
+    strictEqual(config.enableOxfmt, true);
   });
 
   test("updating values updates the workspace configuration", async () => {

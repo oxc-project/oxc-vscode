@@ -86,6 +86,7 @@ suite("commands", () => {
     // enable it for other tests
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
+    service.dispose();
   });
 
   testSingleFolderMode("oxc.toggleEnableFormatter", async () => {
@@ -103,6 +104,7 @@ suite("commands", () => {
     // restore it for other tests
     await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
+    service.dispose();
   });
 
   test("oxc.fixAll", async () => {

@@ -78,7 +78,12 @@
       },
       {
         "command": "oxc.toggleEnable",
-        "title": "Toggle whether oxc is enabled",
+        "title": "Toggle whether oxlint is enabled",
+        "category": "Oxc"
+      },
+      {
+        "command": "oxc.toggleEnableFormatter",
+        "title": "Toggle whether oxfmt is enabled",
         "category": "Oxc"
       },
       {

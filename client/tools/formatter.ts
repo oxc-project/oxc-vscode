@@ -69,9 +69,6 @@ export default class FormatterTool implements ToolInterface {
 
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
       await configService.vsCodeConfig.updateEnableOxfmt(!configService.vsCodeConfig.enableOxfmt);
-
-      await this.toggleClient(configService);
-      this.updateStatusBar(statusBarItemHandler, configService);
     });
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
