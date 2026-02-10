@@ -83,18 +83,6 @@ export async function activate(context: ExtensionContext) {
     }),
   );
 
-  const foundBinaryCount = binaryPaths.filter((path) => path).length;
-  // No valid binaries found for any tool, show error background.
-  if (foundBinaryCount === 0) {
-    statusBarItemHandler.setIcon("circle-slash");
-    // Every tool has a valid binary.
-  } else if (foundBinaryCount === binaryPaths.length) {
-    statusBarItemHandler.setIcon("check-all");
-    // Some tools are missing binaries.
-  } else {
-    statusBarItemHandler.setIcon("check");
-  }
-
   // Finally show the status bar item.
   statusBarItemHandler.show();
 }

@@ -28,10 +28,6 @@ export default class StatusBarItemHandler {
     this.statusBarItem.show();
   }
 
-  public setIcon(icon: string): void {
-    this.statusBarItem.text = `$(${icon}) oxc`;
-  }
-
   /**
    * Updates the tooltip text for a specific tool section.
    * The tooltip can use markdown syntax and VSCode icons.
@@ -48,6 +44,8 @@ export default class StatusBarItemHandler {
       section.content = text;
       section.version = version ?? "unknown";
       this.updateFullTooltip();
+      const icon = this.getIcon();
+      this.statusBarItem.text = `$(${icon}) oxc`;
     }
   }
 
@@ -69,6 +67,22 @@ export default class StatusBarItemHandler {
     this.statusBarItem.tooltip = new MarkdownString("", true);
     this.statusBarItem.tooltip.isTrusted = true;
     this.statusBarItem.tooltip.value = `VS Code Extension v${this.extensionVersion}\n\n---\n\n${text}`;
+  }
+
+  private getIcon(): string {
+    const linterState = this.tooltipSections.get("linter")!;
+    const formatterState = this.tooltipSections.get("formatter")!;
+
+    if (linterState.isEnabled && formatterState.isEnabled) {
+      // Every tool is enabled.
+      return "check-all";
+    } else if (linterState.isEnabled || formatterState.isEnabled) {
+      // Some tools are enabled.
+      return "check";
+    } else {
+      // No tools are enabled.
+      return "circle-slash";
+    }
   }
 
   public dispose(): void {
