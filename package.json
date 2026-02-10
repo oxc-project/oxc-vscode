@@ -41,9 +41,9 @@
     "test:oxlint-js": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxlint-js vscode-test",
     "test:oxlint-multi-root": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxlint-lsp-multi-root vscode-test",
     "test:oxfmt": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=oxfmt-lsp vscode-test",
-    "lint": "oxlint --type-check --type-aware --ignore-pattern fixtures",
-    "fmt": "oxfmt --write '!fixtures'",
-    "fmt:check": "oxfmt --check '!fixtures'",
+    "lint": "oxlint --type-check --type-aware -c oxlint.config.json",
+    "fmt": "oxfmt --write -c oxfmt.config.json",
+    "fmt:check": "oxfmt --check -c oxfmt.config.json",
     "docs:update": "node scripts/vscode_docs.ts update && pnpm run fmt"
   },
   "dependencies": {

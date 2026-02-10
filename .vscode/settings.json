@@ -1,4 +1,6 @@
 {
+  "oxc.configPath": "oxlint.config.json",
+  "oxc.fmt.configPath": "oxfmt.config.json",
   "oxc.typeAware": true,
   "oxc.unusedDisableDirectives": "deny",
   "editor.defaultFormatter": "oxc.oxc-vscode",
