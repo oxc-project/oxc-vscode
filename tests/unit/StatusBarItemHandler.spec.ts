@@ -13,7 +13,11 @@ suite("StatusBarItemHandler", () => {
 
       // Access the statusBarItem text to verify the icon
       const statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check-all) oxc", "Icon should be 'check-all' when both tools are enabled");
+      strictEqual(
+        statusBarText,
+        "$(check-all) oxc",
+        "Icon should be 'check-all' when both tools are enabled",
+      );
     });
 
     test("returns 'check' when only linter is enabled", () => {
@@ -25,7 +29,11 @@ suite("StatusBarItemHandler", () => {
       handler.updateTool("formatter", false, "Formatter is disabled", "1.0.0");
 
       const statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check) oxc", "Icon should be 'check' when only linter is enabled");
+      strictEqual(
+        statusBarText,
+        "$(check) oxc",
+        "Icon should be 'check' when only linter is enabled",
+      );
     });
 
     test("returns 'check' when only formatter is enabled", () => {
@@ -37,7 +45,11 @@ suite("StatusBarItemHandler", () => {
       handler.updateTool("formatter", true, "Formatter is running", "1.0.0");
 
       const statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check) oxc", "Icon should be 'check' when only formatter is enabled");
+      strictEqual(
+        statusBarText,
+        "$(check) oxc",
+        "Icon should be 'check' when only formatter is enabled",
+      );
     });
 
     test("returns 'circle-slash' when both tools are disabled", () => {
@@ -49,7 +61,11 @@ suite("StatusBarItemHandler", () => {
       handler.updateTool("formatter", false, "Formatter is disabled", "1.0.0");
 
       const statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(circle-slash) oxc", "Icon should be 'circle-slash' when both tools are disabled");
+      strictEqual(
+        statusBarText,
+        "$(circle-slash) oxc",
+        "Icon should be 'circle-slash' when both tools are disabled",
+      );
     });
 
     test("updates icon when toggling linter from enabled to disabled", () => {
@@ -65,7 +81,11 @@ suite("StatusBarItemHandler", () => {
       // Disable linter
       handler.updateTool("linter", false, "Linter is disabled", "1.0.0");
       statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check) oxc", "Should change to 'check' when linter is disabled");
+      strictEqual(
+        statusBarText,
+        "$(check) oxc",
+        "Should change to 'check' when linter is disabled",
+      );
     });
 
     test("updates icon when toggling formatter from enabled to disabled", () => {
@@ -81,7 +101,11 @@ suite("StatusBarItemHandler", () => {
       // Disable formatter
       handler.updateTool("formatter", false, "Formatter is disabled", "1.0.0");
       statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check) oxc", "Should change to 'check' when formatter is disabled");
+      strictEqual(
+        statusBarText,
+        "$(check) oxc",
+        "Should change to 'check' when formatter is disabled",
+      );
     });
 
     test("updates icon when enabling linter from all-disabled state", () => {
@@ -113,7 +137,11 @@ suite("StatusBarItemHandler", () => {
       // Enable formatter
       handler.updateTool("formatter", true, "Formatter is running", "1.0.0");
       statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check) oxc", "Should change to 'check' when formatter is enabled");
+      strictEqual(
+        statusBarText,
+        "$(check) oxc",
+        "Should change to 'check' when formatter is enabled",
+      );
     });
 
     test("updates icon when enabling both tools from partial state", () => {
@@ -129,7 +157,11 @@ suite("StatusBarItemHandler", () => {
       // Enable formatter to have both enabled
       handler.updateTool("formatter", true, "Formatter is running", "1.0.0");
       statusBarText = (handler as any).statusBarItem.text;
-      strictEqual(statusBarText, "$(check-all) oxc", "Should change to 'check-all' when both tools are enabled");
+      strictEqual(
+        statusBarText,
+        "$(check-all) oxc",
+        "Should change to 'check-all' when both tools are enabled",
+      );
     });
 
     test("cleans up status bar item on dispose", () => {
