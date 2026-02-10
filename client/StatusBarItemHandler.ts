@@ -1,4 +1,4 @@
-import { MarkdownString, StatusBarAlignment, StatusBarItem, ThemeColor, window } from "vscode";
+import { MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
 
 type StatusBarTool = "linter" | "formatter";
 
@@ -26,10 +26,6 @@ export default class StatusBarItemHandler {
 
   public show(): void {
     this.statusBarItem.show();
-  }
-
-  public setWarnBackground(): void {
-    this.statusBarItem.backgroundColor = new ThemeColor("statusBarItem.warningBackground");
   }
 
   public setIcon(icon: string): void {
