@@ -55,7 +55,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   get enableOxlint(): boolean {
-    // Falls back to main enable if not explicitly set
     return this._enableOxlint;
   }
 
@@ -65,7 +64,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   get enableOxfmt(): boolean {
-    // Falls back to main enable if not explicitly set
     return this._enableOxfmt;
   }
 
