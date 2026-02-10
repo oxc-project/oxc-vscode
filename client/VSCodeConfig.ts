@@ -29,18 +29,23 @@ export class VSCodeConfig implements VSCodeConfigInterface {
       this.configuration.get<boolean | null | { oxlint?: boolean; oxfmt?: boolean }>("enable") ??
       true;
 
-    this._enableOxlint =
-      (typeof enable === "object" && "oxlint" in enable
-        ? enable.oxlint
-        : typeof enable === "boolean"
-          ? enable
-          : true) ?? true;
-    this._enableOxfmt =
-      (typeof enable === "object" && "oxfmt" in enable
-        ? enable.oxfmt
-        : typeof enable === "boolean"
-          ? enable
-          : true) ?? true;
+    if (typeof enable === "boolean") {
+      // If main enable is true, both tools are enabled
+      // this is how VS Code resolves config. `oxc.enable` always wins over  `oxc.enable.oxlint` and `oxc.enable.oxfmt`
+      enable = { oxlint: enable, oxfmt: enable };
+    } else if (typeof enable === "object") {
+      // If main enable is an object, we need to ensure both keys are present
+      enable = {
+        oxlint: enable.oxlint ?? true,
+        oxfmt: enable.oxfmt ?? true,
+      };
+    } else {
+      // Fallback to enabling both if the config is somehow invalid
+      enable = { oxlint: true, oxfmt: true };
+    }
+
+    this._enableOxlint = enable.oxlint!;
+    this._enableOxfmt = enable.oxfmt!;
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");

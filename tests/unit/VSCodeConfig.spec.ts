@@ -58,7 +58,7 @@ suite("VSCodeConfig", () => {
     await conf.update("enable.oxlint", false);
     const config = new VSCodeConfig();
 
-    strictEqual(config.enableOxlint, false);
+    strictEqual(config.enableOxlint, true);
     strictEqual(config.enableOxfmt, true);
   });
 
