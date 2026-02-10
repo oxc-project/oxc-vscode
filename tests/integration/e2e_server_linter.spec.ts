@@ -326,14 +326,14 @@ suite("E2E Server Linter", () => {
     strictEqual(secondDiagnostics.length, 1);
   });
 
-  testSingleFolderMode("changing oxc.enable will update the client status", async () => {
+  testSingleFolderMode("changing oxc.enable.oxlint will update the client status", async () => {
     await loadFixture("changing_enable");
     await sleep(500);
 
     const firstDiagnostics = await getDiagnostics("debugger.js");
     strictEqual(firstDiagnostics.length, 1);
 
-    await workspace.getConfiguration("oxc").update("enable", false);
+    await workspace.getConfiguration("oxc").update("enable.oxlint", false);
     await workspace.saveAll();
     await waitForDiagnosticChange();
 
@@ -341,7 +341,7 @@ suite("E2E Server Linter", () => {
     strictEqual(secondDiagnostics.length, 0);
 
     // enable it for other tests
-    await workspace.getConfiguration("oxc").update("enable", true);
+    await workspace.getConfiguration("oxc").update("enable.oxlint", true);
     await workspace.saveAll();
     await sleep(500);
   });

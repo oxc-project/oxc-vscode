@@ -82,11 +82,11 @@ export default class LinterTool implements ToolInterface {
 
     const restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
       await this.restartClient();
-      this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enable);
+      this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
     });
 
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
-      await configService.vsCodeConfig.updateEnable(!configService.vsCodeConfig.enable);
+      await configService.vsCodeConfig.updateEnableOxlint(!configService.vsCodeConfig.enableOxlint);
       // all future changes are handled by the onConfigChange listener, so we don't need to do it here
     });
 
@@ -216,14 +216,14 @@ export default class LinterTool implements ToolInterface {
     context.subscriptions.push(onDeleteFilesDispose);
 
     if (this.allowedToStartServer) {
-      if (configService.vsCodeConfig.enable) {
+      if (configService.vsCodeConfig.enableOxlint) {
         await this.client.start();
       }
     } else {
       this.generateActivatorByConfig(configService.vsCodeConfig, context, statusBarItemHandler);
     }
 
-    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enable);
+    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
   }
 
   async deactivate(): Promise<void> {
@@ -240,11 +240,11 @@ export default class LinterTool implements ToolInterface {
     }
 
     if (this.client.isRunning()) {
-      if (!configService.vsCodeConfig.enable) {
+      if (!configService.vsCodeConfig.enableOxlint) {
         await this.client.stop();
       }
     } else {
-      if (configService.vsCodeConfig.enable) {
+      if (configService.vsCodeConfig.enableOxlint) {
         await this.client.start();
       }
     }
@@ -273,10 +273,13 @@ export default class LinterTool implements ToolInterface {
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
   ): Promise<void> {
-    if (event.affectsConfiguration(`${ConfigService.namespace}.enable`)) {
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.enable.oxlint`)
+    ) {
       await this.toggleClient(configService); // update the client state
     }
-    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enable);
+    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
 
     if (this.client === undefined) {
       return;
@@ -311,7 +314,7 @@ export default class LinterTool implements ToolInterface {
     } else if (!enable) {
       return {
         isEnabled: false,
-        tooltipText: "`oxc.enable` is false",
+        tooltipText: "`oxc.enable.oxlint` or `oxc.enable` is false",
       };
     }
 
@@ -358,8 +361,8 @@ export default class LinterTool implements ToolInterface {
     );
     watcher.onDidCreate(async () => {
       this.allowedToStartServer = true;
-      this.updateStatusBar(statusBarItemHandler, config.enable);
-      if (this.client && !this.client.isRunning() && config.enable) {
+      this.updateStatusBar(statusBarItemHandler, config.enableOxlint);
+      if (this.client && !this.client.isRunning() && config.enableOxlint) {
         await this.client.start();
       }
     });

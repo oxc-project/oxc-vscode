@@ -1,5 +1,6 @@
 import { deepStrictEqual, notEqual, strictEqual } from "assert";
 import { commands, Uri, window, workspace, WorkspaceEdit } from "vscode";
+import { ConfigService } from "../../client/ConfigService";
 import {
   activateExtension,
   deleteFixtures,
@@ -42,7 +43,7 @@ suite("commands", () => {
       process.env.SKIP_FORMATTER_TEST !== "true" &&
       !process.env.SERVER_PATH_DEV?.includes("oxc_language_server")
     ) {
-      expectedCommands.push("oxc.restartServerFormatter");
+      expectedCommands.push("oxc.restartServerFormatter", "oxc.toggleEnableFormatter");
     }
 
     deepStrictEqual(expectedCommands, oxcCommands);
@@ -74,18 +75,36 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    const isEnabledBefore = workspace.getConfiguration("oxc").get<boolean>("enable");
-    strictEqual(isEnabledBefore, true);
+    const service = new ConfigService();
+    strictEqual(service.vsCodeConfig.enableOxlint, true);
 
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
 
-    const isEnabledAfter = workspace.getConfiguration("oxc").get<boolean>("enable");
-    strictEqual(isEnabledAfter, false);
+    strictEqual(service.vsCodeConfig.enableOxlint, false);
 
     // enable it for other tests
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
+    service.dispose();
+  });
+
+  testSingleFolderMode("oxc.toggleEnableFormatter", async () => {
+    if (process.env.SKIP_FORMATTER_TEST === "true") {
+      return;
+    }
+    const service = new ConfigService();
+    strictEqual(service.vsCodeConfig.enableOxfmt, true);
+
+    await commands.executeCommand("oxc.toggleEnableFormatter");
+    await sleep(500);
+
+    strictEqual(service.vsCodeConfig.enableOxfmt, false);
+
+    // restore it for other tests
+    await commands.executeCommand("oxc.toggleEnableFormatter");
+    await sleep(500);
+    service.dispose();
   });
 
   test("oxc.fixAll", async () => {

@@ -2,7 +2,8 @@ import { workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
-  private _enable!: boolean;
+  private _enableOxlint!: boolean;
+  private _enableOxfmt!: boolean;
   private _trace!: TraceLevel;
   private _binPathOxlint: string | undefined;
   private _binPathOxfmt: string | undefined;
@@ -24,7 +25,27 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     if (!binPathOxlint) {
       binPathOxlint = this.configuration.get<string>("path.server");
     }
-    this._enable = this.configuration.get<boolean>("enable") ?? true;
+    let enable =
+      this.configuration.get<boolean | null | { oxlint?: boolean; oxfmt?: boolean }>("enable") ??
+      true;
+
+    if (typeof enable === "boolean") {
+      // If main enable is true, both tools are enabled
+      // this is how VS Code resolves config. `oxc.enable` always wins over  `oxc.enable.oxlint` and `oxc.enable.oxfmt`
+      enable = { oxlint: enable, oxfmt: enable };
+    } else if (typeof enable === "object") {
+      // If main enable is an object, we need to ensure both keys are present
+      enable = {
+        oxlint: enable.oxlint ?? true,
+        oxfmt: enable.oxfmt ?? true,
+      };
+    } else {
+      // Fallback to enabling both if the config is somehow invalid
+      enable = { oxlint: true, oxfmt: true };
+    }
+
+    this._enableOxlint = enable.oxlint!;
+    this._enableOxfmt = enable.oxfmt!;
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
@@ -33,13 +54,22 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
   }
 
-  get enable(): boolean {
-    return this._enable;
+  get enableOxlint(): boolean {
+    return this._enableOxlint;
   }
 
-  updateEnable(value: boolean): PromiseLike<void> {
-    this._enable = value;
-    return this.configuration.update("enable", value);
+  updateEnableOxlint(value: boolean): PromiseLike<void> {
+    this._enableOxlint = value;
+    return this.configuration.update("enable.oxlint", value);
+  }
+
+  get enableOxfmt(): boolean {
+    return this._enableOxfmt;
+  }
+
+  updateEnableOxfmt(value: boolean): PromiseLike<void> {
+    this._enableOxfmt = value;
+    return this.configuration.update("enable.oxfmt", value);
   }
 
   get trace(): TraceLevel {
@@ -104,11 +134,17 @@ type TraceLevel = "off" | "messages" | "verbose";
  */
 interface VSCodeConfigInterface {
   /**
-   * `oxc.enable`
+   * `oxc.enable.oxlint`
    *
-   * @default true
+   * @default true (falls back to `oxc.enable` if not set)
    */
-  enable: boolean;
+  enableOxlint: boolean;
+  /**
+   * `oxc.enable.oxfmt`
+   *
+   * @default true (falls back to `oxc.enable` if not set)
+   */
+  enableOxfmt: boolean;
   /**
    * Trace VSCode <-> Oxc Language Server communication
    * `oxc.trace.server`

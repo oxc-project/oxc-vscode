@@ -78,7 +78,12 @@
       },
       {
         "command": "oxc.toggleEnable",
-        "title": "Toggle whether oxc is enabled",
+        "title": "Toggle whether oxlint is enabled",
+        "category": "Oxc"
+      },
+      {
+        "command": "oxc.toggleEnableFormatter",
+        "title": "Toggle whether oxfmt is enabled",
         "category": "Oxc"
       },
       {
@@ -112,10 +117,25 @@
           "markdownDescription": "Run the linter on save (onSave) or on type (onType)"
         },
         "oxc.enable": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null,
+          "scope": "window",
+          "markdownDescription": "This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`."
+        },
+        "oxc.enable.oxlint": {
           "type": "boolean",
           "default": true,
           "scope": "window",
-          "markdownDescription": "Enable oxc language server"
+          "markdownDescription": "Enable oxlint (linter). Falls back to `oxc.enable` if not set."
+        },
+        "oxc.enable.oxfmt": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Enable oxfmt (formatter). Falls back to `oxc.enable` if not set."
         },
         "oxc.requireConfig": {
           "scope": "resource",
