@@ -217,41 +217,36 @@ function formatDefaultValue(value: unknown): string {
   return "-";
 }
 
+function getTypeString(type: string | string[]): string {
+  if (!type) {
+    return "-";
+  }
+  if (type === "boolean") {
+    return "`true` \\| `false`";
+  }
+  if (type === "string") {
+    return "`<string>`";
+  }
+  if (type === "number") {
+    return "`<number>`";
+  }
+  if (type === "object") {
+    return "`Record<string, string>`";
+  }
+  if (Array.isArray(type)) {
+    return type.map((t) => getTypeString(t)).join(" \\| ");
+  }
+
+  return `\`<${type}>\``;
+}
+
 function getPossibleValues(value: ConfigProperty): string {
   if (value.enum && Array.isArray(value.enum)) {
     return value.enum.map((v) => `\`${v}\``).join(" \\| ");
   }
 
   if (value.type) {
-    if (typeof value.type === "string") {
-      if (value.type === "boolean") {
-        return "`true` \\| `false`";
-      }
-      if (value.type === "string") {
-        return "`<string>`";
-      }
-      if (value.type === "number") {
-        return "`<number>`";
-      }
-      if (value.type === "object") {
-        return "`Record<string, string>`";
-      }
-    } else if (Array.isArray(value.type)) {
-      const types = value.type
-        .filter((t) => t !== "null")
-        .map((t) => {
-          if (t === "string") {
-            return "`<string>`";
-          }
-          if (t === "number") {
-            return "`<number>`";
-          }
-          return `\`<${t}>\``;
-        });
-      if (types.length > 0) {
-        return types.join(" \\| ");
-      }
-    }
+    return getTypeString(value.type);
   }
 
   return "-";
