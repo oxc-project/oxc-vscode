@@ -63,6 +63,15 @@ interface WorkspaceConfigInterface {
   typeAware: boolean;
 
   /**
+   * Whether to enable JS plugins support
+   *
+   * `oxc.jsPlugins`
+   *
+   * @default false
+   */
+  jsPlugins: boolean;
+
+  /**
    * Disable nested config files detection
    * `oxc.disableNestedConfig`
    * @default false
@@ -101,6 +110,7 @@ export class WorkspaceConfig {
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
   private _unusedDisableDirectives: UnusedDisableDirectives = "allow";
   private _typeAware: boolean = false;
+  private _jsPlugins: boolean = false;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
   private _formattingConfigPath: string | null = null;
@@ -140,6 +150,7 @@ export class WorkspaceConfig {
     this._unusedDisableDirectives =
       this.configuration.get<UnusedDisableDirectives>("unusedDisableDirectives") ?? "allow";
     this._typeAware = this.configuration.get<boolean>("typeAware") ?? false;
+    this._jsPlugins = this.configuration.get<boolean>("jsPlugins") ?? false;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? FixKind.SafeFix;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
@@ -164,6 +175,9 @@ export class WorkspaceConfig {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.typeAware`, this.workspace)) {
+      return true;
+    }
+    if (event.affectsConfiguration(`${ConfigService.namespace}.jsPlugins`, this.workspace)) {
       return true;
     }
     if (
@@ -237,6 +251,15 @@ export class WorkspaceConfig {
     return this.configuration.update("typeAware", value, ConfigurationTarget.WorkspaceFolder);
   }
 
+  get jsPlugins(): boolean {
+    return this._jsPlugins;
+  }
+
+  updateJsPlugins(value: boolean): PromiseLike<void> {
+    this._jsPlugins = value;
+    return this.configuration.update("jsPlugins", value, ConfigurationTarget.WorkspaceFolder);
+  }
+
   get disableNestedConfig(): boolean {
     return this._disableNestedConfig;
   }
@@ -278,6 +301,7 @@ export class WorkspaceConfig {
       tsConfigPath: this.tsConfigPath ?? null,
       unusedDisableDirectives: this.unusedDisableDirectives,
       typeAware: this.typeAware,
+      jsPlugins: this.jsPlugins,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind,
       // keep for backward compatibility
