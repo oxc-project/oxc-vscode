@@ -257,6 +257,29 @@ export default class FormatterTool implements ToolInterface {
       "Cargo.toml.orig",
     ];
 
+    // used for unsaved files with schema `untitled` that have no filename yet
+    // https://github.com/oxc-project/oxc/blob/3e478df9a329244c005a09da05da503dd2b4d64b/apps/oxfmt/src/lsp/mod.rs#L59-L92
+    const supportedLanguageIds = [
+      "javascript",
+      "typescript",
+      "javascriptreact",
+      "typescriptreact",
+      "css",
+      "graphql",
+      "handlebars",
+      "json",
+      "jsonc",
+      "less",
+      "markdown",
+      "html",
+      "scss",
+      "toml",
+      "vue",
+      "yaml",
+      // astro
+      // svelte
+    ];
+
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     // Options to control the language client
@@ -270,6 +293,10 @@ export default class FormatterTool implements ToolInterface {
         ...specialFilenames.map((filename) => ({
           pattern: `**/${filename}`,
           scheme: "file",
+        })),
+        ...supportedLanguageIds.map((language) => ({
+          language,
+          scheme: "untitled",
         })),
       ],
       initializationOptions: configService.formatterServerConfig,
