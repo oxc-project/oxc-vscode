@@ -4,7 +4,10 @@ import * as path from "node:path";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 
-function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
+function replaceTargetFromMainToBin(
+  resolvedPath: string,
+  binaryName: string,
+): string {
   // we want to target the binary instead of the main index file
   // Improvement: search inside package.json "bin" and `main` field for more reliability
   return resolvedPath.replace(
@@ -12,28 +15,62 @@ function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): s
     `${binaryName}${path.sep}bin${path.sep}${binaryName}`,
   );
 }
+
+async function resolveWorkspaceBinPath(
+  binaryName: string,
+): Promise<string | undefined> {
+  for (const folder of workspace.workspaceFolders ?? []) {
+    const basePath = path.join(
+      folder.uri.fsPath,
+      "node_modules",
+      ".bin",
+      binaryName,
+    );
+    const candidates =
+      process.platform === "win32"
+        ? [basePath, `${basePath}.cmd`, `${basePath}.exe`]
+        : [basePath];
+
+    for (const candidate of candidates) {
+      try {
+        await workspace.fs.stat(Uri.file(candidate));
+        return candidate;
+      } catch {}
+    }
+  }
+
+  return undefined;
+}
 /**
  * Search for the binary in all workspaces' node_modules/.bin directories.
  * If multiple workspaces contain the binary, the first one found is returned.
  */
-export async function searchProjectNodeModulesBin(binaryName: string): Promise<string | undefined> {
+export async function searchProjectNodeModulesBin(
+  binaryName: string,
+): Promise<string | undefined> {
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, {
-        paths: workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
+        paths:
+          workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
       }),
       binaryName,
     );
     return resolvedPath;
   } catch {}
+
+  // fallback to direct binary lookup in workspace node_modules/.bin
+  return resolveWorkspaceBinPath(binaryName);
 }
 
 /**
  * Search for the binary in global node_modules.
  * Returns undefined if not found.
  */
-export async function searchGlobalNodeModulesBin(binaryName: string): Promise<string | undefined> {
+export async function searchGlobalNodeModulesBin(
+  binaryName: string,
+): Promise<string | undefined> {
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
@@ -49,7 +86,9 @@ export async function searchGlobalNodeModulesBin(binaryName: string): Promise<st
  * If the path is relative, it is resolved against the first workspace folder.
  * Returns undefined if no valid binary is found or the path is unsafe.
  */
-export async function searchSettingsBin(settingsBinary: string): Promise<string | undefined> {
+export async function searchSettingsBin(
+  settingsBinary: string,
+): Promise<string | undefined> {
   if (!workspace.isTrusted) {
     return;
   }
@@ -98,16 +137,24 @@ export async function searchSettingsBin(settingsBinary: string): Promise<string 
 function globalNodeModulesPaths(): string[] {
   const npmGlobalNodeModulesPath = safeSpawnSync("npm", ["root", "-g"]);
   const pnpmGlobalNodeModulesPath = safeSpawnSync("pnpm", ["root", "-g"]);
-  const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");
+  const bunGlobalNodeModulesPath = path.resolve(
+    homedir(),
+    ".bun/install/global/node_modules",
+  );
 
-  return [npmGlobalNodeModulesPath, pnpmGlobalNodeModulesPath, bunGlobalNodeModulesPath].filter(
-    Boolean,
-  ) as string[];
+  return [
+    npmGlobalNodeModulesPath,
+    pnpmGlobalNodeModulesPath,
+    bunGlobalNodeModulesPath,
+  ].filter(Boolean) as string[];
 }
 
 // only use this function with internal code, because it executes shell commands
 // which could be a security risk if the command or args are user-controlled
-const safeSpawnSync = (command: string, args: readonly string[] = []): string | undefined => {
+const safeSpawnSync = (
+  command: string,
+  args: readonly string[] = [],
+): string | undefined => {
   let output: string | undefined;
 
   try {
