@@ -12,6 +12,34 @@ function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): s
     `${binaryName}${path.sep}bin${path.sep}${binaryName}`,
   );
 }
+
+async function searchNodeModulesDefaultBinPath(
+  binaryName: string,
+  folders: string[],
+): Promise<string | undefined> {
+  const candidates = folders.flatMap((folder) => {
+    const basePath = path.join(folder, ".bin", binaryName);
+    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+  });
+
+  const exists = await Promise.all(
+    candidates.map(async (candidate) => {
+      try {
+        await workspace.fs.stat(Uri.file(candidate));
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
+
+  const firstExistingCandidateIndex = exists.findIndex(Boolean);
+  if (firstExistingCandidateIndex === -1) {
+    return undefined;
+  }
+
+  return candidates[firstExistingCandidateIndex];
+}
 /**
  * Search for the binary in all workspaces' node_modules/.bin directories.
  * If multiple workspaces contain the binary, the first one found is returned.
@@ -27,6 +55,12 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
     );
     return resolvedPath;
   } catch {}
+
+  // fallback to direct binary lookup in workspace node_modules/.bin
+  const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
+    path.join(folder.uri.fsPath, "node_modules"),
+  );
+  return searchNodeModulesDefaultBinPath(binaryName, workspaceNodeModules);
 }
 
 /**
@@ -34,14 +68,18 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
  * Returns undefined if not found.
  */
 export async function searchGlobalNodeModulesBin(binaryName: string): Promise<string | undefined> {
+  const globalPaths = globalNodeModulesPaths();
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
-      require.resolve(binaryName, { paths: globalNodeModulesPaths() }),
+      require.resolve(binaryName, { paths: globalPaths }),
       binaryName,
     );
     return resolvedPath;
   } catch {}
+
+  // fallback to direct binary lookup in global node_modules/.bin
+  return searchNodeModulesDefaultBinPath(binaryName, globalPaths);
 }
 
 /**

@@ -1,6 +1,8 @@
 import { strictEqual } from "assert";
 import * as path from "node:path";
+import { Uri, workspace } from "vscode";
 import { searchGlobalNodeModulesBin, searchProjectNodeModulesBin } from "../../client/findBinary";
+import { WORKSPACE_FOLDER } from "../test-helpers.js";
 
 suite("findBinary", () => {
   const binaryName = "oxlint";
@@ -17,6 +19,24 @@ suite("findBinary", () => {
 
       strictEqual(result.includes(`${path.sep}dist${path.sep}index.js`), false);
       strictEqual(result.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+    });
+
+    test("should fallback to workspace node_modules/.bin when package resolve fails", async () => {
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+
+      const fallbackBinaryName = "fallback-bin-lookup-test";
+      const basePath = path.join(workspacePath, "node_modules", ".bin", fallbackBinaryName);
+      const fallbackPath = basePath;
+
+      await workspace.fs.writeFile(Uri.file(fallbackPath), new Uint8Array());
+
+      try {
+        const result = await searchProjectNodeModulesBin(fallbackBinaryName);
+
+        strictEqual(result, fallbackPath);
+      } finally {
+        await workspace.fs.delete(Uri.file(fallbackPath));
+      }
     });
   });
 
