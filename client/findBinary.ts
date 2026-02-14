@@ -13,7 +13,7 @@ function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): s
   );
 }
 
-async function resolveNodeModulesBinPath(
+async function searchNodeModulesDefaultBinPath(
   binaryName: string,
   folders: string[],
 ): Promise<string | undefined> {
@@ -60,7 +60,7 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
   );
-  return resolveNodeModulesBinPath(binaryName, workspaceNodeModules);
+  return searchNodeModulesDefaultBinPath(binaryName, workspaceNodeModules);
 }
 
 /**
@@ -68,17 +68,18 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
  * Returns undefined if not found.
  */
 export async function searchGlobalNodeModulesBin(binaryName: string): Promise<string | undefined> {
+  const globalPaths = globalNodeModulesPaths();
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
-      require.resolve(binaryName, { paths: globalNodeModulesPaths() }),
+      require.resolve(binaryName, { paths: globalPaths }),
       binaryName,
     );
     return resolvedPath;
   } catch {}
 
   // fallback to direct binary lookup in global node_modules/.bin
-  return resolveNodeModulesBinPath(binaryName, globalNodeModulesPaths());
+  return searchNodeModulesDefaultBinPath(binaryName, globalPaths);
 }
 
 /**
