@@ -269,6 +269,7 @@ export default class FormatterTool implements ToolInterface {
       "handlebars",
       "json",
       "jsonc",
+      "json5",
       "less",
       "markdown",
       "html",

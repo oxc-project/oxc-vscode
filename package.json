@@ -314,6 +314,7 @@
     "onLanguage:javascript",
     "onLanguage:javascriptreact",
     "onLanguage:json",
+    "onLanguage:json5",
     "onLanguage:jsonc",
     "onLanguage:less",
     "onLanguage:markdown",
