@@ -319,6 +319,7 @@
     "onLanguage:less",
     "onLanguage:markdown",
     "onLanguage:mdx",
+    "onLanguage:mjml",
     "onLanguage:scss",
     "onLanguage:svelte",
     "onLanguage:toml",
