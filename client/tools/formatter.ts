@@ -273,6 +273,7 @@ export default class FormatterTool implements ToolInterface {
       "less",
       "markdown",
       "mdx",
+      "mjml",
       "html",
       "scss",
       "toml",
