@@ -312,6 +312,15 @@
         "extensions": [
           ".json5"
         ]
+      },
+      {
+        "id": "mdx",
+        "aliases": [
+          "MDX"
+        ],
+        "extensions": [
+          ".mdx"
+        ]
       }
     ]
   },
@@ -328,6 +337,7 @@
     "onLanguage:jsonc",
     "onLanguage:less",
     "onLanguage:markdown",
+    "onLanguage:mdx",
     "onLanguage:scss",
     "onLanguage:svelte",
     "onLanguage:toml",
