@@ -302,6 +302,16 @@
           ".oxfmtrc.json",
           ".oxfmtrc.jsonc"
         ]
+      },
+      {
+        "id": "json5",
+        "aliases": [
+          "JSON5",
+          "json5"
+        ],
+        "extensions": [
+          ".json5"
+        ]
       }
     ]
   },
@@ -314,6 +324,7 @@
     "onLanguage:javascript",
     "onLanguage:javascriptreact",
     "onLanguage:json",
+    "onLanguage:json5",
     "onLanguage:jsonc",
     "onLanguage:less",
     "onLanguage:markdown",
