@@ -60,7 +60,7 @@
     "ovsx": "^0.10.0",
     "oxfmt": "latest",
     "oxlint": "latest",
-    "oxlint-tsgolint": "^0.13.0",
+    "oxlint-tsgolint": "^0.14.0",
     "rolldown": "1.0.0-rc.4",
     "tinyglobby": "^0.2.15"
   },
