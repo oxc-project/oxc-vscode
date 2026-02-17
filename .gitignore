@@ -8,9 +8,9 @@ out_test/
 
 # Test artifacts
 .vscode-test/
-test_workspace/
-test_workspace_second/
-*.test.code-workspace
+/tests/test_workspace/
+/tests/test_workspace_second/
+/tests/*.test.code-workspace
 
 # Downloaded assets
 icon.png

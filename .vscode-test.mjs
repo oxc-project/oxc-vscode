@@ -2,10 +2,10 @@ import { defineConfig } from "@vscode/test-cli";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const multiRootWorkspaceFile = "./multi-root.test.code-workspace";
+const multiRootWorkspaceFile = "./tests/multi-root.test.code-workspace";
 
-mkdirSync("./test_workspace", { recursive: true });
-mkdirSync("./test_workspace_second", { recursive: true });
+mkdirSync("./tests/test_workspace", { recursive: true });
+mkdirSync("./tests/test_workspace_second", { recursive: true });
 
 const multiRootWorkspaceConfig = {
   folders: [{ path: "test_workspace" }, { path: "test_workspace_second" }],
@@ -18,7 +18,7 @@ const oxfmtBin = path.resolve(import.meta.dirname, "node_modules/.bin/oxfmt");
 
 const baseTest = {
   files: "out_test/integration/**/*.spec.js",
-  workspaceFolder: "./test_workspace",
+  workspaceFolder: "./tests/test_workspace",
   launchArgs: [
     // This disables all extensions except the one being tested
     "--disable-extensions",
