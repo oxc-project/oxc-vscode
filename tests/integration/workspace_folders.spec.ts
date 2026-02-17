@@ -14,7 +14,7 @@ suiteSetup(async () => {
   await activateExtension();
 });
 
-const FIXTURES_URI = Uri.joinPath(WORKSPACE_DIR, "..", "fixtures");
+const FIXTURES_URI = Uri.joinPath(WORKSPACE_DIR, "..", "..", "fixtures");
 
 suite("Workspace Folders", () => {
   testMultiFolderMode("shows diagnostics to newly adding folder", async () => {
