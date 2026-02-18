@@ -29,6 +29,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 2
+          persist-credentials: false
 
       - name: Check version changes
         uses: EndBug/version-check@5102328418c0130d66ca712d755c303e93368ce2 # v2.1.7
@@ -50,9 +51,12 @@ jobs:
 
       - name: Print version
         if: steps.version.outputs.changed == 'true'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+          IS_PRE_RELEASE: ${{ steps.check_pre_release.outputs.is_pre_release }}
         run: |
-          echo "Version change found! New version: ${{ steps.version.outputs.version }}"
-          echo "Pre-release: ${{ steps.check_pre_release.outputs.is_pre_release }}"
+          echo "Version change found! New version: ${NEW_VERSION}"
+          echo "Pre-release: ${IS_PRE_RELEASE}"
 
   build:
     name: Build

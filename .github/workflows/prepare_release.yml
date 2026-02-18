@@ -25,8 +25,10 @@ jobs:
           persist-credentials: false
 
       - name: Update version in package.json
+        env:
+          NEW_VERSION: ${{ inputs.version }}
         run: |
-          npm pkg set version="${{ inputs.version }}"
+          npm pkg set version="${NEW_VERSION}"
 
       - uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
