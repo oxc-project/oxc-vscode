@@ -299,7 +299,6 @@ export default class FormatterTool implements ToolInterface {
         })),
         ...supportedLanguageIds.map((language) => ({
           language,
-          scheme: "untitled",
         })),
       ],
       initializationOptions: configService.formatterServerConfig,
