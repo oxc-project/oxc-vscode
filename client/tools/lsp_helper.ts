@@ -30,7 +30,7 @@ export function runExecutable(
       options: {
         env: serverEnv,
       },
-    }
+    };
   }
 
   return {
