@@ -6,6 +6,9 @@ export function runExecutable(
   nodePath?: string,
   tsgolintPath?: string,
 ): Executable {
+  // convert empty string to undefined to avoid prepending an empty path
+  if (!nodePath) nodePath = undefined;
+
   const serverEnv: Record<string, string> = {
     ...process.env,
     RUST_LOG: process.env.RUST_LOG || "info", // Keep for backward compatibility for a while
