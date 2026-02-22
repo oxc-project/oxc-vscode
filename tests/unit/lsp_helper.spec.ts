@@ -26,4 +26,10 @@ suite("runExecutable", () => {
 
     strictEqual(result.options?.env?.PATH, "/custom/node/path:/usr/bin:/bin");
   });
+
+  test('should use provided node path as command', () => {
+    const result = runExecutable("/path/to/server", "/custom/node/path");
+
+    strictEqual(result.command, "/custom/node/path");
+  });
 });
