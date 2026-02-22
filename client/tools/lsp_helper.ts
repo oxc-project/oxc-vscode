@@ -21,6 +21,18 @@ export function runExecutable(
     serverEnv.OXLINT_TSGOLINT_PATH = tsgolintPath;
   }
 
+  // for testing, allow using the server binary directly without Node.js
+  // our test suites does not work with "node" as the command, so we need to bypass it when `SERVER_PATH_DEV` is set.
+  if (process.env.SERVER_PATH_DEV) {
+    return {
+      command: binaryPath,
+      args: ["--lsp"],
+      options: {
+        env: serverEnv,
+      },
+    }
+  }
+
   return {
     command: nodePath ?? "node",
     args: [binaryPath, "--lsp"],
