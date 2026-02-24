@@ -24,7 +24,7 @@ import StatusBarItemHandler from "../StatusBarItemHandler";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 
-const languageClientName = "oxc";
+const languageClientName = "oxc-formatter";
 
 export default class FormatterTool implements ToolInterface {
   // LSP client instance
@@ -257,7 +257,7 @@ export default class FormatterTool implements ToolInterface {
       "Cargo.toml.orig",
     ];
 
-    // used for unsaved files with schema `untitled` that have no filename yet
+    // Language IDs supported by oxfmt for both saved and unsaved files
     // https://github.com/oxc-project/oxc/blob/3e478df9a329244c005a09da05da503dd2b4d64b/apps/oxfmt/src/lsp/mod.rs#L59-L92
     const supportedLanguageIds = [
       "javascript",
@@ -297,9 +297,15 @@ export default class FormatterTool implements ToolInterface {
           pattern: `**/${filename}`,
           scheme: "file",
         })),
-        ...supportedLanguageIds.map((language) => ({
-          language,
-        })),
+        // Register with explicit scheme for both saved and unsaved files.
+        // Using explicit schemes (score 10) ensures VS Code can resolve this extension
+        // as the default formatter via the global `editor.defaultFormatter` setting.
+        // Without an explicit scheme, the selector score is only 1 (too low for global
+        // default formatter resolution in some VS Code versions).
+        ...supportedLanguageIds.flatMap((language) => [
+          { language, scheme: "file" },
+          { language, scheme: "untitled" },
+        ]),
       ],
       initializationOptions: configService.formatterServerConfig,
       outputChannel,
