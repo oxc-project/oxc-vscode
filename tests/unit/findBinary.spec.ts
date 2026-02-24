@@ -1,7 +1,11 @@
 import { strictEqual } from "assert";
 import * as path from "node:path";
 import { Uri, workspace } from "vscode";
-import { searchGlobalNodeModulesBin, searchProjectNodeModulesBin } from "../../client/findBinary";
+import {
+  clearWorkspacePackageJsonNodeModulesCache,
+  searchGlobalNodeModulesBin,
+  searchProjectNodeModulesBin,
+} from "../../client/findBinary";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
 
 suite("findBinary", () => {
@@ -53,11 +57,15 @@ suite("findBinary", () => {
       );
       await workspace.fs.writeFile(Uri.file(nestedBinPath), new Uint8Array());
 
+      // clear cache so the newly created package.json is discovered
+      clearWorkspacePackageJsonNodeModulesCache();
+
       try {
         const result = await searchProjectNodeModulesBin(fallbackBinaryName);
 
         strictEqual(result, nestedBinPath);
       } finally {
+        clearWorkspacePackageJsonNodeModulesCache();
         await workspace.fs.delete(Uri.file(path.join(workspacePath, "packages")), {
           recursive: true,
         });

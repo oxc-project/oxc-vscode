@@ -41,6 +41,24 @@ async function searchNodeModulesDefaultBinPath(
   return candidates[firstExistingCandidateIndex];
 }
 /**
+ * Returns node_modules paths derived from all package.json files found in the workspace.
+ * The result is cached after the first call to avoid repeated file system scans.
+ */
+let cachedWorkspacePackageJsonNodeModules: Promise<string[]> | undefined;
+export function getWorkspacePackageJsonNodeModules(): Promise<string[]> {
+  if (!cachedWorkspacePackageJsonNodeModules) {
+    cachedWorkspacePackageJsonNodeModules = workspace
+      .findFiles("**/package.json", "**/node_modules/**")
+      .then((uris) => uris.map((uri) => path.join(path.dirname(uri.fsPath), "node_modules")));
+  }
+  return cachedWorkspacePackageJsonNodeModules;
+}
+
+export function clearWorkspacePackageJsonNodeModulesCache(): void {
+  cachedWorkspacePackageJsonNodeModules = undefined;
+}
+
+/**
  * Search for the binary in all workspaces' node_modules/.bin directories.
  * If multiple workspaces contain the binary, the first one found is returned.
  */
@@ -66,10 +84,7 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
   }
 
   // fallback to searching for package.json in workspace subfolders (monorepo support)
-  const packageJsonUris = await workspace.findFiles("**/package.json", "**/node_modules/**");
-  const packageJsonNodeModules = packageJsonUris.map((uri) =>
-    path.join(path.dirname(uri.fsPath), "node_modules"),
-  );
+  const packageJsonNodeModules = await getWorkspacePackageJsonNodeModules();
   return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
 }
 
