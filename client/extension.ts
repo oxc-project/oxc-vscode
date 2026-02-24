@@ -65,6 +65,9 @@ export async function activate(context: ExtensionContext) {
     );
   };
 
+  outputChannelFormat.info("Searching for oxfmt binary.");
+  outputChannelLint.info("Searching for oxlint binary.");
+
   const binaryPaths = await Promise.all(
     tools.map((tool) =>
       tool.getBinary(
