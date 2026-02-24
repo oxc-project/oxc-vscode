@@ -6,6 +6,13 @@ export const oxlintConfigFileName = ".oxlintrc.json";
 
 type UnusedDisableDirectives = "allow" | "warn" | "deny";
 
+export type RuleCustomizationSeverity = "downgrade" | "error" | "warn" | "info" | "off" | "default";
+
+export interface RuleCustomization {
+  rule: string;
+  severity: RuleCustomizationSeverity;
+}
+
 export enum FixKind {
   SafeFix = "safe_fix",
   SafeFixOrSuggestion = "safe_fix_or_suggestion",
@@ -103,6 +110,7 @@ export class WorkspaceConfig {
   private _typeAware: boolean = false;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
+  private _rulesCustomizations: RuleCustomization[] = [];
   private _formattingConfigPath: string | null = null;
 
   constructor(private readonly workspace: WorkspaceFolder) {
@@ -142,6 +150,8 @@ export class WorkspaceConfig {
     this._typeAware = this.configuration.get<boolean>("typeAware") ?? false;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? FixKind.SafeFix;
+    this._rulesCustomizations =
+      this.configuration.get<RuleCustomization[]>("lint.rules.customizations") ?? [];
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
   }
 
@@ -172,6 +182,14 @@ export class WorkspaceConfig {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fixKind`, this.workspace)) {
+      return true;
+    }
+    if (
+      event.affectsConfiguration(
+        `${ConfigService.namespace}.lint.rules.customizations`,
+        this.workspace,
+      )
+    ) {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
@@ -257,6 +275,10 @@ export class WorkspaceConfig {
   updateFixKind(value: FixKind): PromiseLike<void> {
     this._fixKind = value;
     return this.configuration.update("fixKind", value, ConfigurationTarget.WorkspaceFolder);
+  }
+
+  get rulesCustomizations(): RuleCustomization[] {
+    return this._rulesCustomizations;
   }
 
   get formattingConfigPath(): string | null {

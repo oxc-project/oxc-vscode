@@ -116,6 +116,37 @@
           "default": "onType",
           "markdownDescription": "Run the linter on save (onSave) or on type (onType)"
         },
+        "oxc.lint.rules.customizations": {
+          "scope": "resource",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "type": "string",
+                "description": "Rule name or glob pattern. Use `*` to match all rules."
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "downgrade",
+                  "error",
+                  "warn",
+                  "info",
+                  "off",
+                  "default"
+                ]
+              }
+            },
+            "required": [
+              "rule",
+              "severity"
+            ],
+            "additionalProperties": false
+          },
+          "markdownDescription": "Override diagnostic severities reported by the linter. Each entry maps a rule pattern to a new severity.\n- Use `\"*\"` as a wildcard to match all rules.\n- `\"downgrade\"` reduces error to warning, and warning to info. This is useful to keep red squiggly lines for TypeScript errors only.\n- `\"default\"` resets a previously matched rule back to its original severity."
+        },
         "oxc.enable": {
           "type": [
             "boolean",

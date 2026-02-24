@@ -3,6 +3,8 @@ import { promises as fsPromises } from "node:fs";
 import {
   commands,
   ConfigurationChangeEvent,
+  Diagnostic,
+  DiagnosticSeverity,
   ExtensionContext,
   LogOutputChannel,
   Uri,
@@ -25,12 +27,76 @@ import {
 
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
+import type { RuleCustomization } from "../WorkspaceConfig";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 
 const languageClientName = "oxc";
+
+/**
+ * Match a rule name against a glob-like pattern.
+ * Supports `*` as a wildcard for all rules, and `*` within a pattern as a glob.
+ */
+function ruleMatchesPattern(ruleId: string, pattern: string): boolean {
+  if (pattern === "*") return true;
+  // Convert simple glob pattern to regex: escape special chars, replace * with .*
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`).test(ruleId);
+}
+
+/**
+ * Apply rules.customizations severity overrides to a diagnostic.
+ * Patterns are applied in order; later entries override earlier ones (like CSS specificity).
+ */
+function applyRulesCustomizations(diag: Diagnostic, customizations: RuleCustomization[]): void {
+  if (customizations.length === 0) return;
+
+  const ruleId =
+    typeof diag.code === "object" ? String(diag.code?.value ?? "") : String(diag.code ?? "");
+  if (!ruleId) return;
+
+  const originalSeverity = diag.severity;
+  let newSeverity: DiagnosticSeverity | undefined;
+
+  for (const customization of customizations) {
+    if (!ruleMatchesPattern(ruleId, customization.rule)) continue;
+
+    switch (customization.severity) {
+      case "downgrade":
+        // Downgrade from the original severity (not from a previously customized one)
+        if (originalSeverity === DiagnosticSeverity.Error) {
+          newSeverity = DiagnosticSeverity.Warning;
+        } else if (originalSeverity === DiagnosticSeverity.Warning) {
+          newSeverity = DiagnosticSeverity.Information;
+        } else if (originalSeverity === DiagnosticSeverity.Information) {
+          newSeverity = DiagnosticSeverity.Hint;
+        }
+        break;
+      case "error":
+        newSeverity = DiagnosticSeverity.Error;
+        break;
+      case "warn":
+        newSeverity = DiagnosticSeverity.Warning;
+        break;
+      case "info":
+        newSeverity = DiagnosticSeverity.Information;
+        break;
+      case "default":
+        newSeverity = undefined; // reset to original
+        break;
+      case "off":
+        // Mark with Hint severity — VS Code won't show squiggly lines for Hint by default
+        newSeverity = DiagnosticSeverity.Hint;
+        break;
+    }
+  }
+
+  if (newSeverity !== undefined) {
+    diag.severity = newSeverity;
+  }
+}
 
 const enum LspCommands {
   FixAll = "oxc.fixAll",
@@ -165,6 +231,8 @@ export default class LinterTool implements ToolInterface {
       },
       middleware: {
         handleDiagnostics: (uri, diagnostics, next) => {
+          const customizations = configService.getRulesCustomizations(uri);
+
           for (const diag of diagnostics) {
             // https://github.com/oxc-project/oxc/issues/12404
             if (
@@ -174,8 +242,22 @@ export default class LinterTool implements ToolInterface {
               diag.message +=
                 "\nYou may need to close the file and restart VSCode after renaming a file by only casing.";
             }
+
+            applyRulesCustomizations(diag, customizations);
           }
-          next(uri, diagnostics);
+
+          // Filter out diagnostics that have been "turned off" (set to Hint with "off" severity)
+          const filtered = customizations.some((c) => c.severity === "off")
+            ? diagnostics.filter((d) => {
+                const ruleId =
+                  typeof d.code === "object" ? String(d.code?.value ?? "") : String(d.code ?? "");
+                return !customizations.some(
+                  (c) => c.severity === "off" && ruleMatchesPattern(ruleId, c.rule),
+                );
+              })
+            : diagnostics;
+
+          next(uri, filtered);
         },
         workspace: {
           configuration: (params: ConfigurationParams) => {

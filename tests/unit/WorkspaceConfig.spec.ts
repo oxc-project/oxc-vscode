@@ -1,4 +1,4 @@
-import { strictEqual } from "assert";
+import { deepStrictEqual, strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { FixKind, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
@@ -6,6 +6,7 @@ import { WORKSPACE_FOLDER } from "../test-helpers.js";
 
 const keys = [
   "lint.run",
+  "lint.rules.customizations",
   "configPath",
   "tsConfigPath",
   "unusedDisableDirectives",
@@ -47,6 +48,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.typeAware, false);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, "safe_fix");
+    deepStrictEqual(config.rulesCustomizations, []);
     strictEqual(config.formattingConfigPath, null);
   });
 
@@ -110,6 +112,17 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.typeAware, true);
     strictEqual(oxlintConfig.disableNestedConfig, true);
     strictEqual(oxlintConfig.fixKind, "dangerous_fix");
+  });
+
+  test("rules customizations are read from configuration", async () => {
+    const customizations = [
+      { rule: "*", severity: "downgrade" },
+      { rule: "no-debugger", severity: "error" },
+    ];
+    await updateConfiguration("lint.rules.customizations", customizations);
+
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+    deepStrictEqual(config.rulesCustomizations, customizations);
   });
 
   test("toOxfmtConfig method", async () => {

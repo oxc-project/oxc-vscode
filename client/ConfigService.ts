@@ -10,6 +10,7 @@ import { VSCodeConfig } from "./VSCodeConfig";
 import {
   OxfmtWorkspaceConfigInterface,
   OxlintWorkspaceConfigInterface,
+  RuleCustomization,
   WorkspaceConfig,
 } from "./WorkspaceConfig";
 
@@ -92,6 +93,14 @@ export class ConfigService implements IDisposable {
 
   public async getOxfmtServerBinPath(): Promise<string | undefined> {
     return this.searchBinaryPath(this.vsCodeConfig.binPathOxfmt, "oxfmt");
+  }
+
+  public getRulesCustomizations(textDocumentUri: Uri): RuleCustomization[] {
+    const ws = workspace.getWorkspaceFolder(textDocumentUri);
+    if (!ws) {
+      return [];
+    }
+    return this.getWorkspaceConfig(ws.uri)?.rulesCustomizations ?? [];
   }
 
   public shouldRequestDiagnostics(
