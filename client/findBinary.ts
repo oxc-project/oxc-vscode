@@ -45,15 +45,18 @@ async function searchNodeModulesDefaultBinPath(
  * The result is cached after the first call to avoid repeated file system scans.
  */
 let cachedWorkspacePackageJsonNodeModules: Promise<string[]> | undefined;
-export function getWorkspacePackageJsonNodeModules(): Promise<string[]> {
+function getWorkspacePackageJsonNodeModules(): Promise<string[]> {
   if (!cachedWorkspacePackageJsonNodeModules) {
-    cachedWorkspacePackageJsonNodeModules = workspace
-      .findFiles("**/package.json", "**/node_modules/**")
-      .then((uris) => uris.map((uri) => path.join(path.dirname(uri.fsPath), "node_modules")));
+    cachedWorkspacePackageJsonNodeModules = Promise.resolve(
+      workspace
+        .findFiles("**/package.json", "**/node_modules/**")
+        .then((uris) => uris.map((uri) => path.join(path.dirname(uri.fsPath), "node_modules"))),
+    );
   }
   return cachedWorkspacePackageJsonNodeModules;
 }
 
+/** @internal only used for clearing test states */
 export function clearWorkspacePackageJsonNodeModulesCache(): void {
   cachedWorkspacePackageJsonNodeModules = undefined;
 }
