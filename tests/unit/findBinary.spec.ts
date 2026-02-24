@@ -38,6 +38,31 @@ suite("findBinary", () => {
         await workspace.fs.delete(Uri.file(fallbackPath));
       }
     });
+
+    test("should fallback to nested package.json directory node_modules/.bin in monorepo", async () => {
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+
+      const fallbackBinaryName = "fallback-nested-bin-lookup-test";
+      const nestedPackageDir = path.join(workspacePath, "packages", "nested-app");
+      const nestedPackageJson = path.join(nestedPackageDir, "package.json");
+      const nestedBinPath = path.join(nestedPackageDir, "node_modules", ".bin", fallbackBinaryName);
+
+      await workspace.fs.writeFile(
+        Uri.file(nestedPackageJson),
+        Buffer.from(JSON.stringify({ name: "nested-app" })),
+      );
+      await workspace.fs.writeFile(Uri.file(nestedBinPath), new Uint8Array());
+
+      try {
+        const result = await searchProjectNodeModulesBin(fallbackBinaryName);
+
+        strictEqual(result, nestedBinPath);
+      } finally {
+        await workspace.fs.delete(Uri.file(path.join(workspacePath, "packages")), {
+          recursive: true,
+        });
+      }
+    });
   });
 
   suite("searchGlobalNodeModulesBin", () => {

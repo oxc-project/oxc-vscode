@@ -60,7 +60,18 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
   );
-  return searchNodeModulesDefaultBinPath(binaryName, workspaceNodeModules);
+  const result = await searchNodeModulesDefaultBinPath(binaryName, workspaceNodeModules);
+  if (result) {
+    return result;
+  }
+
+  // fallback to searching for package.json in workspace subfolders (monorepo support)
+  const workspaceRootPaths = new Set(workspaceNodeModules);
+  const packageJsonUris = await workspace.findFiles("**/package.json", "**/node_modules/**");
+  const packageJsonNodeModules = packageJsonUris
+    .map((uri) => path.join(path.dirname(uri.fsPath), "node_modules"))
+    .filter((nodeModulesPath) => !workspaceRootPaths.has(nodeModulesPath));
+  return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
 }
 
 /**
