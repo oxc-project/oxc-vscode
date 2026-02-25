@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
 import { Uri, workspace } from "vscode";
@@ -6,7 +7,32 @@ import { validateSafeBinaryPath } from "./PathValidator";
 
 function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
   // we want to target the binary instead of the main index file
-  // Improvement: search inside package.json "bin" and `main` field for more reliability
+  // Walk up from the resolved path to find the package.json and use its "bin" field
+  try {
+    let dir = path.dirname(resolvedPath);
+    while (true) {
+      const packageJsonPath = path.join(dir, "package.json");
+      let packageJson: { bin?: string | Record<string, string> } | undefined;
+      try {
+        packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+      } catch {
+        const parent = path.dirname(dir);
+        if (parent === dir) break; // reached filesystem root
+        dir = parent;
+        continue;
+      }
+      // Found a package.json — use its "bin" entry for the binaryName if available
+      const binEntry =
+        typeof packageJson?.bin === "string"
+          ? packageJson.bin
+          : packageJson?.bin?.[binaryName];
+      if (binEntry) {
+        return path.resolve(dir, binEntry);
+      }
+      break;
+    }
+  } catch {}
+  // fallback: legacy string replacement
   return resolvedPath.replace(
     `${binaryName}${path.sep}dist${path.sep}index.js`,
     `${binaryName}${path.sep}bin${path.sep}${binaryName}`,
