@@ -14,6 +14,7 @@ export function runExecutable(
     ...process.env,
     RUST_LOG: process.env.RUST_LOG || "info", // Keep for backward compatibility for a while
     OXC_LOG: process.env.OXC_LOG || "info",
+    NO_COLOR: "1",
   };
   if (nodePath) {
     serverEnv.PATH = `${nodePath}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`;
