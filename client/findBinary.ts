@@ -5,38 +5,29 @@ import * as path from "node:path";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 
-function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
-  // we want to target the binary instead of the main index file
-  // Walk up from the resolved path to find the package.json and use its "bin" field
-  try {
-    let dir = path.dirname(resolvedPath);
-    while (true) {
-      const packageJsonPath = path.join(dir, "package.json");
-      let packageJson: { bin?: string | Record<string, string> } | undefined;
-      try {
-        packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-      } catch {
-        const parent = path.dirname(dir);
-        if (parent === dir) break; // reached filesystem root
-        dir = parent;
-        continue;
-      }
-      // Found a package.json — use its "bin" entry for the binaryName if available
-      const binEntry =
-        typeof packageJson?.bin === "string"
-          ? packageJson.bin
-          : packageJson?.bin?.[binaryName];
-      if (binEntry) {
-        return path.resolve(dir, binEntry);
-      }
-      break;
+/** @internal only used for testing */
+export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
+  // Walk up from the resolved main file to find the nearest package.json
+  // and use its "bin" entry to get the actual binary path
+  let dir = path.dirname(resolvedPath);
+  while (dir !== path.dirname(dir)) {
+    let rawContent: string;
+    try {
+      rawContent = readFileSync(path.join(dir, "package.json"), "utf8");
+    } catch {
+      dir = path.dirname(dir);
+      continue;
     }
-  } catch {}
-  // fallback: legacy string replacement
-  return resolvedPath.replace(
-    `${binaryName}${path.sep}dist${path.sep}index.js`,
-    `${binaryName}${path.sep}bin${path.sep}${binaryName}`,
-  );
+    // Found the package.json — stop walking up here
+    const packageJson: { bin?: string | Record<string, string> } = JSON.parse(rawContent);
+    const binEntry =
+      typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.[binaryName];
+    if (!binEntry) {
+      throw new Error(`No bin entry for "${binaryName}" found in package.json`);
+    }
+    return path.resolve(dir, binEntry);
+  }
+  throw new Error(`Could not find package.json for "${binaryName}"`);
 }
 
 async function searchNodeModulesDefaultBinPath(
