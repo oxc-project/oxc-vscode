@@ -61,7 +61,7 @@
     "oxfmt": "latest",
     "oxlint": "latest",
     "oxlint-tsgolint": "^0.15.0",
-    "rolldown": "1.0.0-rc.5",
+    "rolldown": "1.0.0-rc.6",
     "tinyglobby": "^0.2.15"
   },
   "contributes": {
