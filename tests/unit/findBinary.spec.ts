@@ -41,10 +41,7 @@ suite("findBinary", () => {
     test("should resolve bin path from package.json bin string", () => {
       const pkgDir = path.join(tmpDir, "node_modules", "oxlint");
       mkdirSync(path.join(pkgDir, "dist"), { recursive: true });
-      writeFileSync(
-        path.join(pkgDir, "package.json"),
-        JSON.stringify({ bin: "bin/oxlint.mjs" }),
-      );
+      writeFileSync(path.join(pkgDir, "package.json"), JSON.stringify({ bin: "bin/oxlint.mjs" }));
 
       const result = replaceTargetFromMainToBin(path.join(pkgDir, "dist", "index.js"), "oxlint");
 
