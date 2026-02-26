@@ -178,7 +178,7 @@ export async function searchSettingsBin(settingsBinary: string): Promise<string 
 }
 
 // copied from: https://github.com/biomejs/biome-vscode/blob/ae9b6df2254d0ff8ee9d626554251600eb2ca118/src/locator.ts#L28-L49
-function globalNodeModulesPaths(): string[] {
+export function globalNodeModulesPaths(): string[] {
   const npmGlobalNodeModulesPath = safeSpawnSync("npm", ["root", "-g"]);
   const pnpmGlobalNodeModulesPath = safeSpawnSync("pnpm", ["root", "-g"]);
   const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");

@@ -5,6 +5,7 @@ import {
   searchProjectNodeModulesBin,
   searchSettingsBin,
 } from "./findBinary";
+import { PackageManager } from "./PackageManager";
 import { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";
 import {
@@ -25,7 +26,7 @@ export class ConfigService implements IDisposable {
     | ((this: ConfigService, config: ConfigurationChangeEvent) => Promise<void>)
     | undefined;
 
-  constructor() {
+  constructor(private readonly packageManager?: PackageManager) {
     this.vsCodeConfig = new VSCodeConfig();
     const { workspaceFolders } = workspace;
     if (workspaceFolders) {
@@ -117,6 +118,10 @@ export class ConfigService implements IDisposable {
   ): Promise<string | undefined> {
     if (settingsBinary) {
       return searchSettingsBin(settingsBinary);
+    }
+
+    if (this.packageManager) {
+      return this.packageManager.getManagedBinaryPath(defaultBinaryName);
     }
 
     return (

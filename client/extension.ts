@@ -2,6 +2,11 @@ import { commands, ExtensionContext, window, workspace } from "vscode";
 
 import { OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
+import {
+  GlobalNodeModulesPackageSource,
+  PackageManager,
+  ProjectNodeModulesPackageSource,
+} from "./PackageManager";
 import StatusBarItemHandler from "./StatusBarItemHandler";
 import Formatter from "./tools/formatter";
 import Linter from "./tools/linter";
@@ -18,7 +23,12 @@ if (process.env.SKIP_FORMATTER_TEST !== "true") {
 }
 
 export async function activate(context: ExtensionContext) {
-  const configService = new ConfigService();
+  const packageManager = new PackageManager(context.globalStorageUri, [
+    new ProjectNodeModulesPackageSource(),
+    new GlobalNodeModulesPackageSource(),
+  ]);
+
+  const configService = new ConfigService(packageManager);
 
   const outputChannelLint = window.createOutputChannel(outputChannelName + " (Lint)", {
     log: true,
