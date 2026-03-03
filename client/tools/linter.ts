@@ -44,9 +44,6 @@ export default class LinterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
-  // Reference to the server env so we can update it before restarts
-  private serverEnv: Record<string, string> | undefined;
-
   async getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
