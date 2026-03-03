@@ -4,5 +4,9 @@
     "correctness": "error",
     "perf": "error"
   },
-  "ignorePatterns": ["fixtures/**"]
+  "ignorePatterns": ["fixtures/**"],
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  }
 }
