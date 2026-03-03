@@ -1,8 +1,9 @@
 import { strictEqual } from "assert";
-import { workspace } from "vscode";
+import { join, sep } from "node:path";
+import { Uri, workspace } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
+import { clearWorkspacePackageJsonNodeModulesCache } from "../../client/findBinary.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
-import { sep } from "node:path";
 
 const conf = workspace.getConfiguration("oxc");
 
@@ -106,6 +107,104 @@ suite("ConfigService", () => {
       );
       strictEqual(relativeServerPath, `${workspace_path}\\relative\\oxfmt`);
       await deleteWorkspaceFolderFileUri("./relative/oxfmt");
+    });
+  });
+
+  suite("getTsGoLintBinPath", () => {
+    test("falls back to workspace node_modules when path is not configured", async () => {
+      const workspacePath = getWorkspaceFolderPlatformSafe();
+      const tsgolintBinPath = join(workspacePath, "node_modules", ".bin", "tsgolint");
+
+      await workspace.fs.writeFile(Uri.file(tsgolintBinPath), new Uint8Array());
+
+      try {
+        const service = new ConfigService();
+        const result = await service.getTsGoLintBinPath();
+        strictEqual(result, tsgolintBinPath);
+      } finally {
+        await workspace.fs.delete(Uri.file(join(workspacePath, "node_modules")), {
+          recursive: true,
+        });
+      }
+    });
+
+    test("finds tsgolint in client/ subdirectory node_modules via monorepo fallback", async () => {
+      const workspacePath = getWorkspaceFolderPlatformSafe();
+      const clientPackageJsonPath = join(workspacePath, "client", "package.json");
+      const clientTsgolintBinPath = join(
+        workspacePath,
+        "client",
+        "node_modules",
+        ".bin",
+        "tsgolint",
+      );
+
+      await workspace.fs.writeFile(
+        Uri.file(clientPackageJsonPath),
+        Buffer.from(JSON.stringify({ name: "client" })),
+      );
+      await workspace.fs.writeFile(Uri.file(clientTsgolintBinPath), new Uint8Array());
+
+      clearWorkspacePackageJsonNodeModulesCache();
+
+      try {
+        const service = new ConfigService();
+        const result = await service.getTsGoLintBinPath();
+        strictEqual(result, clientTsgolintBinPath);
+      } finally {
+        clearWorkspacePackageJsonNodeModulesCache();
+        await workspace.fs.delete(Uri.file(join(workspacePath, "client")), { recursive: true });
+      }
+    });
+
+    test("resolves relative server path with workspace folder", async () => {
+      const service = new ConfigService();
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+
+      await createWorkspaceFolderFileUri("absolute/tsgolint");
+      await createWorkspaceFolderFileUri("relative/tsgolint");
+
+      await conf.update("path.tsgolint", `${workspace_path}/absolute/tsgolint`);
+      const absoluteServerPath = await service.getTsGoLintBinPath();
+
+      strictEqual(absoluteServerPath, `${workspace_path}/absolute/tsgolint`);
+
+      await conf.update("path.tsgolint", "./relative/tsgolint");
+      const relativeServerPath = await service.getTsGoLintBinPath();
+
+      strictEqual(relativeServerPath, `${workspace_path}${sep}relative${sep}tsgolint`);
+
+      await deleteWorkspaceFolderFileUri("absolute/tsgolint");
+      await deleteWorkspaceFolderFileUri("relative/tsgolint");
+    });
+
+    test("returns undefined for unsafe server path", async () => {
+      await createWorkspaceFolderFileUri("../unsafe/tsgolint");
+      const service = new ConfigService();
+      await conf.update("path.tsgolint", "../unsafe/tsgolint");
+      const unsafeServerPath = await service.getTsGoLintBinPath();
+
+      strictEqual(unsafeServerPath, undefined);
+      await deleteWorkspaceFolderFileUri("../unsafe/tsgolint");
+    });
+
+    test("returns backslashes path on Windows", async () => {
+      if (process.platform !== "win32") {
+        return;
+      }
+      await createWorkspaceFolderFileUri("./relative/tsgolint");
+      const service = new ConfigService();
+      await conf.update("path.tsgolint", "./relative/tsgolint");
+      const relativeServerPath = await service.getTsGoLintBinPath();
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+
+      strictEqual(
+        workspace_path[1],
+        ":",
+        "The test workspace folder must be an absolute path with a drive letter on Windows",
+      );
+      strictEqual(relativeServerPath, `${workspace_path}\\relative\\tsgolint`);
+      await deleteWorkspaceFolderFileUri("./relative/tsgolint");
     });
   });
 
