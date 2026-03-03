@@ -54,7 +54,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._nodePath = this.configuration.get<string>("path.node");
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
     this._suppressTsconfigErrors =
-      this.configuration.get<boolean>("suppressTsconfigErrors") ?? true;
+      this.configuration.get<boolean>("suppressTsconfigErrors") ?? false;
   }
 
   get enableOxlint(): boolean {
@@ -195,7 +195,7 @@ interface VSCodeConfigInterface {
   /**
    * Suppress tsconfig errors from tsgolint and still lint files under partially-valid tsconfig projects.
    * `oxc.suppressTsconfigErrors`
-   * @default true
+   * @default false
    */
   suppressTsconfigErrors: boolean;
 }
