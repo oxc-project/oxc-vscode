@@ -141,7 +141,7 @@
           "scope": "resource",
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Start the language server only when a `.oxlintrc.json` or `oxlint.config.ts` file exists in one of the workspaces."
+          "markdownDescription": "Start the language server only when a `.oxlintrc.json(c)` or `oxlint.config.ts` file exists in one of the workspaces."
         },
         "oxc.trace.server": {
           "type": "string",
@@ -283,7 +283,10 @@
     },
     "jsonValidation": [
       {
-        "fileMatch": ".oxlintrc.json",
+        "fileMatch": [
+          ".oxlintrc.json",
+          ".oxlintrc.jsonc"
+        ],
         "url": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json"
       },
       {
@@ -299,6 +302,7 @@
         "id": "jsonc",
         "filenames": [
           ".oxlintrc.json",
+          ".oxlintrc.jsonc",
           ".oxfmtrc.json",
           ".oxfmtrc.jsonc"
         ]

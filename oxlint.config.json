@@ -5,6 +5,9 @@
     "perf": "error"
   },
   "ignorePatterns": ["fixtures/**"],
+  "rules": {
+    "typescript/no-floating-promises": "error"
+  },
   "options": {
     "typeAware": true,
     "typeCheck": true
