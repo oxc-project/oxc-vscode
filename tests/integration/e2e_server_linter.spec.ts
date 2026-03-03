@@ -21,7 +21,6 @@ import {
   sleep,
   testMultiFolderMode,
   testSingleFolderMode,
-  waitFor,
   waitForDiagnosticChange,
   WORKSPACE_DIR,
   WORKSPACE_SECOND_DIR,
@@ -39,8 +38,6 @@ teardown(async () => {
   await workspace.getConfiguration("oxc").update("fixKind", undefined);
   await workspace.getConfiguration("oxc").update("tsConfigPath", undefined);
   await workspace.getConfiguration("oxc").update("typeAware", undefined);
-  await workspace.getConfiguration("oxc").update("enable.oxlint", true);
-  await workspace.getConfiguration("oxc").update("enable.oxfmt", true);
   await workspace.getConfiguration("oxc").update("fmt.experimental", undefined);
   await workspace.getConfiguration("oxc").update("fmt.configPath", undefined);
   await workspace.getConfiguration("editor").update("defaultFormatter", undefined);
@@ -338,23 +335,14 @@ suite("E2E Server Linter", () => {
 
     await workspace.getConfiguration("oxc").update("enable.oxlint", false);
     await workspace.saveAll();
-    try {
-      await waitFor(
-        async () => {
-          const diagnostics = await getDiagnostics("debugger.js");
-          return diagnostics.length === 0;
-        },
-        15_000,
-        250,
-      );
+    await waitForDiagnosticChange();
 
-      const secondDiagnostics = await getDiagnostics("debugger.js");
-      strictEqual(secondDiagnostics.length, 0);
-    } finally {
-      // enable it for other tests even if assertions fail
-      await workspace.getConfiguration("oxc").update("enable.oxlint", true);
-      await workspace.saveAll();
-      await sleep(500);
-    }
+    const secondDiagnostics = await getDiagnostics("debugger.js");
+    strictEqual(secondDiagnostics.length, 0);
+
+    // enable it for other tests
+    await workspace.getConfiguration("oxc").update("enable.oxlint", true);
+    await workspace.saveAll();
+    await sleep(500);
   });
 });

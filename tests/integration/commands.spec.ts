@@ -6,7 +6,6 @@ import {
   deleteFixtures,
   sleep,
   testSingleFolderMode,
-  waitForCommand,
   WORKSPACE_DIR,
 } from "../test-helpers";
 
@@ -17,22 +16,16 @@ suiteSetup(async () => {
 });
 
 teardown(async () => {
-  await workspace.getConfiguration("oxc").update("enable.oxlint", true);
-  await workspace.getConfiguration("oxc").update("enable.oxfmt", true);
   const edit = new WorkspaceEdit();
   edit.deleteFile(fileUri, {
     ignoreIfNotExists: true,
   });
   await workspace.applyEdit(edit);
-  await workspace.saveAll();
   await deleteFixtures();
 });
 
 suite("commands", () => {
   testSingleFolderMode("listed commands", async () => {
-    if (process.env.SKIP_LINTER_TEST !== "true") {
-      await waitForCommand("oxc.fixAll");
-    }
     const oxcCommands = (await commands.getCommands(true)).filter((x) => x.startsWith("oxc."));
 
     const expectedCommands = ["oxc.showOutputChannel", "oxc.showOutputChannelFormatter"];
@@ -82,10 +75,6 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    await workspace.getConfiguration("oxc").update("enable.oxlint", true);
-    await workspace.saveAll();
-    await waitForCommand("oxc.fixAll");
-
     const service = new ConfigService();
     strictEqual(service.vsCodeConfig.enableOxlint, true);
 
@@ -104,9 +93,6 @@ suite("commands", () => {
     if (process.env.SKIP_FORMATTER_TEST === "true") {
       return;
     }
-    await workspace.getConfiguration("oxc").update("enable.oxfmt", true);
-    await workspace.saveAll();
-
     const service = new ConfigService();
     strictEqual(service.vsCodeConfig.enableOxfmt, true);
 
@@ -126,10 +112,6 @@ suite("commands", () => {
     if (process.env.SKIP_LINTER_TEST === "true") {
       return;
     }
-    await workspace.getConfiguration("oxc").update("enable.oxlint", true);
-    await workspace.saveAll();
-    await waitForCommand("oxc.fixAll");
-
     const edit = new WorkspaceEdit();
     edit.createFile(fileUri, {
       contents: Buffer.from("/* 😊 */debugger;"),
