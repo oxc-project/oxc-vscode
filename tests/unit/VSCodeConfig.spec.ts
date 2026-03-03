@@ -37,7 +37,11 @@ suite("VSCodeConfig", () => {
     strictEqual(config.binPathOxfmt, "");
     strictEqual(config.binPathTsGoLint, "");
     strictEqual(config.nodePath, "");
-    strictEqual(config.suppressTsconfigErrors, false, "suppressTsconfigErrors should default to false");
+    strictEqual(
+      config.suppressTsconfigErrors,
+      false,
+      "suppressTsconfigErrors should default to false",
+    );
   });
 
   test("deprecated values are respected", async () => {
