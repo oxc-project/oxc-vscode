@@ -210,6 +210,9 @@ export default class FormatterTool implements ToolInterface {
       // TOML
       "toml",
       "toml.example",
+      // https://github.com/oxc-project/oxc/pull/19807
+      // Svelte
+      "svelte",
     ];
 
     // Special filenames that are valid JS files
@@ -279,8 +282,8 @@ export default class FormatterTool implements ToolInterface {
       "toml",
       "vue",
       "yaml",
+      "svelte",
       // astro
-      // svelte
     ];
 
     // If the extension is launched in debug mode then the debug server options are used
