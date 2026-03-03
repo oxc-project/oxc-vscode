@@ -44,6 +44,9 @@ export default class LinterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
+  // Reference to the server env so we can update it before restarts
+  private serverEnv: Record<string, string> | undefined;
+
   async getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
@@ -122,6 +125,7 @@ export default class LinterTool implements ToolInterface {
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressTsconfigErrors,
     );
+    this.serverEnv = run.options!.env as Record<string, string>;
     const serverOptions: ServerOptions = {
       run,
       debug: run,
@@ -281,6 +285,20 @@ export default class LinterTool implements ToolInterface {
       await this.toggleClient(configService); // update the client state
     }
     this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
+
+    // suppressTsconfigErrors is an env var on the spawned process, so a restart is required
+    if (event.affectsConfiguration(`${ConfigService.namespace}.suppressTsconfigErrors`)) {
+      if (this.serverEnv) {
+        if (configService.vsCodeConfig.suppressTsconfigErrors) {
+          this.serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS = "true";
+        } else {
+          delete this.serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS;
+        }
+      }
+      if (this.client?.isRunning()) {
+        await this.restartClient();
+      }
+    }
 
     if (this.client === undefined) {
       return;
