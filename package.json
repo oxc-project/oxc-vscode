@@ -194,10 +194,13 @@
           "markdownDescription": "Define how directive comments like `// oxlint-disable-line` should be reported, when no errors would have been reported on that line anyway."
         },
         "oxc.typeAware": {
-          "type": "boolean",
+          "type": [
+            "boolean",
+            "null"
+          ],
           "scope": "resource",
-          "default": false,
-          "markdownDescription": "Enable type-aware linting. Requires the `oxlint-tsgolint` package.\n\n See [the oxc website](https://oxc.rs/docs/guide/usage/linter/type-aware.html) for more information."
+          "default": null,
+          "markdownDescription": "Forces type-aware linting. Requires the `oxlint-tsgolint` package. It is preferred to use `options.typeAware` in your configuration file"
         },
         "oxc.disableNestedConfig": {
           "type": "boolean",

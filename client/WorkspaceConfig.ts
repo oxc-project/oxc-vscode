@@ -54,13 +54,13 @@ interface WorkspaceConfigInterface {
   unusedDisableDirectives: UnusedDisableDirectives;
 
   /**
-   * Whether to enable type-aware linting
+   * Whether to enable type-aware linting. Boolean or null (from configuration file).
    *
    * `oxc.typeAware`
    *
-   * @default false
+   * @default null
    */
-  typeAware: boolean;
+  typeAware: boolean | null;
 
   /**
    * Disable nested config files detection
@@ -100,7 +100,7 @@ export class WorkspaceConfig {
   private _tsConfigPath: string | null = null;
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
   private _unusedDisableDirectives: UnusedDisableDirectives = "allow";
-  private _typeAware: boolean = false;
+  private _typeAware: boolean | null = false;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
   private _formattingConfigPath: string | null = null;
@@ -139,7 +139,7 @@ export class WorkspaceConfig {
     this._tsConfigPath = this.configuration.get<string | null>("tsConfigPath") ?? null;
     this._unusedDisableDirectives =
       this.configuration.get<UnusedDisableDirectives>("unusedDisableDirectives") ?? "allow";
-    this._typeAware = this.configuration.get<boolean>("typeAware") ?? false;
+    this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? FixKind.SafeFix;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
@@ -228,11 +228,11 @@ export class WorkspaceConfig {
     );
   }
 
-  get typeAware(): boolean {
+  get typeAware(): boolean | null {
     return this._typeAware;
   }
 
-  updateTypeAware(value: boolean): PromiseLike<void> {
+  updateTypeAware(value: boolean | null): PromiseLike<void> {
     this._typeAware = value;
     return this.configuration.update("typeAware", value, ConfigurationTarget.WorkspaceFolder);
   }

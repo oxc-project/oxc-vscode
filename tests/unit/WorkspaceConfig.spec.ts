@@ -44,7 +44,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.configPath, null);
     strictEqual(config.tsConfigPath, null);
     strictEqual(config.unusedDisableDirectives, "allow");
-    strictEqual(config.typeAware, false);
+    strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, "safe_fix");
     strictEqual(config.formattingConfigPath, null);
