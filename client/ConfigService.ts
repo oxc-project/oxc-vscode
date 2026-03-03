@@ -94,6 +94,10 @@ export class ConfigService implements IDisposable {
     return this.searchBinaryPath(this.vsCodeConfig.binPathOxfmt, "oxfmt");
   }
 
+  public async getTsGoLintBinPath(): Promise<string | undefined> {
+    return this.searchBinaryPath(this.vsCodeConfig.binPathTsGoLint, "tsgolint");
+  }
+
   public shouldRequestDiagnostics(
     textDocumentUri: Uri,
     diagnosticPullMode: DiagnosticPullMode,
