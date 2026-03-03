@@ -10,7 +10,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   private _binPathTsGoLint: string | undefined;
   private _nodePath: string | undefined;
   private _requireConfig!: boolean;
-  private _suppressTsconfigErrors!: boolean;
+  private _suppressProgramErrors!: boolean;
 
   constructor() {
     this.refresh();
@@ -53,8 +53,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
     this._nodePath = this.configuration.get<string>("path.node");
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
-    this._suppressTsconfigErrors =
-      this.configuration.get<boolean>("suppressTsconfigErrors") ?? false;
+    this._suppressProgramErrors = this.configuration.get<boolean>("suppressProgramErrors") ?? false;
   }
 
   get enableOxlint(): boolean {
@@ -129,13 +128,13 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     return this.configuration.update("requireConfig", value);
   }
 
-  get suppressTsconfigErrors(): boolean {
-    return this._suppressTsconfigErrors;
+  get suppressProgramErrors(): boolean {
+    return this._suppressProgramErrors;
   }
 
   updateSuppressTsconfigErrors(value: boolean): PromiseLike<void> {
-    this._suppressTsconfigErrors = value;
-    return this.configuration.update("suppressTsconfigErrors", value);
+    this._suppressProgramErrors = value;
+    return this.configuration.update("suppressProgramErrors", value);
   }
 }
 
@@ -194,8 +193,8 @@ interface VSCodeConfigInterface {
 
   /**
    * Suppress tsconfig errors from tsgolint and still lint files under partially-valid tsconfig projects.
-   * `oxc.suppressTsconfigErrors`
+   * `oxc.suppressProgramErrors`
    * @default false
    */
-  suppressTsconfigErrors: boolean;
+  suppressProgramErrors: boolean;
 }

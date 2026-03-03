@@ -7,7 +7,7 @@ export function runExecutable(
   nodeBinName: string,
   nodePath?: string,
   tsgolintPath?: string,
-  suppressTsconfigErrors?: boolean,
+  suppressProgramErrors?: boolean,
 ): Executable {
   if (!nodePath) nodePath = undefined;
 
@@ -23,7 +23,7 @@ export function runExecutable(
   if (tsgolintPath) {
     serverEnv.OXLINT_TSGOLINT_PATH = tsgolintPath;
   }
-  if (suppressTsconfigErrors) {
+  if (suppressProgramErrors) {
     serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS = "true";
   }
   // when the binary path ends with `oxlint/bin/oxlint` or a common js extension, we should run it with `node`
