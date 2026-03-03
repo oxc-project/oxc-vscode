@@ -286,20 +286,6 @@ export default class LinterTool implements ToolInterface {
     }
     this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
 
-    // suppressTsconfigErrors is an env var on the spawned process, so a restart is required
-    if (event.affectsConfiguration(`${ConfigService.namespace}.suppressTsconfigErrors`)) {
-      if (this.serverEnv) {
-        if (configService.vsCodeConfig.suppressTsconfigErrors) {
-          this.serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS = "true";
-        } else {
-          delete this.serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS;
-        }
-      }
-      if (this.client?.isRunning()) {
-        await this.restartClient();
-      }
-    }
-
     if (this.client === undefined) {
       return;
     }
