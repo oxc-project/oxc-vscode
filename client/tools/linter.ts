@@ -120,6 +120,7 @@ export default class LinterTool implements ToolInterface {
       "oxlint",
       configService.vsCodeConfig.nodePath,
       configService.vsCodeConfig.binPathTsGoLint,
+      configService.vsCodeConfig.suppressTsconfigErrors,
     );
     const serverOptions: ServerOptions = {
       run,

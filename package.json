@@ -252,6 +252,12 @@
           "default": null,
           "markdownDescription": "Path to an oxfmt configuration file"
         },
+        "oxc.suppressTsconfigErrors": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "markdownDescription": "Suppress tsconfig errors from tsgolint and still lint files under partially-valid tsconfig projects. When enabled, sets `OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS=true`. **Note:** Type-aware lint rules may produce degraded results when the tsconfig is broken."
+        },
         "oxc.path.server": {
           "type": "string",
           "scope": "window",
