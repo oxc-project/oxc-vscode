@@ -168,3 +168,25 @@ export async function waitForDiagnosticChange(): Promise<void> {
     }),
   );
 }
+
+export async function waitFor(
+  condition: () => boolean | Promise<boolean>,
+  timeoutMs = 10_000,
+  pollIntervalMs = 100,
+): Promise<void> {
+  const timeoutAt = Date.now() + timeoutMs;
+  do {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- polling loop
+    if (await condition()) {
+      return;
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- polling loop
+    await sleep(pollIntervalMs);
+  } while (Date.now() < timeoutAt);
+
+  throw new Error(`Timed out waiting for condition after ${timeoutMs}ms`);
+}
+
+export async function waitForCommand(command: string, timeoutMs = 10_000): Promise<void> {
+  await waitFor(async () => (await commands.getCommands(true)).includes(command), timeoutMs);
+}
