@@ -122,7 +122,6 @@ export default class LinterTool implements ToolInterface {
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressTsconfigErrors,
     );
-    this.serverEnv = run.options!.env as Record<string, string>;
     const serverOptions: ServerOptions = {
       run,
       debug: run,
