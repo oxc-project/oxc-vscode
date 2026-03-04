@@ -43,7 +43,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.runTrigger, "onType");
     strictEqual(config.configPath, null);
     strictEqual(config.tsConfigPath, null);
-    strictEqual(config.unusedDisableDirectives, "allow");
+    strictEqual(config.unusedDisableDirectives, null);
     strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, "safe_fix");
@@ -94,7 +94,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.run, "onType");
     strictEqual(oxlintConfig.configPath, undefined);
     strictEqual(oxlintConfig.tsConfigPath, undefined);
-    strictEqual(oxlintConfig.unusedDisableDirectives, "allow");
+    strictEqual(oxlintConfig.unusedDisableDirectives, undefined);
     strictEqual(oxlintConfig.typeAware, undefined);
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, "safe_fix");

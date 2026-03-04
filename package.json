@@ -178,7 +178,10 @@
           "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly."
         },
         "oxc.unusedDisableDirectives": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "scope": "resource",
           "enum": [
             "allow",
@@ -190,8 +193,8 @@
             "Warn about `oxlint-disable` and `eslint-disable` directives that do nothing.",
             "Error on `oxlint-disable` and `eslint-disable` directives that do nothing."
           ],
-          "default": "allow",
-          "markdownDescription": "Define how directive comments like `// oxlint-disable-line` should be reported, when no errors would have been reported on that line anyway."
+          "default": null,
+          "markdownDescription": "Define how directive comments like `// oxlint-disable-line` should be reported, when no errors would have been reported on that line anyway. It is preferred to use `options.reportUnusedDisableDirectives` in your configuration file"
         },
         "oxc.typeAware": {
           "type": [

@@ -47,13 +47,14 @@ interface WorkspaceConfigInterface {
 
   /**
    * Define how directive comments like `// oxlint-disable-line` should be reported,
-   * when no errors would have been reported on that line anyway
+   * when no errors would have been reported on that line anyway.
+   * Boolean or null (from configuration file).
    *
    * `oxc.unusedDisableDirectives`
    *
-   * @default 'allow'
+   * @default null
    */
-  unusedDisableDirectives?: UnusedDisableDirectives;
+  unusedDisableDirectives?: UnusedDisableDirectives | null;
 
   /**
    * Whether to enable type-aware linting. Boolean or null (from configuration file).
@@ -101,7 +102,7 @@ export class WorkspaceConfig {
   private _configPath: string | null = null;
   private _tsConfigPath: string | null = null;
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
-  private _unusedDisableDirectives: UnusedDisableDirectives = "allow";
+  private _unusedDisableDirectives: UnusedDisableDirectives | null = null;
   private _typeAware: boolean | null = null;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
@@ -140,7 +141,7 @@ export class WorkspaceConfig {
     this._configPath = this.configuration.get<string | null>("configPath") ?? null;
     this._tsConfigPath = this.configuration.get<string | null>("tsConfigPath") ?? null;
     this._unusedDisableDirectives =
-      this.configuration.get<UnusedDisableDirectives>("unusedDisableDirectives") ?? "allow";
+      this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
     this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? FixKind.SafeFix;
@@ -217,11 +218,11 @@ export class WorkspaceConfig {
     return this.configuration.update("tsConfigPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 
-  get unusedDisableDirectives(): UnusedDisableDirectives {
+  get unusedDisableDirectives(): UnusedDisableDirectives | null {
     return this._unusedDisableDirectives;
   }
 
-  updateUnusedDisableDirectives(value: UnusedDisableDirectives): PromiseLike<void> {
+  updateUnusedDisableDirectives(value: UnusedDisableDirectives | null): PromiseLike<void> {
     this._unusedDisableDirectives = value;
     return this.configuration.update(
       "unusedDisableDirectives",
@@ -278,7 +279,7 @@ export class WorkspaceConfig {
     return {
       configPath: this.configPath ?? undefined,
       tsConfigPath: this.tsConfigPath ?? undefined,
-      unusedDisableDirectives: this.unusedDisableDirectives,
+      unusedDisableDirectives: this.unusedDisableDirectives ?? undefined,
       typeAware: this.typeAware ?? undefined,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind,
