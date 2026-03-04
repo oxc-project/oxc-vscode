@@ -16,8 +16,8 @@ export enum FixKind {
 }
 
 /**
- * This interface is responsible for the communication between LSP configuration.
- * Extension configuration are handled by `VSCodeConfig`.
+ * This interface defines the configuration sent between the VS Code extension and the LSP.
+ * Extension configuration is handled by `VSCodeConfig`.
  * All `null` values should be converted to `undefined` when sending to the LSP, to avoid confusion between "not set" and "set to null".
  */
 interface WorkspaceConfigInterface {
