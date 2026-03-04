@@ -36,6 +36,8 @@ const enum LspCommands {
   FixAll = "oxc.fixAll",
 }
 
+const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlint.config.ts}`;
+
 export default class LinterTool implements ToolInterface {
   // Global flag to check if the user allows us to start the server.
   // When `oxc.requireConfig` is `true`, make sure one `.oxlintrc.json` file is present.
@@ -76,7 +78,7 @@ export default class LinterTool implements ToolInterface {
     }
 
     this.allowedToStartServer = configService.vsCodeConfig.requireConfig
-      ? (await workspace.findFiles(`**/{.oxlintrc.json,oxlint.config.ts}`, "**/node_modules/**", 1))
+      ? (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
           .length > 0
       : true;
 
@@ -355,7 +357,7 @@ export default class LinterTool implements ToolInterface {
     statusBarItemHandler: StatusBarItemHandler,
   ): void {
     const watcher = workspace.createFileSystemWatcher(
-      "**/{.oxlintrc.json,oxlint.config.ts}",
+      oxlintConfigDefaultFilePattern,
       false,
       true,
       !config.requireConfig,
@@ -371,7 +373,7 @@ export default class LinterTool implements ToolInterface {
     watcher.onDidDelete(async () => {
       // only can be called when config.requireConfig
       this.allowedToStartServer =
-        (await workspace.findFiles(`**/{.oxlintrc.json,oxlint.config.ts}`, "**/node_modules/**", 1))
+        (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
           .length > 0;
       if (!this.allowedToStartServer) {
         this.updateStatusBar(statusBarItemHandler, false);
