@@ -90,6 +90,15 @@ suite("WorkspaceConfig", () => {
   test("toOxlintConfig method", async () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
 
+    const oxlintConfig = config.toOxlintConfig();
+    strictEqual(oxlintConfig.run, "onType");
+    strictEqual(oxlintConfig.configPath, undefined);
+    strictEqual(oxlintConfig.tsConfigPath, undefined);
+    strictEqual(oxlintConfig.unusedDisableDirectives, "allow");
+    strictEqual(oxlintConfig.typeAware, undefined);
+    strictEqual(oxlintConfig.disableNestedConfig, false);
+    strictEqual(oxlintConfig.fixKind, "safe_fix");
+
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
       config.updateConfigPath("./somewhere"),
@@ -101,26 +110,29 @@ suite("WorkspaceConfig", () => {
       config.updateFormattingConfigPath("./oxfmt.json"),
     ]);
 
-    const oxlintConfig = config.toOxlintConfig();
+    const oxlintConfigUpdated = config.toOxlintConfig();
 
-    strictEqual(oxlintConfig.run, "onSave");
-    strictEqual(oxlintConfig.configPath, "./somewhere");
-    strictEqual(oxlintConfig.tsConfigPath, "./tsconfig.json");
-    strictEqual(oxlintConfig.unusedDisableDirectives, "deny");
-    strictEqual(oxlintConfig.typeAware, true);
-    strictEqual(oxlintConfig.disableNestedConfig, true);
-    strictEqual(oxlintConfig.fixKind, "dangerous_fix");
+    strictEqual(oxlintConfigUpdated.run, "onSave");
+    strictEqual(oxlintConfigUpdated.configPath, "./somewhere");
+    strictEqual(oxlintConfigUpdated.tsConfigPath, "./tsconfig.json");
+    strictEqual(oxlintConfigUpdated.unusedDisableDirectives, "deny");
+    strictEqual(oxlintConfigUpdated.typeAware, true);
+    strictEqual(oxlintConfigUpdated.disableNestedConfig, true);
+    strictEqual(oxlintConfigUpdated.fixKind, "dangerous_fix");
   });
 
   test("toOxfmtConfig method", async () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
 
+    const oxfmtConfig = config.toOxfmtConfig();
+    strictEqual(oxfmtConfig["fmt.configPath"], undefined);
+
     await config.updateFormattingConfigPath("./oxfmt.json");
 
-    const oxfmtConfig = config.toOxfmtConfig();
+    const oxfmtConfigUpdated = config.toOxfmtConfig();
 
     // @ts-expect-error -- deprecated setting, kept for backward compatibility
-    strictEqual(oxfmtConfig["fmt.experimental"], true);
-    strictEqual(oxfmtConfig["fmt.configPath"], "./oxfmt.json");
+    strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
+    strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
   });
 });

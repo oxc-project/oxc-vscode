@@ -16,7 +16,9 @@ export enum FixKind {
 }
 
 /**
- * See `"contributes.configuration"` in `package.json`
+ * This interface is responsible for the communication between LSP configuration.
+ * Extension configuration are handled by `VSCodeConfig`.
+ * All `null` values should be converted to `undefined` when sending to the LSP, to avoid confusion between "not set" and "set to null".
  */
 interface WorkspaceConfigInterface {
   /**
@@ -100,7 +102,7 @@ export class WorkspaceConfig {
   private _tsConfigPath: string | null = null;
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
   private _unusedDisableDirectives: UnusedDisableDirectives = "allow";
-  private _typeAware: boolean | null = false;
+  private _typeAware: boolean | null = null;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
   private _formattingConfigPath: string | null = null;
