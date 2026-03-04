@@ -26,7 +26,7 @@ interface WorkspaceConfigInterface {
    *
    * @default null
    */
-  configPath: string | null;
+  configPath?: string | null;
   /**
    * typescript config path
    *
@@ -34,14 +34,14 @@ interface WorkspaceConfigInterface {
    *
    * @default null
    */
-  tsConfigPath: string | null;
+  tsConfigPath?: string | null;
   /**
    * When to run the linter and generate diagnostics
    * `oxc.lint.run`
    *
    * @default 'onType'
    */
-  run: DiagnosticPullMode;
+  run?: DiagnosticPullMode;
 
   /**
    * Define how directive comments like `// oxlint-disable-line` should be reported,
@@ -51,7 +51,7 @@ interface WorkspaceConfigInterface {
    *
    * @default 'allow'
    */
-  unusedDisableDirectives: UnusedDisableDirectives;
+  unusedDisableDirectives?: UnusedDisableDirectives;
 
   /**
    * Whether to enable type-aware linting. Boolean or null (from configuration file).
@@ -60,21 +60,21 @@ interface WorkspaceConfigInterface {
    *
    * @default null
    */
-  typeAware: boolean | null;
+  typeAware?: boolean | null;
 
   /**
    * Disable nested config files detection
    * `oxc.disableNestedConfig`
    * @default false
    */
-  disableNestedConfig: boolean;
+  disableNestedConfig?: boolean;
 
   /**
    * Fix kind to use when applying fixes
    * `oxc.fixKind`
    * @default 'safe_fix'
    */
-  fixKind: FixKind;
+  fixKind?: FixKind;
 
   /**
    * Additional flags to pass to the LSP binary
@@ -82,7 +82,7 @@ interface WorkspaceConfigInterface {
    *
    * @default {}
    */
-  flags: Record<string, string>;
+  flags?: Record<string, string>;
 
   /**
    * Path to an oxfmt configuration file
@@ -274,10 +274,10 @@ export class WorkspaceConfig {
 
   public toOxlintConfig(): OxlintWorkspaceConfigInterface {
     return {
-      configPath: this.configPath ?? null,
-      tsConfigPath: this.tsConfigPath ?? null,
+      configPath: this.configPath ?? undefined,
+      tsConfigPath: this.tsConfigPath ?? undefined,
       unusedDisableDirectives: this.unusedDisableDirectives,
-      typeAware: this.typeAware,
+      typeAware: this.typeAware ?? undefined,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind,
       // keep for backward compatibility
@@ -294,7 +294,7 @@ export class WorkspaceConfig {
     return {
       // @ts-expect-error -- deprecated setting, kept for backward compatibility
       ["fmt.experimental"]: true,
-      ["fmt.configPath"]: this.formattingConfigPath ?? null,
+      ["fmt.configPath"]: this.formattingConfigPath ?? undefined,
     };
   }
 }
