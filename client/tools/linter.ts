@@ -17,10 +17,8 @@ import {
 } from "vscode-languageclient";
 
 import {
-  Executable,
   LanguageClient,
   LanguageClientOptions,
-  ServerOptions,
 } from "vscode-languageclient/node";
 
 import { OxcCommands } from "../commands";
@@ -115,17 +113,13 @@ export default class LinterTool implements ToolInterface {
 
     context.subscriptions.push(restartCommand, toggleEnable, applyAllFixesFile);
 
-    const run: Executable = runExecutable(
+    const serverOptions = runExecutable(
       binaryPath,
       "oxlint",
       configService.vsCodeConfig.nodePath,
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressProgramErrors,
     );
-    const serverOptions: ServerOptions = {
-      run,
-      debug: run,
-    };
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
 

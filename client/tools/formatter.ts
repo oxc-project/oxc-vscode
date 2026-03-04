@@ -12,10 +12,8 @@ import {
 import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
 import {
-  Executable,
   LanguageClient,
   LanguageClientOptions,
-  ServerOptions,
 } from "vscode-languageclient/node";
 
 import { OxcCommands } from "../commands";
@@ -73,12 +71,7 @@ export default class FormatterTool implements ToolInterface {
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
 
-    const run: Executable = runExecutable(binaryPath, "oxfmt", configService.vsCodeConfig.nodePath);
-
-    const serverOptions: ServerOptions = {
-      run,
-      debug: run,
-    };
+    const serverOptions = runExecutable(binaryPath, "oxfmt", configService.vsCodeConfig.nodePath);
 
     // This list is not used as-is for implementation to determine whether formatting processing is possible.
     const supportedExtensions = [
