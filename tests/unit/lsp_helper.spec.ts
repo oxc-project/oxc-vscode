@@ -79,13 +79,22 @@ suite("runExecutable", () => {
     strictEqual(result.args?.[1], "--lsp");
   });
 
-  test("should use process.execPath with ELECTRON_RUN_AS_NODE on non-Windows", () => {
+  test("should use process.execPath with ELECTRON_RUN_AS_NODE on Linux", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
 
     const result = runExecutable("/path/to/server.js", tool);
 
     strictEqual(result.command, process.execPath);
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, "1");
+  });
+
+  test("should use 'node' without ELECTRON_RUN_AS_NODE on macOS", () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+
+    const result = runExecutable("/path/to/server.js", tool);
+
+    strictEqual(result.command, "node");
+    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
 
   test("should use 'node' without ELECTRON_RUN_AS_NODE on Windows", () => {

@@ -12,7 +12,11 @@ function resolveNodeCommand(nodePath?: string): NodeCommandResolution {
     return { command: nodePath, useElectronAsNode: false };
   }
 
-  if (process.platform === "win32") {
+  // On macOS, using the Electron binary (process.execPath) with
+  // ELECTRON_RUN_AS_NODE fails when the server loads native .node addons:
+  // macOS code signing rejects dlopen because the Electron binary and the
+  // addon have different Team IDs.
+  if (process.platform === "win32" || process.platform === "darwin") {
     return { command: "node", useElectronAsNode: false };
   }
 
