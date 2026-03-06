@@ -60,6 +60,8 @@ suite("E2E Server Formatter", () => {
     await workspace.saveAll();
     const content = await workspace.fs.readFile(fileUri);
 
-    strictEqual(content.toString(), "class X {\n  foo() {\n    return 42\n  }\n}\n");
+    const LE = process.platform === "win32" ? "\r\n" : "\n";
+
+    strictEqual(content.toString(), `class X {${LE}  foo() {${LE}    return 42${LE}  }${LE}}${LE}`);
   });
 });
