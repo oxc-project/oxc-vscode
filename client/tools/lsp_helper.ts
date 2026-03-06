@@ -2,30 +2,6 @@ import * as path from "node:path";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 
-type NodeCommandResolution = {
-  command: string;
-  useElectronAsNode: boolean;
-};
-
-function resolveNodeCommand(nodePath?: string): NodeCommandResolution {
-  if (nodePath) {
-    return { command: nodePath, useElectronAsNode: false };
-  }
-
-  if (process.platform === "win32") {
-    return { command: "node", useElectronAsNode: false };
-  }
-
-  return {
-    command: process.execPath || "node",
-    useElectronAsNode: Boolean(process.execPath),
-  };
-}
-
-export function getResolvedNodeCommand(nodePath?: string): string {
-  return resolveNodeCommand(nodePath).command;
-}
-
 export function runExecutable(
   binaryPath: string,
   nodeBinName: string,
@@ -33,12 +9,17 @@ export function runExecutable(
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
 ): Executable {
+  if (!nodePath) nodePath = undefined;
+
   const serverEnv: Record<string, string> = {
     ...process.env,
     RUST_LOG: process.env.RUST_LOG || "info", // Keep for backward compatibility for a while
     OXC_LOG: process.env.OXC_LOG || "info",
     NO_COLOR: "1",
   };
+  if (nodePath) {
+    serverEnv.PATH = `${nodePath}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`;
+  }
   if (tsgolintPath) {
     serverEnv.OXLINT_TSGOLINT_PATH = tsgolintPath;
   }
@@ -54,24 +35,12 @@ export function runExecutable(
     binaryPath.endsWith(".cjs") ||
     binaryPath.endsWith(".mjs") ||
     binaryPath.endsWith(`${nodeBinName}${path.sep}bin${path.sep}${nodeBinName}`);
-  const nodeResolution = resolveNodeCommand(nodePath);
-  const nodeCommand = nodeResolution.command;
-
-  if (path.isAbsolute(nodeCommand)) {
-    const nodeDir = path.dirname(nodeCommand);
-    serverEnv.PATH = `${nodeDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`;
-  }
-  if (nodeResolution.useElectronAsNode) {
-    serverEnv.ELECTRON_RUN_AS_NODE = "1";
-  } else {
-    delete serverEnv.ELECTRON_RUN_AS_NODE;
-  }
 
   const isWindows = process.platform === "win32";
 
   return isNode
     ? {
-        command: nodeCommand,
+        command: nodePath ?? "node",
         args: [binaryPath, "--lsp"],
         options: {
           env: serverEnv,

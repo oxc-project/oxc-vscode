@@ -178,7 +178,7 @@ interface VSCodeConfigInterface {
   binPathTsGoLint: string | undefined;
 
   /**
-   * Path to a JavaScript runtime binary (Node.js, bun, or deno)
+   * Path to Node.js
    * `oxc.path.node`
    * @default undefined
    */
