@@ -21,6 +21,8 @@ teardown(async () => {
   await deleteFixtures();
 });
 
+const LE = process.platform === "win32" ? "\r\n" : "\n";
+
 suite("E2E Server Formatter", () => {
   // Skip tests if formatter tests are disabled
   if (process.env.SKIP_FORMATTER_TEST === "true") {
@@ -42,7 +44,10 @@ suite("E2E Server Formatter", () => {
     await workspace.saveAll();
     const content = await workspace.fs.readFile(fileUri);
 
-    strictEqual(content.toString(), "class X {\n  foo() {\n    return 42;\n  }\n}\n");
+    strictEqual(
+      content.toString(),
+      `class X {${LE}  foo() {${LE}    return 42;${LE}  }${LE}}${LE}`,
+    );
   });
 
   test("formats code with `oxc.fmt.configPath`", async () => {
@@ -59,8 +64,6 @@ suite("E2E Server Formatter", () => {
     await commands.executeCommand("editor.action.formatDocument");
     await workspace.saveAll();
     const content = await workspace.fs.readFile(fileUri);
-
-    const LE = process.platform === "win32" ? "\r\n" : "\n";
 
     strictEqual(content.toString(), `class X {${LE}  foo() {${LE}    return 42${LE}  }${LE}}${LE}`);
   });
