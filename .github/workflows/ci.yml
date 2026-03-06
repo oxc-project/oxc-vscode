@@ -89,14 +89,14 @@ jobs:
         run: pnpm run compile
 
       - name: Unit Tests
-        run: xvfb-run -a pnpm run test:unit
+        run: pnpm run test:unit
 
       - name: Oxlint LSP Tests
-        run: xvfb-run -a pnpm run test:oxlint && xvfb-run -a pnpm run test:oxlint-multi-root
+        run: pnpm run test:oxlint && xvfb-run -a pnpm run test:oxlint-multi-root
 
       - name: Oxlint JS Plugin Test (flaky)
         continue-on-error: true
-        run: xvfb-run -a pnpm run test:oxlint-js
+        run: pnpm run test:oxlint-js
 
       - name: Oxfmt LSP Tests
-        run: xvfb-run -a pnpm run test:oxfmt
+        run: pnpm run test:oxfmt
