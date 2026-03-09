@@ -200,7 +200,6 @@ export default class LinterTool implements ToolInterface {
     };
 
     this.client = new LanguageClient(languageClientName, serverOptions, clientOptions);
-    context.subscriptions.push(this.client);
 
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
@@ -235,7 +234,7 @@ export default class LinterTool implements ToolInterface {
       return undefined;
     }
     await this.client.stop();
-    void this.client.dispose();
+    await this.client.dispose();
     this.client = undefined;
   }
 
