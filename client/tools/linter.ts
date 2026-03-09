@@ -46,7 +46,7 @@ export default class LinterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
-  private disposes: (() => Promise<void>) | undefined;
+  private disposeResources: (() => Promise<void>) | undefined;
 
   async getBinary(
     outputChannel: LogOutputChannel,
@@ -226,7 +226,7 @@ export default class LinterTool implements ToolInterface {
       );
     }
 
-    this.disposes = async () => {
+    this.disposeResources = async () => {
       await this.client?.dispose();
       restartCommand.dispose();
       toggleEnable.dispose();
@@ -244,8 +244,8 @@ export default class LinterTool implements ToolInterface {
       return;
     }
     await this.client.stop();
-    await this.disposes?.();
-    this.disposes = undefined;
+    await this.disposeResources?.();
+    this.disposeResources = undefined;
     this.client = undefined;
   }
 
