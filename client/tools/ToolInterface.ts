@@ -1,4 +1,4 @@
-import { ConfigurationChangeEvent, ExtensionContext, LogOutputChannel } from "vscode";
+import { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 
@@ -14,7 +14,6 @@ export default interface ToolInterface {
    * Activates the tool and initializes any necessary resources.
    */
   activate(
-    context: ExtensionContext,
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,

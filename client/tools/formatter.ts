@@ -1,13 +1,6 @@
 import { promises as fsPromises } from "node:fs";
 
-import {
-  commands,
-  ConfigurationChangeEvent,
-  ExtensionContext,
-  LogOutputChannel,
-  Uri,
-  window,
-} from "vscode";
+import { commands, ConfigurationChangeEvent, LogOutputChannel, Uri, window } from "vscode";
 
 import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
@@ -51,7 +44,6 @@ export default class FormatterTool implements ToolInterface {
   }
 
   async activate(
-    context: ExtensionContext,
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,

@@ -67,7 +67,6 @@ export default class LinterTool implements ToolInterface {
   }
 
   async activate(
-    context: ExtensionContext,
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,

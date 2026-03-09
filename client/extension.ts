@@ -63,6 +63,36 @@ export async function activate(context: ExtensionContext) {
     await Promise.all(
       tools.map((tool) => tool.onConfigChange(event, configService, statusBarItemHandler)),
     );
+
+    if (event.affectsConfiguration(`${ConfigService.namespace}.path.oxlint`)) {
+      window.showInformationMessage("oxlint binary path changed, restarting oxlint tool.");
+      outputChannelLint.info("oxlint binary path changed, restarting oxlint tool.");
+
+      const linterTool = tools.find((tool) => tool instanceof Linter)!;
+      await linterTool.deactivate();
+      const newBinaryPath = await linterTool.getBinary(outputChannelLint, configService);
+      await linterTool.activate(
+        outputChannelLint,
+        configService,
+        statusBarItemHandler,
+        newBinaryPath,
+      );
+    }
+
+    if (event.affectsConfiguration(`${ConfigService.namespace}.path.oxfmt`)) {
+      window.showInformationMessage("oxfmt binary path changed, restarting oxfmt tool.");
+      outputChannelFormat.info("oxfmt binary path changed, restarting oxfmt tool.");
+
+      const formatterTool = tools.find((tool) => tool instanceof Formatter)!;
+      await formatterTool.deactivate();
+      const newBinaryPath = await formatterTool.getBinary(outputChannelFormat, configService);
+      await formatterTool.activate(
+        outputChannelFormat,
+        configService,
+        statusBarItemHandler,
+        newBinaryPath,
+      );
+    }
   };
 
   outputChannelFormat.info("Searching for oxfmt binary.");
@@ -82,7 +112,7 @@ export async function activate(context: ExtensionContext) {
       const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
       const binaryPath = binaryPaths[tools.indexOf(tool)];
 
-      return tool.activate(context, channel, configService, statusBarItemHandler, binaryPath);
+      return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
     }),
   );
 
