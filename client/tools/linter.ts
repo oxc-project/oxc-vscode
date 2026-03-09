@@ -46,6 +46,8 @@ export default class LinterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
+  private disposes: (() => Promise<void>) | undefined;
+
   async getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
@@ -114,8 +116,6 @@ export default class LinterTool implements ToolInterface {
 
       await this.client.sendRequest(ExecuteCommandRequest.type, params);
     });
-
-    context.subscriptions.push(restartCommand, toggleEnable, applyAllFixesFile);
 
     const run: Executable = runExecutable(
       binaryPath,
@@ -208,33 +208,44 @@ export default class LinterTool implements ToolInterface {
       },
     );
 
-    context.subscriptions.push(onNotificationDispose);
-
     const onDeleteFilesDispose = workspace.onDidDeleteFiles((event) => {
       for (const fileUri of event.files) {
         this.client?.diagnostics?.delete(fileUri);
       }
     });
 
-    context.subscriptions.push(onDeleteFilesDispose);
-
+    let activatorDispatcher: { dispose: () => void } | undefined;
     if (this.allowedToStartServer) {
       if (configService.vsCodeConfig.enableOxlint) {
         await this.client.start();
       }
     } else {
-      this.generateActivatorByConfig(configService.vsCodeConfig, context, statusBarItemHandler);
+      activatorDispatcher = this.generateActivatorByConfig(
+        configService.vsCodeConfig,
+        statusBarItemHandler,
+      );
     }
+
+    this.disposes = async () => {
+      await this.client?.dispose();
+      restartCommand.dispose();
+      toggleEnable.dispose();
+      applyAllFixesFile.dispose();
+      onNotificationDispose.dispose();
+      onDeleteFilesDispose.dispose();
+      activatorDispatcher?.dispose();
+    };
 
     this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
   }
 
   async deactivate(): Promise<void> {
     if (!this.client) {
-      return undefined;
+      return;
     }
     await this.client.stop();
-    await this.client.dispose();
+    await this.disposes?.();
+    this.disposes = undefined;
     this.client = undefined;
   }
 
@@ -354,9 +365,8 @@ export default class LinterTool implements ToolInterface {
 
   generateActivatorByConfig(
     config: VSCodeConfig,
-    context: ExtensionContext,
     statusBarItemHandler: StatusBarItemHandler,
-  ): void {
+  ): { dispose: () => void } {
     const watcher = workspace.createFileSystemWatcher(
       oxlintConfigDefaultFilePattern,
       false,
@@ -384,6 +394,6 @@ export default class LinterTool implements ToolInterface {
       }
     });
 
-    context.subscriptions.push(watcher);
+    return watcher;
   }
 }
