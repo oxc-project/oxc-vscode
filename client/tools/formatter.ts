@@ -329,6 +329,7 @@ export default class FormatterTool implements ToolInterface {
 
     // Create the language client and start the client.
     this.client = new LanguageClient(languageClientName, serverOptions, clientOptions);
+    context.subscriptions.push(this.client);
 
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
@@ -351,6 +352,7 @@ export default class FormatterTool implements ToolInterface {
       return undefined;
     }
     await this.client.stop();
+    void this.client.dispose();
     this.client = undefined;
   }
 
