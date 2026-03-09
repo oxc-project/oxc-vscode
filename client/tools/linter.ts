@@ -3,7 +3,6 @@ import { promises as fsPromises } from "node:fs";
 import {
   commands,
   ConfigurationChangeEvent,
-  ExtensionContext,
   LogOutputChannel,
   Uri,
   window,
