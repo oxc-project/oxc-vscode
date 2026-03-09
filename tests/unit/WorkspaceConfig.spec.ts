@@ -7,12 +7,14 @@ import { WORKSPACE_FOLDER } from "../test-helpers.js";
 const keys = [
   "lint.run",
   "configPath",
+  "configField",
   "tsConfigPath",
   "unusedDisableDirectives",
   "typeAware",
   "disableNestedConfig",
   "fixKind",
   "fmt.configPath",
+  "fmt.configField",
   // deprecated
   "flags",
 ];
@@ -42,12 +44,14 @@ suite("WorkspaceConfig", () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
     strictEqual(config.runTrigger, "onType");
     strictEqual(config.configPath, null);
+    strictEqual(config.configField, null);
     strictEqual(config.tsConfigPath, null);
     strictEqual(config.unusedDisableDirectives, null);
     strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, "safe_fix");
     strictEqual(config.formattingConfigPath, null);
+    strictEqual(config.formattingConfigField, null);
   });
 
   test("deprecated values are respected", async () => {
@@ -67,24 +71,28 @@ suite("WorkspaceConfig", () => {
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
       config.updateConfigPath("./somewhere"),
+      config.updateConfigField("lint"),
       config.updateTsConfigPath("./tsconfig.json"),
       config.updateUnusedDisableDirectives("deny"),
       config.updateTypeAware(true),
       config.updateDisableNestedConfig(true),
       config.updateFixKind(FixKind.DangerousFix),
       config.updateFormattingConfigPath("./oxfmt.json"),
+      config.updateFormattingConfigField("fmt"),
     ]);
 
     const wsConfig = workspace.getConfiguration("oxc", WORKSPACE_FOLDER);
 
     strictEqual(wsConfig.get("lint.run"), "onSave");
     strictEqual(wsConfig.get("configPath"), "./somewhere");
+    strictEqual(wsConfig.get("configField"), "lint");
     strictEqual(wsConfig.get("tsConfigPath"), "./tsconfig.json");
     strictEqual(wsConfig.get("unusedDisableDirectives"), "deny");
     strictEqual(wsConfig.get("typeAware"), true);
     strictEqual(wsConfig.get("disableNestedConfig"), true);
     strictEqual(wsConfig.get("fixKind"), "dangerous_fix");
     strictEqual(wsConfig.get("fmt.configPath"), "./oxfmt.json");
+    strictEqual(wsConfig.get("fmt.configField"), "fmt");
   });
 
   test("toOxlintConfig method", async () => {
@@ -93,6 +101,7 @@ suite("WorkspaceConfig", () => {
     const oxlintConfig = config.toOxlintConfig();
     strictEqual(oxlintConfig.run, "onType");
     strictEqual(oxlintConfig.configPath, undefined);
+    strictEqual(oxlintConfig.configField, undefined);
     strictEqual(oxlintConfig.tsConfigPath, undefined);
     strictEqual(oxlintConfig.unusedDisableDirectives, undefined);
     strictEqual(oxlintConfig.typeAware, undefined);
@@ -102,6 +111,7 @@ suite("WorkspaceConfig", () => {
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
       config.updateConfigPath("./somewhere"),
+      config.updateConfigField("lint"),
       config.updateTsConfigPath("./tsconfig.json"),
       config.updateUnusedDisableDirectives("deny"),
       config.updateTypeAware(true),
@@ -114,6 +124,7 @@ suite("WorkspaceConfig", () => {
 
     strictEqual(oxlintConfigUpdated.run, "onSave");
     strictEqual(oxlintConfigUpdated.configPath, "./somewhere");
+    strictEqual(oxlintConfigUpdated.configField, "lint");
     strictEqual(oxlintConfigUpdated.tsConfigPath, "./tsconfig.json");
     strictEqual(oxlintConfigUpdated.unusedDisableDirectives, "deny");
     strictEqual(oxlintConfigUpdated.typeAware, true);
@@ -121,18 +132,37 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfigUpdated.fixKind, "dangerous_fix");
   });
 
+  test("configField is ignored without configPath", async () => {
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+
+    await config.updateConfigField("lint");
+
+    const oxlintConfig = config.toOxlintConfig();
+    strictEqual(oxlintConfig.configField, undefined);
+
+    await config.updateFormattingConfigField("fmt");
+
+    const oxfmtConfig = config.toOxfmtConfig();
+    strictEqual(oxfmtConfig["fmt.configField"], undefined);
+  });
+
   test("toOxfmtConfig method", async () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
 
     const oxfmtConfig = config.toOxfmtConfig();
     strictEqual(oxfmtConfig["fmt.configPath"], undefined);
+    strictEqual(oxfmtConfig["fmt.configField"], undefined);
 
-    await config.updateFormattingConfigPath("./oxfmt.json");
+    await Promise.all([
+      config.updateFormattingConfigPath("./oxfmt.json"),
+      config.updateFormattingConfigField("fmt"),
+    ]);
 
     const oxfmtConfigUpdated = config.toOxfmtConfig();
 
     // @ts-expect-error -- deprecated setting, kept for backward compatibility
     strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
+    strictEqual(oxfmtConfigUpdated["fmt.configField"], "fmt");
   });
 });

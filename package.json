@@ -168,6 +168,15 @@
           "default": null,
           "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration."
         },
+        "oxc.configField": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "scope": "resource",
+          "default": null,
+          "markdownDescription": "Field name to extract from the config file as oxlint configuration (e.g., `lint` to use the `lint` field from `vite.config.ts`). Requires `oxc.configPath` to be set."
+        },
         "oxc.tsConfigPath": {
           "type": [
             "string",
@@ -257,6 +266,15 @@
           "scope": "resource",
           "default": null,
           "markdownDescription": "Path to an oxfmt configuration file"
+        },
+        "oxc.fmt.configField": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "scope": "resource",
+          "default": null,
+          "markdownDescription": "Field name to extract from the config file as oxfmt configuration (e.g., `fmt` to use the `fmt` field from `vite.config.ts`). Requires `oxc.fmt.configPath` to be set."
         },
         "oxc.suppressProgramErrors": {
           "type": "boolean",

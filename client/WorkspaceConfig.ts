@@ -30,6 +30,14 @@ interface WorkspaceConfigInterface {
    */
   configPath?: string | null;
   /**
+   * Field name to extract from config file as oxlint configuration
+   *
+   * `oxc.configField`
+   *
+   * @default null
+   */
+  configField?: string | null;
+  /**
    * typescript config path
    *
    * `oxc.tsConfigPath`
@@ -92,14 +100,26 @@ interface WorkspaceConfigInterface {
    * `oxc.fmt.configPath`
    */
   ["fmt.configPath"]?: string | null;
+  /**
+   * Field name to extract from config file as oxfmt configuration
+   * `oxc.fmt.configField`
+   */
+  ["fmt.configField"]?: string | null;
 }
 
-export type OxlintWorkspaceConfigInterface = Omit<WorkspaceConfigInterface, "fmt.configPath">;
+export type OxlintWorkspaceConfigInterface = Omit<
+  WorkspaceConfigInterface,
+  "fmt.configPath" | "fmt.configField"
+>;
 
-export type OxfmtWorkspaceConfigInterface = Pick<WorkspaceConfigInterface, "fmt.configPath">;
+export type OxfmtWorkspaceConfigInterface = Pick<
+  WorkspaceConfigInterface,
+  "fmt.configPath" | "fmt.configField"
+>;
 
 export class WorkspaceConfig {
   private _configPath: string | null = null;
+  private _configField: string | null = null;
   private _tsConfigPath: string | null = null;
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
   private _unusedDisableDirectives: UnusedDisableDirectives | null = null;
@@ -107,6 +127,7 @@ export class WorkspaceConfig {
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind = FixKind.SafeFix;
   private _formattingConfigPath: string | null = null;
+  private _formattingConfigField: string | null = null;
 
   constructor(private readonly workspace: WorkspaceFolder) {
     this.refresh();
@@ -139,6 +160,7 @@ export class WorkspaceConfig {
     this._runTrigger =
       this.configuration.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
     this._configPath = this.configuration.get<string | null>("configPath") ?? null;
+    this._configField = this.configuration.get<string | null>("configField") ?? null;
     this._tsConfigPath = this.configuration.get<string | null>("tsConfigPath") ?? null;
     this._unusedDisableDirectives =
       this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
@@ -146,10 +168,14 @@ export class WorkspaceConfig {
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? FixKind.SafeFix;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
+    this._formattingConfigField = this.configuration.get<string | null>("fmt.configField") ?? null;
   }
 
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
     if (event.affectsConfiguration(`${ConfigService.namespace}.configPath`, this.workspace)) {
+      return true;
+    }
+    if (event.affectsConfiguration(`${ConfigService.namespace}.configField`, this.workspace)) {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.tsConfigPath`, this.workspace)) {
@@ -180,6 +206,9 @@ export class WorkspaceConfig {
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
       return true;
     }
+    if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configField`, this.workspace)) {
+      return true;
+    }
     // deprecated settings in flags
     if (event.affectsConfiguration(`${ConfigService.namespace}.flags`, this.workspace)) {
       return true;
@@ -207,6 +236,15 @@ export class WorkspaceConfig {
   updateConfigPath(value: string | null): PromiseLike<void> {
     this._configPath = value;
     return this.configuration.update("configPath", value, ConfigurationTarget.WorkspaceFolder);
+  }
+
+  get configField(): string | null {
+    return this._configField;
+  }
+
+  updateConfigField(value: string | null): PromiseLike<void> {
+    this._configField = value;
+    return this.configuration.update("configField", value, ConfigurationTarget.WorkspaceFolder);
   }
 
   get tsConfigPath(): string | null {
@@ -271,6 +309,15 @@ export class WorkspaceConfig {
     return this.configuration.update("fmt.configPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 
+  get formattingConfigField(): string | null {
+    return this._formattingConfigField;
+  }
+
+  updateFormattingConfigField(value: string | null): PromiseLike<void> {
+    this._formattingConfigField = value;
+    return this.configuration.update("fmt.configField", value, ConfigurationTarget.WorkspaceFolder);
+  }
+
   public shouldRequestDiagnostics(diagnosticPullMode: DiagnosticPullMode): boolean {
     return diagnosticPullMode === this.runTrigger;
   }
@@ -278,6 +325,7 @@ export class WorkspaceConfig {
   public toOxlintConfig(): OxlintWorkspaceConfigInterface {
     return {
       configPath: this.configPath ?? undefined,
+      configField: this.configPath ? (this.configField ?? undefined) : undefined,
       tsConfigPath: this.tsConfigPath ?? undefined,
       unusedDisableDirectives: this.unusedDisableDirectives ?? undefined,
       typeAware: this.typeAware ?? undefined,
@@ -298,6 +346,9 @@ export class WorkspaceConfig {
       // @ts-expect-error -- deprecated setting, kept for backward compatibility
       ["fmt.experimental"]: true,
       ["fmt.configPath"]: this.formattingConfigPath ?? undefined,
+      ["fmt.configField"]: this.formattingConfigPath
+        ? (this.formattingConfigField ?? undefined)
+        : undefined,
     };
   }
 }
