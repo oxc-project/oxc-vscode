@@ -355,7 +355,7 @@ export default class FormatterTool implements ToolInterface {
 
   async deactivate(): Promise<void> {
     if (!this.client) {
-      return undefined;
+      return;
     }
     await this.client.stop();
     await this.disposeResources?.();
