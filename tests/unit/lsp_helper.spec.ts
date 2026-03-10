@@ -88,4 +88,9 @@ suite("runExecutable", () => {
     strictEqual(result.command, process.execPath);
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, "1");
   });
+
+  test("should not set ELECTRON_RUN_AS_NODE server env", () => {
+    const result = runExecutable("/path/to/server.js", tool, false);
+    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
+  });
 });

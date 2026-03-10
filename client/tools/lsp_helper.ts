@@ -38,6 +38,7 @@ export function runExecutable(
     serverEnv.ELECTRON_RUN_AS_NODE = "1";
   } else {
     nodeCommand = nodePath || "node";
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
   }
 
   if (path.isAbsolute(nodeCommand)) {
