@@ -9,6 +9,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   private _binPathOxfmt: string | undefined;
   private _binPathTsGoLint: string | undefined;
   private _nodePath: string | undefined;
+  private _useExecPath: boolean = false;
   private _requireConfig!: boolean;
   private _suppressProgramErrors!: boolean;
 
@@ -52,6 +53,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
     this._binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
     this._nodePath = this.configuration.get<string>("path.node");
+    this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
     this._suppressProgramErrors = this.configuration.get<boolean>("suppressProgramErrors") ?? false;
   }
@@ -119,6 +121,15 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     return this.configuration.update("path.node", value);
   }
 
+  get useExecPath(): boolean {
+    return this._useExecPath;
+  }
+
+  updateUseExecPath(value: boolean): PromiseLike<void> {
+    this._useExecPath = value;
+    return this.configuration.update("useExecPath", value);
+  }
+
   get requireConfig(): boolean {
     return this._requireConfig;
   }
@@ -183,6 +194,12 @@ interface VSCodeConfigInterface {
    * @default undefined
    */
   nodePath: string | undefined;
+
+  /**
+   * Whether to use the extension's execPath (Electron's bundled Node.js) as the JavaScript runtime for running Oxc tools,
+   * instead of looking for a system Node.js installation.
+   */
+  useExecPath: boolean;
 
   /**
    * Start the language server only when a `.oxlintrc.json` file exists in one of the workspaces.

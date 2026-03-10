@@ -75,7 +75,12 @@ export default class FormatterTool implements ToolInterface {
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
 
-    const run: Executable = runExecutable(binaryPath, "oxfmt", configService.vsCodeConfig.nodePath);
+    const run: Executable = runExecutable(
+      binaryPath,
+      "oxfmt",
+      configService.vsCodeConfig.useExecPath,
+      configService.vsCodeConfig.nodePath,
+    );
 
     const serverOptions: ServerOptions = {
       run,

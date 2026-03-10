@@ -120,6 +120,7 @@ export default class LinterTool implements ToolInterface {
     const run: Executable = runExecutable(
       binaryPath,
       "oxlint",
+      configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressProgramErrors,
