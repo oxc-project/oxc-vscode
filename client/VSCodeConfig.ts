@@ -1,4 +1,4 @@
-import { workspace } from "vscode";
+import { ConfigurationChangeEvent, workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
@@ -146,6 +146,31 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   updateSuppressTsconfigErrors(value: boolean): PromiseLike<void> {
     this._suppressProgramErrors = value;
     return this.configuration.update("suppressProgramErrors", value);
+  }
+
+  /**
+   * These configuration changes need a complete restart of all language servers
+   */
+  private effectsGeneralLSPConnection(event: ConfigurationChangeEvent): boolean {
+    return (
+      event.affectsConfiguration(`${ConfigService.namespace}.path.node`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.useExecPath`)
+    );
+  }
+
+  effectOxlintConnection(event: ConfigurationChangeEvent): boolean {
+    return (
+      event.affectsConfiguration(`${ConfigService.namespace}.path.oxlint`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.path.tsgolint`) ||
+      this.effectsGeneralLSPConnection(event)
+    );
+  }
+
+  effectsOxfmtConnection(event: ConfigurationChangeEvent): boolean {
+    return (
+      event.affectsConfiguration(`${ConfigService.namespace}.path.oxfmt`) ||
+      this.effectsGeneralLSPConnection(event)
+    );
   }
 }
 

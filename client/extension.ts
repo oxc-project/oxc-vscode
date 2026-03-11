@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, window, workspace } from "vscode";
+import { commands, ExtensionContext, LogOutputChannel, window, workspace } from "vscode";
 
 import { OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
@@ -59,39 +59,39 @@ export async function activate(context: ExtensionContext) {
     statusBarItemHandler,
   );
 
+  const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
+    try {
+      await tool.deactivate();
+      const newBinaryPath = await tool.getBinary(outputChannel, configService);
+      await tool.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+    } catch (e) {
+      outputChannel.error(`Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
+      Try to restart the editor manually.
+      `);
+    }
+  };
+
   configService.onConfigChange = async function onConfigChange(event) {
     await Promise.all(
       tools.map((tool) => tool.onConfigChange(event, configService, statusBarItemHandler)),
     );
 
-    if (event.affectsConfiguration(`${ConfigService.namespace}.path.oxlint`)) {
-      window.showInformationMessage("oxlint binary path changed, restarting oxlint tool.");
-      outputChannelLint.info("oxlint binary path changed, restarting oxlint tool.");
+    if (configService.vsCodeConfig.effectOxlintConnection(event)) {
+      outputChannelLint.info("oxlint connection changed, restarting oxlint tool.");
 
-      const linterTool = tools.find((tool) => tool instanceof Linter)!;
-      await linterTool.deactivate();
-      const newBinaryPath = await linterTool.getBinary(outputChannelLint, configService);
-      await linterTool.activate(
-        outputChannelLint,
-        configService,
-        statusBarItemHandler,
-        newBinaryPath,
-      );
+      const linterTool = tools.find((tool) => tool instanceof Linter);
+      if (linterTool) {
+        await restartTool(linterTool, outputChannelLint);
+      }
     }
 
-    if (event.affectsConfiguration(`${ConfigService.namespace}.path.oxfmt`)) {
-      window.showInformationMessage("oxfmt binary path changed, restarting oxfmt tool.");
-      outputChannelFormat.info("oxfmt binary path changed, restarting oxfmt tool.");
+    if (configService.vsCodeConfig.effectsOxfmtConnection(event)) {
+      outputChannelFormat.info("oxfmt connection changed, restarting oxfmt tool.");
 
-      const formatterTool = tools.find((tool) => tool instanceof Formatter)!;
-      await formatterTool.deactivate();
-      const newBinaryPath = await formatterTool.getBinary(outputChannelFormat, configService);
-      await formatterTool.activate(
-        outputChannelFormat,
-        configService,
-        statusBarItemHandler,
-        newBinaryPath,
-      );
+      const formatterTool = tools.find((tool) => tool instanceof Formatter);
+      if (formatterTool) {
+        await restartTool(formatterTool, outputChannelFormat);
+      }
     }
   };
 
