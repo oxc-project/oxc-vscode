@@ -99,4 +99,58 @@ suite("VSCodeConfig", () => {
     strictEqual(wsConfig.get("useExecPath"), true);
     strictEqual(wsConfig.get("suppressProgramErrors"), true);
   });
+
+  test("effectsOxlintConnection detects changes to oxlint connection related settings", async () => {
+    const config = new VSCodeConfig();
+    const wsConfig = workspace.getConfiguration("oxc");
+
+    const testCases = [
+      { key: "path.oxlint", affects: true },
+      { key: "path.tsgolint", affects: true },
+      { key: "path.node", affects: true },
+      { key: "useExecPath", affects: true },
+      { key: "requireConfig", affects: false },
+      { key: "path.oxfmt", affects: false },
+    ];
+
+    for (const { key, affects } of testCases) {
+      let promise = new Promise<void>((resolve) => {
+        const disposer = workspace.onDidChangeConfiguration((event) => {
+          strictEqual(config.effectsOxlintConnection(event), affects);
+          disposer.dispose();
+          resolve();
+        });
+      });
+
+      wsConfig.update(key, "testValue");
+      await promise;
+    }
+  });
+
+  test("effectsOxfmtConnection detects changes to oxfmt connection related settings", async () => {
+    const config = new VSCodeConfig();
+    const wsConfig = workspace.getConfiguration("oxc");
+
+    const testCases = [
+      { key: "path.oxfmt", affects: true },
+      { key: "path.node", affects: true },
+      { key: "useExecPath", affects: true },
+      { key: "path.tsgolint", affects: false },
+      { key: "requireConfig", affects: false },
+      { key: "path.oxlint", affects: false },
+    ];
+
+    for (const { key, affects } of testCases) {
+      let promise = new Promise<void>((resolve) => {
+        const disposer = workspace.onDidChangeConfiguration((event) => {
+          strictEqual(config.effectsOxfmtConnection(event), affects);
+          disposer.dispose();
+          resolve();
+        });
+      });
+
+      wsConfig.update(key, "testValue");
+      await promise;
+    }
+  });
 });

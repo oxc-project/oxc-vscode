@@ -158,7 +158,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     );
   }
 
-  effectOxlintConnection(event: ConfigurationChangeEvent): boolean {
+  effectsOxlintConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.oxlint`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.path.tsgolint`) ||

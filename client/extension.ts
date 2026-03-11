@@ -76,7 +76,7 @@ export async function activate(context: ExtensionContext) {
       tools.map((tool) => tool.onConfigChange(event, configService, statusBarItemHandler)),
     );
 
-    if (configService.vsCodeConfig.effectOxlintConnection(event)) {
+    if (configService.vsCodeConfig.effectsOxlintConnection(event)) {
       outputChannelLint.info("oxlint connection changed, restarting oxlint tool.");
 
       const linterTool = tools.find((tool) => tool instanceof Linter);
