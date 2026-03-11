@@ -364,7 +364,8 @@
         "oxc.path.oxlint",
         "oxc.path.oxfmt",
         "oxc.path.tsgolint",
-        "oxc.path.node"
+        "oxc.path.node",
+        "oxc.useExecPath"
       ]
     }
   },
