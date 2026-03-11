@@ -16,6 +16,7 @@ suite("VSCodeConfig", () => {
     "path.oxfmt",
     "path.tsgolint",
     "path.node",
+    "useExecPath",
     "suppressProgramErrors",
   ];
   setup(async () => {
@@ -37,6 +38,7 @@ suite("VSCodeConfig", () => {
     strictEqual(config.binPathOxfmt, "");
     strictEqual(config.binPathTsGoLint, "");
     strictEqual(config.nodePath, "");
+    strictEqual(config.useExecPath, false);
     strictEqual(
       config.suppressProgramErrors,
       false,
@@ -80,6 +82,7 @@ suite("VSCodeConfig", () => {
       config.updateBinPathOxfmt("./formatter"),
       config.updateBinPathTsGoLint("./tsgolint"),
       config.updateNodePath("./node"),
+      config.updateUseExecPath(true),
       config.updateSuppressTsconfigErrors(true),
     ]);
 
@@ -93,6 +96,7 @@ suite("VSCodeConfig", () => {
     strictEqual(wsConfig.get("path.oxfmt"), "./formatter");
     strictEqual(wsConfig.get("path.tsgolint"), "./tsgolint");
     strictEqual(wsConfig.get("path.node"), "./node");
+    strictEqual(wsConfig.get("useExecPath"), true);
     strictEqual(wsConfig.get("suppressProgramErrors"), true);
   });
 });

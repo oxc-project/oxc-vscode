@@ -2,37 +2,10 @@ import * as path from "node:path";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 
-type NodeCommandResolution = {
-  command: string;
-  useElectronAsNode: boolean;
-};
-
-function resolveNodeCommand(nodePath?: string): NodeCommandResolution {
-  if (nodePath) {
-    return { command: nodePath, useElectronAsNode: false };
-  }
-
-  // On macOS, using the Electron binary (process.execPath) with
-  // ELECTRON_RUN_AS_NODE fails when the server loads native .node addons:
-  // macOS code signing rejects dlopen because the Electron binary and the
-  // addon have different Team IDs.
-  if (process.platform === "win32" || process.platform === "darwin") {
-    return { command: "node", useElectronAsNode: false };
-  }
-
-  return {
-    command: process.execPath || "node",
-    useElectronAsNode: Boolean(process.execPath),
-  };
-}
-
-export function getResolvedNodeCommand(nodePath?: string): string {
-  return resolveNodeCommand(nodePath).command;
-}
-
 export function runExecutable(
   binaryPath: string,
   nodeBinName: string,
+  useExecPath: boolean = false,
   nodePath?: string,
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
@@ -58,22 +31,24 @@ export function runExecutable(
     binaryPath.endsWith(".cjs") ||
     binaryPath.endsWith(".mjs") ||
     binaryPath.endsWith(`${nodeBinName}${path.sep}bin${path.sep}${nodeBinName}`);
-  const nodeResolution = resolveNodeCommand(nodePath);
-  const nodeCommand = nodeResolution.command;
+
+  let nodeCommand: string;
+  if (useExecPath) {
+    nodeCommand = process.execPath || nodePath || "node";
+    serverEnv.ELECTRON_RUN_AS_NODE = "1";
+  } else {
+    nodeCommand = nodePath || "node";
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
+  }
 
   if (path.isAbsolute(nodeCommand)) {
     const nodeDir = path.dirname(nodeCommand);
     serverEnv.PATH = `${nodeDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`;
   }
-  if (nodeResolution.useElectronAsNode) {
-    serverEnv.ELECTRON_RUN_AS_NODE = "1";
-  } else {
-    delete serverEnv.ELECTRON_RUN_AS_NODE;
-  }
 
   const isWindows = process.platform === "win32";
 
-  return isNode
+  return isNode || useExecPath
     ? {
         command: nodeCommand,
         args: [binaryPath, "--lsp"],

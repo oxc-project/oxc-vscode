@@ -14,6 +14,7 @@ suite("runExecutable", () => {
   test("should create Node.js executable for .js files", () => {
     const result = runExecutable("/path/to/server.js", tool);
 
+    strictEqual(result.command, "node");
     strictEqual(result.args?.[0], "/path/to/server.js");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -21,6 +22,7 @@ suite("runExecutable", () => {
   test("should create Node.js executable for .cjs files", () => {
     const result = runExecutable("/path/to/server.cjs", tool);
 
+    strictEqual(result.command, "node");
     strictEqual(result.args?.[0], "/path/to/server.cjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -28,6 +30,7 @@ suite("runExecutable", () => {
   test("should create Node.js executable for .mjs files", () => {
     const result = runExecutable("/path/to/server.mjs", tool);
 
+    strictEqual(result.command, "node");
     strictEqual(result.args?.[0], "/path/to/server.mjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -57,7 +60,7 @@ suite("runExecutable", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
     process.env.PATH = "/usr/bin:/bin";
 
-    const result = runExecutable("/path/to/server.js", tool, "/custom/node/bin/node");
+    const result = runExecutable("/path/to/server.js", tool, false, "/custom/node/bin/node");
 
     strictEqual(result.command, "/custom/node/bin/node");
     strictEqual(result.options?.env?.PATH, "/custom/node/bin:/usr/bin:/bin");
@@ -72,46 +75,22 @@ suite("runExecutable", () => {
   });
 
   test("should use the provided node path for Node.js executables", () => {
-    const result = runExecutable("/path/to/server.js", tool, "/custom/node/bin/node");
+    const result = runExecutable("/path/to/server.js", tool, false, "/custom/node/bin/node");
 
     strictEqual(result.command, "/custom/node/bin/node");
     strictEqual(result.args?.[0], "/path/to/server.js");
     strictEqual(result.args?.[1], "--lsp");
   });
 
-  test("should use process.execPath with ELECTRON_RUN_AS_NODE on Linux", () => {
-    Object.defineProperty(process, "platform", { value: "linux" });
-
-    const result = runExecutable("/path/to/server.js", tool);
+  test("should use 'execPath' with ELECTRON_RUN_AS_NODE", () => {
+    const result = runExecutable("/path/to/server.js", tool, true);
 
     strictEqual(result.command, process.execPath);
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, "1");
   });
 
-  test("should use 'node' without ELECTRON_RUN_AS_NODE on macOS", () => {
-    Object.defineProperty(process, "platform", { value: "darwin" });
-
-    const result = runExecutable("/path/to/server.js", tool);
-
-    strictEqual(result.command, "node");
-    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
-  });
-
-  test("should use 'node' without ELECTRON_RUN_AS_NODE on Windows", () => {
-    Object.defineProperty(process, "platform", { value: "win32" });
-
-    const result = runExecutable("/path/to/server.js", tool);
-
-    strictEqual(result.command, "node");
-    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
-  });
-
-  test("should not set ELECTRON_RUN_AS_NODE when explicit nodePath is provided", () => {
-    Object.defineProperty(process, "platform", { value: "linux" });
-
-    const result = runExecutable("/path/to/server.js", tool, "/usr/local/bin/bun");
-
-    strictEqual(result.command, "/usr/local/bin/bun");
+  test("should not set ELECTRON_RUN_AS_NODE server env", () => {
+    const result = runExecutable("/path/to/server.js", tool, false);
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
 });

@@ -61,7 +61,7 @@
     "oxfmt": "latest",
     "oxlint": "latest",
     "oxlint-tsgolint": "^0.16.0",
-    "rolldown": "1.0.0-rc.8",
+    "rolldown": "1.0.0-rc.9",
     "tinyglobby": "^0.2.15"
   },
   "contributes": {
@@ -290,6 +290,12 @@
           "type": "string",
           "scope": "window",
           "markdownDescription": "Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment."
+        },
+        "oxc.useExecPath": {
+          "type": "boolean",
+          "scope": "window",
+          "default": false,
+          "markdownDescription": "Whether to use the extension's execPath (Electron's bundled Node.js) as the JavaScript runtime for running Oxc tools, instead of looking for a system Node.js installation."
         }
       }
     },
@@ -358,7 +364,8 @@
         "oxc.path.oxlint",
         "oxc.path.oxfmt",
         "oxc.path.tsgolint",
-        "oxc.path.node"
+        "oxc.path.node",
+        "oxc.useExecPath"
       ]
     }
   },
