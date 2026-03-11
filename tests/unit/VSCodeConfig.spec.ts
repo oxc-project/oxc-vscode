@@ -123,6 +123,7 @@ suite("VSCodeConfig", () => {
       });
 
       wsConfig.update(key, "testValue");
+      // oxlint-disable-next-line no-await-in-loop -- testing sequentially to ensure correct event handling
       await promise;
     }
   });
@@ -150,6 +151,7 @@ suite("VSCodeConfig", () => {
       });
 
       wsConfig.update(key, "testValue");
+      // oxlint-disable-next-line no-await-in-loop -- testing sequentially to ensure correct event handling
       await promise;
     }
   });
