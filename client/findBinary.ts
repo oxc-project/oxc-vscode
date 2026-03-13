@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
-import { Uri, workspace } from "vscode";
+import { RelativePattern, Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 
 /** @internal only used for testing */
@@ -106,6 +106,47 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
   // fallback to searching for package.json in workspace subfolders (monorepo support)
   const packageJsonNodeModules = await getWorkspacePackageJsonNodeModules();
   return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+}
+
+/**
+ * Search for the binary in a specific workspace folder's node_modules.
+ * Falls back to sub-package node_modules for monorepo support.
+ */
+export async function searchFolderNodeModulesBin(
+  binaryName: string,
+  folderPath: string,
+): Promise<string | undefined> {
+  // try to resolve via require.resolve scoped to this folder
+  try {
+    const resolvedPath = replaceTargetFromMainToBin(
+      require.resolve(binaryName, { paths: [folderPath] }),
+      binaryName,
+    );
+    return resolvedPath;
+  } catch {}
+
+  // fallback to direct binary lookup in folder's node_modules/.bin
+  const nodeModulesPath = path.join(folderPath, "node_modules");
+  const result = await searchNodeModulesDefaultBinPath(binaryName, [nodeModulesPath]);
+  if (result) {
+    return result;
+  }
+
+  // fallback to sub-package node_modules (monorepo support)
+  // Limit results to avoid excessive file system scanning in large monorepos
+  const subPackageJsonUris = await workspace.findFiles(
+    new RelativePattern(folderPath, "**/package.json"),
+    "**/node_modules/**",
+    64,
+  );
+  if (subPackageJsonUris.length > 0) {
+    const subNodeModules = subPackageJsonUris.map((uri) =>
+      path.join(path.dirname(uri.fsPath), "node_modules"),
+    );
+    return searchNodeModulesDefaultBinPath(binaryName, subNodeModules);
+  }
+
+  return undefined;
 }
 
 /**

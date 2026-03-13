@@ -1,8 +1,8 @@
-import { ConfigurationChangeEvent, Uri, workspace, WorkspaceFolder } from "vscode";
+import { ConfigurationChangeEvent, Uri, workspace, type WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import {
+  searchFolderNodeModulesBin,
   searchGlobalNodeModulesBin,
-  searchProjectNodeModulesBin,
   searchSettingsBin,
 } from "./findBinary";
 import { IDisposable } from "./types";
@@ -86,12 +86,47 @@ export class ConfigService implements IDisposable {
     return false;
   }
 
-  public async getOxlintServerBinPath(): Promise<string | undefined> {
-    return this.searchBinaryPath(this.vsCodeConfig.binPathOxlint, "oxlint");
+  public async getOxlintBinPathForFolder(folder: WorkspaceFolder): Promise<string | undefined> {
+    return this.searchBinaryPathForFolder(this.vsCodeConfig.binPathOxlint, "oxlint", folder);
   }
 
-  public async getOxfmtServerBinPath(): Promise<string | undefined> {
-    return this.searchBinaryPath(this.vsCodeConfig.binPathOxfmt, "oxfmt");
+  public async getOxfmtBinPathForFolder(folder: WorkspaceFolder): Promise<string | undefined> {
+    return this.searchBinaryPathForFolder(this.vsCodeConfig.binPathOxfmt, "oxfmt", folder);
+  }
+
+  public async getOxfmtBinPathGlobal(): Promise<string | undefined> {
+    if (this.vsCodeConfig.binPathOxfmt) {
+      return searchSettingsBin(this.vsCodeConfig.binPathOxfmt);
+    }
+    return searchGlobalNodeModulesBin("oxfmt");
+  }
+
+  public oxlintConfigForFolder(folder: WorkspaceFolder): {
+    workspaceUri: string;
+    options: OxlintWorkspaceConfigInterface;
+  }[] {
+    const config = this.workspaceConfigs.get(folder.uri.fsPath);
+    if (!config) return [];
+    return [
+      {
+        workspaceUri: folder.uri.toString(),
+        options: config.toOxlintConfig(),
+      },
+    ];
+  }
+
+  public formatterConfigForFolder(folder: WorkspaceFolder): {
+    workspaceUri: string;
+    options: OxfmtWorkspaceConfigInterface;
+  }[] {
+    const config = this.workspaceConfigs.get(folder.uri.fsPath);
+    if (!config) return [];
+    return [
+      {
+        workspaceUri: folder.uri.toString(),
+        options: config.toOxfmtConfig(),
+      },
+    ];
   }
 
   public shouldRequestDiagnostics(
@@ -111,16 +146,17 @@ export class ConfigService implements IDisposable {
     return workspaceConfig?.shouldRequestDiagnostics(diagnosticPullMode) ?? false;
   }
 
-  private async searchBinaryPath(
+  private async searchBinaryPathForFolder(
     settingsBinary: string | undefined,
     defaultBinaryName: string,
+    folder: WorkspaceFolder,
   ): Promise<string | undefined> {
     if (settingsBinary) {
       return searchSettingsBin(settingsBinary);
     }
 
     return (
-      (await searchProjectNodeModulesBin(defaultBinaryName)) ??
+      (await searchFolderNodeModulesBin(defaultBinaryName, folder.uri.fsPath)) ??
       (await searchGlobalNodeModulesBin(defaultBinaryName))
     );
   }

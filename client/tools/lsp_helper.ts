@@ -1,6 +1,12 @@
 import * as path from "node:path";
 import { LogOutputChannel, window } from "vscode";
-import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
+import { ExecuteCommandRequest } from "vscode-languageclient";
+import {
+  Executable,
+  LanguageClient,
+  MessageType,
+  ShowMessageParams,
+} from "vscode-languageclient/node";
 
 export function runExecutable(
   binaryPath: string,
@@ -70,6 +76,30 @@ export function runExecutable(
           env: serverEnv,
         },
       };
+}
+
+/**
+ * Remove the ExecuteCommandFeature from a LanguageClient to prevent
+ * duplicate VS Code command registration in multi-server setups.
+ * Server-side execute commands are handled manually via sendRequest.
+ *
+ * When multiple LanguageClients are active (per-folder clients + global client),
+ * each client's ExecuteCommandFeature tries to register the same VS Code commands
+ * (e.g. `oxc.fixAll`), causing "command already exists" errors.
+ * vscode-languageclient does not provide a public API to disable this feature,
+ * so we access the internal `_dynamicFeatures` Map and `_features` array directly.
+ * Refs: https://github.com/microsoft/vscode-languageserver-node/blob/main/client/src/common/client.ts
+ */
+export function removeExecuteCommandFeature(client: LanguageClient): void {
+  const anyClient = client as any;
+  const method = ExecuteCommandRequest.method;
+  if (anyClient._dynamicFeatures instanceof Map) {
+    anyClient._dynamicFeatures.delete(method);
+  }
+  if (Array.isArray(anyClient._features)) {
+    const idx = anyClient._features.findIndex((f: any) => f.registrationType?.method === method);
+    if (idx !== -1) anyClient._features.splice(idx, 1);
+  }
 }
 
 export function onClientNotification(params: ShowMessageParams, outputChannel: LogOutputChannel) {

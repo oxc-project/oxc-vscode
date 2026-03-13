@@ -6,6 +6,7 @@ import { Uri, workspace } from "vscode";
 import {
   clearWorkspacePackageJsonNodeModulesCache,
   replaceTargetFromMainToBin,
+  searchFolderNodeModulesBin,
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
 } from "../../client/findBinary";
@@ -123,6 +124,72 @@ suite("findBinary", () => {
       } finally {
         clearWorkspacePackageJsonNodeModulesCache();
         await workspace.fs.delete(Uri.file(path.join(workspacePath, "packages")), {
+          recursive: true,
+        });
+      }
+    });
+  });
+
+  suite("searchFolderNodeModulesBin", () => {
+    test("should return undefined when binary is not found in folder node_modules", async () => {
+      const folderPath = WORKSPACE_FOLDER.uri.fsPath;
+      const result = await searchFolderNodeModulesBin(
+        "non-existent-binary-package-name-12345",
+        folderPath,
+      );
+      strictEqual(result, undefined);
+    });
+
+    test("should find binary in the specified folder's node_modules/.bin", async () => {
+      const folderPath = WORKSPACE_FOLDER.uri.fsPath;
+      const fallbackBinaryName = "folder-bin-lookup-test";
+      const binPath = path.join(folderPath, "node_modules", ".bin", fallbackBinaryName);
+
+      await workspace.fs.writeFile(Uri.file(binPath), new Uint8Array());
+
+      try {
+        const result = await searchFolderNodeModulesBin(fallbackBinaryName, folderPath);
+        strictEqual(result, binPath);
+      } finally {
+        await workspace.fs.delete(Uri.file(binPath));
+      }
+    });
+
+    test("should NOT find binary from a different folder", async () => {
+      const folderPath = WORKSPACE_FOLDER.uri.fsPath;
+      const otherFolderPath = path.join(folderPath, "..", "test_workspace_second");
+      const fallbackBinaryName = "folder-isolation-test";
+      const binPath = path.join(folderPath, "node_modules", ".bin", fallbackBinaryName);
+
+      await workspace.fs.writeFile(Uri.file(binPath), new Uint8Array());
+
+      try {
+        // Binary exists in WORKSPACE_FOLDER but should NOT be found when searching otherFolderPath
+        const result = await searchFolderNodeModulesBin(fallbackBinaryName, otherFolderPath);
+        strictEqual(result, undefined);
+      } finally {
+        await workspace.fs.delete(Uri.file(binPath));
+      }
+    });
+
+    test("should find binary in monorepo sub-package node_modules within the folder", async () => {
+      const folderPath = WORKSPACE_FOLDER.uri.fsPath;
+      const fallbackBinaryName = "folder-nested-bin-lookup-test";
+      const nestedPackageDir = path.join(folderPath, "packages", "nested-app");
+      const nestedPackageJson = path.join(nestedPackageDir, "package.json");
+      const nestedBinPath = path.join(nestedPackageDir, "node_modules", ".bin", fallbackBinaryName);
+
+      await workspace.fs.writeFile(
+        Uri.file(nestedPackageJson),
+        Buffer.from(JSON.stringify({ name: "nested-app" })),
+      );
+      await workspace.fs.writeFile(Uri.file(nestedBinPath), new Uint8Array());
+
+      try {
+        const result = await searchFolderNodeModulesBin(fallbackBinaryName, folderPath);
+        strictEqual(result, nestedBinPath);
+      } finally {
+        await workspace.fs.delete(Uri.file(path.join(folderPath, "packages")), {
           recursive: true,
         });
       }

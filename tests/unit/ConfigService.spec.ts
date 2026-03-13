@@ -1,5 +1,5 @@
-import { strictEqual } from "assert";
-import { workspace } from "vscode";
+import { deepStrictEqual, strictEqual } from "assert";
+import { workspace, WorkspaceFolder } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
 import { sep } from "node:path";
@@ -43,10 +43,10 @@ suite("ConfigService", () => {
     await workspace.fs.delete(folder.uri.with({ path }));
   };
 
-  suite("getOxfmtServerBinPath", () => {
+  suite("getOxfmtBinPathForFolder", () => {
     test("falls back to node resolving when server path is not set", async () => {
       const service = new ConfigService();
-      const oxfmtPath = (await service.getOxfmtServerBinPath())!;
+      const oxfmtPath = (await service.getOxfmtBinPathForFolder(WORKSPACE_FOLDER))!;
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
 
       // it targets the oxc project's oxlint/bin/oxlint path
@@ -66,12 +66,12 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("relative/oxfmt");
 
       await conf.update("path.oxfmt", `${workspace_path}/absolute/oxfmt`);
-      const absoluteServerPath = await service.getOxfmtServerBinPath();
+      const absoluteServerPath = await service.getOxfmtBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(absoluteServerPath, `${workspace_path}/absolute/oxfmt`);
 
       await conf.update("path.oxfmt", "./relative/oxfmt");
-      const relativeServerPath = await service.getOxfmtServerBinPath();
+      const relativeServerPath = await service.getOxfmtBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(relativeServerPath, `${workspace_path}${sep}relative${sep}oxfmt`);
 
@@ -83,7 +83,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("../unsafe/oxfmt");
       const service = new ConfigService();
       await conf.update("path.oxfmt", "../unsafe/oxfmt");
-      const unsafeServerPath = await service.getOxfmtServerBinPath();
+      const unsafeServerPath = await service.getOxfmtBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(unsafeServerPath, undefined);
       await deleteWorkspaceFolderFileUri("../unsafe/oxfmt");
@@ -96,7 +96,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("./relative/oxfmt");
       const service = new ConfigService();
       await conf.update("path.oxfmt", "./relative/oxfmt");
-      const relativeServerPath = await service.getOxfmtServerBinPath();
+      const relativeServerPath = await service.getOxfmtBinPathForFolder(WORKSPACE_FOLDER);
       const workspace_path = getWorkspaceFolderPlatformSafe();
 
       strictEqual(
@@ -109,10 +109,57 @@ suite("ConfigService", () => {
     });
   });
 
-  suite("getOxlintServerBinPath", () => {
+  suite("oxlintConfigForFolder", () => {
+    test("returns config for a known workspace folder", () => {
+      const service = new ConfigService();
+      const result = service.oxlintConfigForFolder(WORKSPACE_FOLDER);
+
+      strictEqual(result.length, 1);
+      strictEqual(result[0].workspaceUri, WORKSPACE_FOLDER.uri.toString());
+      strictEqual(typeof result[0].options, "object");
+      strictEqual(typeof result[0].options.disableNestedConfig, "boolean");
+    });
+
+    test("returns empty array for an unknown folder", () => {
+      const service = new ConfigService();
+      const fakeFolder = {
+        uri: WORKSPACE_FOLDER.uri.with({ path: "/non-existent-folder" }),
+        name: "fake",
+        index: 99,
+      } as WorkspaceFolder;
+      const result = service.oxlintConfigForFolder(fakeFolder);
+
+      deepStrictEqual(result, []);
+    });
+  });
+
+  suite("formatterConfigForFolder", () => {
+    test("returns config for a known workspace folder", () => {
+      const service = new ConfigService();
+      const result = service.formatterConfigForFolder(WORKSPACE_FOLDER);
+
+      strictEqual(result.length, 1);
+      strictEqual(result[0].workspaceUri, WORKSPACE_FOLDER.uri.toString());
+      strictEqual(typeof result[0].options, "object");
+    });
+
+    test("returns empty array for an unknown folder", () => {
+      const service = new ConfigService();
+      const fakeFolder = {
+        uri: WORKSPACE_FOLDER.uri.with({ path: "/non-existent-folder" }),
+        name: "fake",
+        index: 99,
+      } as WorkspaceFolder;
+      const result = service.formatterConfigForFolder(fakeFolder);
+
+      deepStrictEqual(result, []);
+    });
+  });
+
+  suite("getOxlintBinPathForFolder", () => {
     test("falls back to node resolving when server path is not set", async () => {
       const service = new ConfigService();
-      const oxlintPath = (await service.getOxlintServerBinPath())!;
+      const oxlintPath = (await service.getOxlintBinPathForFolder(WORKSPACE_FOLDER))!;
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
 
       // it targets the oxc project's oxlint/bin/oxlint path
@@ -132,12 +179,12 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("relative/oxlint");
 
       await conf.update("path.oxlint", `${workspace_path}/absolute/oxlint`);
-      const absoluteServerPath = await service.getOxlintServerBinPath();
+      const absoluteServerPath = await service.getOxlintBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(absoluteServerPath, `${workspace_path}/absolute/oxlint`);
 
       await conf.update("path.oxlint", "./relative/oxlint");
-      const relativeServerPath = await service.getOxlintServerBinPath();
+      const relativeServerPath = await service.getOxlintBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(relativeServerPath, `${workspace_path}${sep}relative${sep}oxlint`);
 
@@ -149,7 +196,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("../unsafe/oxlint");
       const service = new ConfigService();
       await conf.update("path.oxlint", "../unsafe/oxlint");
-      const unsafeServerPath = await service.getOxlintServerBinPath();
+      const unsafeServerPath = await service.getOxlintBinPathForFolder(WORKSPACE_FOLDER);
 
       strictEqual(unsafeServerPath, undefined);
       await deleteWorkspaceFolderFileUri("../unsafe/oxlint");
@@ -163,7 +210,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("./relative/oxlint");
       const service = new ConfigService();
       await conf.update("path.oxlint", "./relative/oxlint");
-      const relativeServerPath = await service.getOxlintServerBinPath();
+      const relativeServerPath = await service.getOxlintBinPathForFolder(WORKSPACE_FOLDER);
       const workspace_path = getWorkspaceFolderPlatformSafe();
 
       strictEqual(

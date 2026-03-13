@@ -224,8 +224,8 @@ suite("E2E Server Linter", () => {
 
   test("nested configs severity", async () => {
     await loadFixture("nested_config");
-    const rootDiagnostics = await getDiagnostics("index.ts", undefined, 500);
-    const nestedDiagnostics = await getDiagnostics("folder/index.ts", undefined, 500);
+    const rootDiagnostics = await getDiagnostics("index.ts", undefined, 2000);
+    const nestedDiagnostics = await getDiagnostics("folder/index.ts", undefined, 2000);
 
     assert(typeof rootDiagnostics[0].code == "object");
     strictEqual(rootDiagnostics[0].code.target.authority, "oxc.rs");

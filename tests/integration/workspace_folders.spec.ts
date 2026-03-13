@@ -30,10 +30,14 @@ suite("Workspace Folders", () => {
       uri: FIXTURES_URI,
     });
 
+    // With lazy LSP activation, the new folder's LSP starts when a document is opened.
+    // getDiagnostics opens the file (triggering activation), so we need extra time
+    // for the LSP to start, initialize, and return diagnostics.
     await sleep(500);
     const thirdWorkspaceDiagnostics = await getDiagnostics(
       "debugger/debugger.js",
       Uri.joinPath(FIXTURES_URI, ".."),
+      2000,
     );
 
     assert(typeof thirdWorkspaceDiagnostics[0].code == "object");

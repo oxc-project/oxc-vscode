@@ -36,6 +36,9 @@ export async function activate(context: ExtensionContext) {
     outputChannelFormat.show();
   });
 
+  const getOutputChannel = (tool: ToolInterface): LogOutputChannel =>
+    tool instanceof Linter ? outputChannelLint : outputChannelFormat;
+
   const onDidChangeWorkspaceFoldersDispose = workspace.onDidChangeWorkspaceFolders(
     async (event) => {
       for (const folder of event.added) {
@@ -44,6 +47,17 @@ export async function activate(context: ExtensionContext) {
       for (const folder of event.removed) {
         configService.removeWorkspaceConfig(folder);
       }
+
+      await Promise.all(
+        tools.map((tool) =>
+          tool.onWorkspaceFolderChange(
+            event,
+            getOutputChannel(tool),
+            configService,
+            statusBarItemHandler,
+          ),
+        ),
+      );
     },
   );
 
@@ -59,15 +73,17 @@ export async function activate(context: ExtensionContext) {
     statusBarItemHandler,
   );
 
-  const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
+  const restartTool = async (tool: ToolInterface) => {
+    const outputChannel = getOutputChannel(tool);
     try {
       await tool.deactivate();
-      const newBinaryPath = await tool.getBinary(outputChannel, configService);
-      await tool.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+      await tool.activate(outputChannel, configService, statusBarItemHandler);
     } catch (e) {
-      outputChannel.error(`Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
+      outputChannel.error(
+        `Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
       Try to restart the editor manually.
-      `);
+      `,
+      );
     }
   };
 
@@ -81,7 +97,7 @@ export async function activate(context: ExtensionContext) {
 
       const linterTool = tools.find((tool) => tool instanceof Linter);
       if (linterTool) {
-        await restartTool(linterTool, outputChannelLint);
+        await restartTool(linterTool);
       }
     }
 
@@ -90,7 +106,7 @@ export async function activate(context: ExtensionContext) {
 
       const formatterTool = tools.find((tool) => tool instanceof Formatter);
       if (formatterTool) {
-        await restartTool(formatterTool, outputChannelFormat);
+        await restartTool(formatterTool);
       }
     }
   };
@@ -98,22 +114,8 @@ export async function activate(context: ExtensionContext) {
   outputChannelFormat.info("Searching for oxfmt binary.");
   outputChannelLint.info("Searching for oxlint binary.");
 
-  const binaryPaths = await Promise.all(
-    tools.map((tool) =>
-      tool.getBinary(
-        tool instanceof Linter ? outputChannelLint : outputChannelFormat,
-        configService,
-      ),
-    ),
-  );
-
   await Promise.all(
-    tools.map((tool): Promise<void> => {
-      const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
-      const binaryPath = binaryPaths[tools.indexOf(tool)];
-
-      return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
-    }),
+    tools.map((tool) => tool.activate(getOutputChannel(tool), configService, statusBarItemHandler)),
   );
 
   // Finally show the status bar item.

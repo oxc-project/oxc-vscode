@@ -1,27 +1,20 @@
-import { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
+import { ConfigurationChangeEvent, LogOutputChannel, WorkspaceFoldersChangeEvent } from "vscode";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 
 export default interface ToolInterface {
   /**
-   * Gets the path to the tool's language server binary (if applicable).
-   */
-  getBinary(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-  ): Promise<string | undefined>;
-  /**
-   * Activates the tool and initializes any necessary resources.
+   * Activates the tool for all current workspace folders.
+   * Binary resolution and client creation is handled internally per folder.
    */
   activate(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
-    binaryPath?: string,
   ): Promise<void>;
 
   /**
-   * Deactivates the tool and cleans up any resources.
+   * Deactivates the tool and cleans up all resources.
    */
   deactivate(): Promise<void>;
 
@@ -30,6 +23,16 @@ export default interface ToolInterface {
    */
   onConfigChange(
     event: ConfigurationChangeEvent,
+    configService: ConfigService,
+    statusBarItemHandler: StatusBarItemHandler,
+  ): Promise<void>;
+
+  /**
+   * Handles workspace folder additions and removals.
+   */
+  onWorkspaceFolderChange(
+    event: WorkspaceFoldersChangeEvent,
+    outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
   ): Promise<void>;
