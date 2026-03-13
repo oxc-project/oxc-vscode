@@ -26,7 +26,7 @@ oxfmt: v0.0.0
 
 ### Reproduction Repo
 
-<!-- If this bug is related to oxlint / oxfmt CLI incontinency -->
+<!-- If this bug is related to oxlint / oxfmt CLI inconsistency -->
 
 ### Output Channel Log
 
