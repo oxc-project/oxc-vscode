@@ -42,6 +42,6 @@ oxfmt: v0.0.0
 
 ### System Info
 
-- Operation System:
+- Operating System:
 - Node Manager: <!-- can be nvm, mise, and more, or you could have installed node directly -->
 - Node Version:
