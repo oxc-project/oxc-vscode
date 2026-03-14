@@ -118,12 +118,12 @@ export async function activate(context: ExtensionContext) {
       const toolName: "oxlint" | "oxfmt" = tool instanceof Linter ? "oxlint" : "oxfmt";
       const outputChannel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
 
+      // Only oxlint's standalone binary supports --lsp; oxfmt's does not yet.
+      if (toolName === "oxfmt") return undefined;
+
       // Check if we already have a downloaded binary
-      const downloadedPath = await getDownloadedBinaryPath(storagePath, toolName);
-      if (downloadedPath) {
-        outputChannel.info(`Using downloaded ${toolName} binary at: ${downloadedPath}`);
-        return downloadedPath;
-      }
+      const downloadedPath = await getDownloadedBinaryPath(storagePath, toolName, outputChannel);
+      if (downloadedPath) return downloadedPath;
 
       // Prompt user to download
       return promptDownloadBinary(storagePath, toolName, outputChannel);
@@ -148,6 +148,9 @@ export async function activate(context: ExtensionContext) {
       const isLinter = tool instanceof Linter;
       const toolName: "oxlint" | "oxfmt" = isLinter ? "oxlint" : "oxfmt";
       const outputChannel = isLinter ? outputChannelLint : outputChannelFormat;
+
+      // Only oxlint's standalone binary supports --lsp; oxfmt's does not yet.
+      if (toolName === "oxfmt") return;
 
       // Only auto-update binaries that were downloaded by us (live in storagePath).
       if (!resolvedPaths[i]?.startsWith(storagePath)) return;

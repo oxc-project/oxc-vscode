@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 
-import { LogOutputChannel, window } from "vscode";
+import { commands, LogOutputChannel, ProgressLocation, window } from "vscode";
 
 import * as AdmZip from "adm-zip";
 import * as tar from "tar";
@@ -43,10 +43,12 @@ function binaryPath(storagePath: string, toolName: ToolName): string {
 export async function getDownloadedBinaryPath(
   storagePath: string,
   toolName: ToolName,
+  outputChannel: LogOutputChannel,
 ): Promise<string | undefined> {
   const path = binaryPath(storagePath, toolName);
   try {
     await fs.access(path);
+    outputChannel.info(`Found downloaded ${toolName} binary at: ${path}`);
     return path;
   } catch {
     return undefined;
@@ -107,7 +109,7 @@ async function downloadAndExtract(
   return finalPath;
 }
 
-/** Prompt the user to download a missing binary. */
+/** Prompt the user to download a missing binary, showing progress and offering reload on success. */
 export async function promptDownloadBinary(
   storagePath: string,
   toolName: ToolName,
@@ -122,14 +124,29 @@ export async function promptDownloadBinary(
   if (choice !== "Download") return undefined;
 
   try {
-    const version = await fetchLatestVersion();
-    return await downloadAndExtract(storagePath, toolName, version, outputChannel);
+    const result = await window.withProgress(
+      { location: ProgressLocation.Notification, title: `Downloading ${toolName}...` },
+      async () => {
+        const version = await fetchLatestVersion();
+        return downloadAndExtract(storagePath, toolName, version, outputChannel);
+      },
+    );
+
+    promptReload(`${toolName} has been downloaded. Reload to activate.`);
+    return result;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     outputChannel.error(`Failed to download ${toolName}: ${msg}`);
     window.showErrorMessage(`Failed to download ${toolName}: ${msg}`);
     return undefined;
   }
+}
+
+/** Ask the user to reload the window. */
+function promptReload(message: string) {
+  window.showInformationMessage(message, "Reload").then((action) => {
+    if (action === "Reload") commands.executeCommand("workbench.action.reloadWindow");
+  });
 }
 
 /** Check for a newer version and download it if available. Returns true if updated. */
@@ -147,6 +164,7 @@ export async function checkForUpdate(
 
     outputChannel.info(`Updating ${toolName} from ${currentVersion || "unknown"} to ${version}`);
     await downloadAndExtract(storagePath, toolName, version, outputChannel);
+    promptReload(`${toolName} has been updated to v${version}. Reload to apply.`);
     return true;
   } catch (e) {
     outputChannel.error(
