@@ -47,11 +47,14 @@
     "docs:update": "node scripts/vscode_docs.ts update && pnpm run fmt"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
+    "tar": "^7.5.11",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.9",
     "@types/node": "24.1.0",
+    "@types/tar": "^7.0.87",
     "@types/vscode": "1.93.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.4.1",

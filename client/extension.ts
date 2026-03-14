@@ -2,6 +2,7 @@ import { commands, ExtensionContext, LogOutputChannel, window, workspace } from 
 
 import { OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
+import { checkForUpdate, getDownloadedBinaryPath, promptDownloadBinary } from "./installBinary";
 import StatusBarItemHandler from "./StatusBarItemHandler";
 import Formatter from "./tools/formatter";
 import Linter from "./tools/linter";
@@ -19,6 +20,7 @@ if (process.env.SKIP_FORMATTER_TEST !== "true") {
 
 export async function activate(context: ExtensionContext) {
   const configService = new ConfigService();
+  const storagePath = context.globalStorageUri.fsPath;
 
   const outputChannelLint = window.createOutputChannel(outputChannelName + " (Lint)", {
     log: true,
@@ -107,10 +109,31 @@ export async function activate(context: ExtensionContext) {
     ),
   );
 
+  // For tools whose binary was not found, try downloaded binaries or prompt to download
+  const resolvedPaths = await Promise.all(
+    tools.map(async (tool, i) => {
+      const binaryPath = binaryPaths[i];
+      if (binaryPath) return binaryPath;
+
+      const toolName: "oxlint" | "oxfmt" = tool instanceof Linter ? "oxlint" : "oxfmt";
+      const outputChannel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
+
+      // Check if we already have a downloaded binary
+      const downloadedPath = await getDownloadedBinaryPath(storagePath, toolName);
+      if (downloadedPath) {
+        outputChannel.info(`Using downloaded ${toolName} binary at: ${downloadedPath}`);
+        return downloadedPath;
+      }
+
+      // Prompt user to download
+      return promptDownloadBinary(storagePath, toolName, outputChannel);
+    }),
+  );
+
   await Promise.all(
-    tools.map((tool): Promise<void> => {
+    tools.map((tool, i): Promise<void> => {
       const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
-      const binaryPath = binaryPaths[tools.indexOf(tool)];
+      const binaryPath = resolvedPaths[i];
 
       return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
     }),
@@ -118,6 +141,23 @@ export async function activate(context: ExtensionContext) {
 
   // Finally show the status bar item.
   statusBarItemHandler.show();
+
+  // Check for updates in the background (non-blocking).
+  await Promise.all(
+    tools.map(async (tool, i): Promise<void> => {
+      const isLinter = tool instanceof Linter;
+      const toolName: "oxlint" | "oxfmt" = isLinter ? "oxlint" : "oxfmt";
+      const outputChannel = isLinter ? outputChannelLint : outputChannelFormat;
+
+      // Only auto-update binaries that were downloaded by us (live in storagePath).
+      if (!resolvedPaths[i]?.startsWith(storagePath)) return;
+
+      if (await checkForUpdate(storagePath, toolName, outputChannel)) {
+        outputChannel.info(`${toolName} updated, restarting server.`);
+        await restartTool(tool, outputChannel);
+      }
+    }),
+  );
 }
 
 export async function deactivate(): Promise<void> {
