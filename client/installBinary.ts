@@ -1,175 +1,141 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 
-import { commands, LogOutputChannel, ProgressLocation, window } from "vscode";
+import { extract } from "tar";
+import { LogOutputChannel, ProgressLocation, window } from "vscode";
 
-import * as AdmZip from "adm-zip";
-import * as tar from "tar";
+import { replaceTargetFromMainToBin } from "./findBinary";
 
-type ToolName = "oxlint" | "oxfmt";
+const versionFile = (storagePath: string, toolName: string) =>
+  join(storagePath, `${toolName}.version`);
 
-const GITHUB_REPO = "oxc-project/oxc";
-
-/** Map Node.js platform/arch to the Rust target triple used in release asset names. */
-function getTarget(): { triple: string; ext: ".tar.gz" | ".zip" } {
-  const archMap: Record<string, string> = {
-    x64: "x86_64",
-    arm64: "aarch64",
-    arm: "armv7",
+function getBindingPackage(toolName: string) {
+  const { platform, arch } = process;
+  const suffixes: Record<string, Record<string, string>> = {
+    darwin: { arm64: "darwin-arm64", x64: "darwin-x64" },
+    linux: { arm64: "linux-arm64-gnu", x64: "linux-x64-gnu", arm: "linux-arm-gnueabihf" },
+    win32: { arm64: "win32-arm64-msvc", x64: "win32-x64-msvc", ia32: "win32-ia32-msvc" },
+    freebsd: { x64: "freebsd-x64" },
   };
+  const suffix = suffixes[platform]?.[arch];
+  if (!suffix) throw new Error(`Unsupported platform: ${platform}-${arch}`);
 
-  const rustArch = archMap[process.arch];
-  if (!rustArch) throw new Error(`Unsupported architecture: ${process.arch}`);
-
-  switch (process.platform) {
-    case "darwin":
-      return { triple: `${rustArch}-apple-darwin`, ext: ".tar.gz" };
-    case "linux":
-      return { triple: `${rustArch}-unknown-linux-gnu`, ext: ".tar.gz" };
-    case "win32":
-      return { triple: `${rustArch}-pc-windows-msvc`, ext: ".zip" };
-    default:
-      throw new Error(`Unsupported platform: ${process.platform}`);
-  }
+  const scope = toolName === "oxlint" ? "@oxlint" : "@oxfmt";
+  return `${scope}/binding-${suffix}`;
 }
 
-/** Resolved path where the downloaded binary is stored. */
-function binaryPath(storagePath: string, toolName: ToolName): string {
-  const name = process.platform === "win32" ? `${toolName}.exe` : toolName;
-  return join(storagePath, name);
+async function fetchNpmTarball(
+  pkg: string,
+  version = "latest",
+): Promise<{ version: string; tarball: string }> {
+  const res = await fetch(`https://registry.npmjs.org/${pkg}/${version}`);
+  if (!res.ok) throw new Error(`npm registry returned ${res.status} for ${pkg}@${version}`);
+  const data = (await res.json()) as { version: string; dist: { tarball: string } };
+  return { version: data.version, tarball: data.dist.tarball };
 }
 
-/** Returns the path to a previously downloaded binary, or undefined if not found. */
-export async function getDownloadedBinaryPath(
+async function downloadAndExtract(tarballUrl: string, destDir: string) {
+  await fs.mkdir(destDir, { recursive: true });
+  const tmp = join(destDir, ".tmp.tgz");
+
+  const res = await fetch(tarballUrl);
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  await fs.writeFile(tmp, Buffer.from(await res.arrayBuffer()));
+
+  await extract({ file: tmp, cwd: destDir, strip: 1 });
+  await fs.unlink(tmp);
+}
+
+/** Download a tool and its platform-specific binding from npm. */
+async function install(
   storagePath: string,
-  toolName: ToolName,
+  toolName: string,
   outputChannel: LogOutputChannel,
-): Promise<string | undefined> {
-  const path = binaryPath(storagePath, toolName);
+): Promise<string> {
+  const bindingPkg = getBindingPackage(toolName);
+
+  outputChannel.info(`Fetching latest ${toolName} version from npm...`);
+  const mainInfo = await fetchNpmTarball(toolName);
+  const bindingInfo = await fetchNpmTarball(bindingPkg, mainInfo.version);
+
+  const nodeModules = join(storagePath, "node_modules");
+  const mainDir = join(nodeModules, toolName);
+  const bindingDir = join(nodeModules, ...bindingPkg.split("/"));
+
+  outputChannel.info(`Downloading ${toolName}@${mainInfo.version}...`);
+  await Promise.all([
+    downloadAndExtract(mainInfo.tarball, mainDir),
+    downloadAndExtract(bindingInfo.tarball, bindingDir),
+  ]);
+  await fs.writeFile(versionFile(storagePath, toolName), mainInfo.version);
+
+  const binPath = replaceTargetFromMainToBin(
+    require.resolve(toolName, { paths: [storagePath] }),
+    toolName,
+  );
+  outputChannel.info(`Installed ${toolName}@${mainInfo.version} at ${binPath}`);
+
+  return binPath;
+}
+
+/** Returns the path to a previously installed binary, or undefined. */
+export function getDownloadedBinaryPath(storagePath: string, toolName: string) {
   try {
-    await fs.access(path);
-    outputChannel.info(`Found downloaded ${toolName} binary at: ${path}`);
-    return path;
+    return replaceTargetFromMainToBin(
+      require.resolve(toolName, { paths: [storagePath] }),
+      toolName,
+    );
   } catch {
     return undefined;
   }
 }
 
-/** Fetch the latest version from the most recent `apps_v*` GitHub release. */
-async function fetchLatestVersion(): Promise<string> {
-  const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
-  if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
-
-  const releases = (await response.json()) as { tag_name: string }[];
-  const release = releases.find((r) => r.tag_name.startsWith("apps_v"));
-  if (!release) throw new Error("No apps release found");
-
-  return release.tag_name.replace("apps_v", "");
-}
-
-/** Download a tool binary from a GitHub release and extract it into storagePath. */
-async function downloadAndExtract(
-  storagePath: string,
-  toolName: ToolName,
-  version: string,
-  outputChannel: LogOutputChannel,
-): Promise<string> {
-  const { triple, ext } = getTarget();
-  const assetName = `${toolName}-${triple}${ext}`;
-  const url = `https://github.com/${GITHUB_REPO}/releases/download/apps_v${version}/${assetName}`;
-
-  outputChannel.info(`Downloading ${toolName} v${version} from ${url}`);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
-  const buffer = await response.arrayBuffer();
-
-  await fs.mkdir(storagePath, { recursive: true });
-  // Save the archive to disk, extract, then clean up.
-  const archivePath = join(storagePath, assetName);
-  await fs.writeFile(archivePath, Buffer.from(buffer));
-
-  if (ext === ".zip") new AdmZip(archivePath).extractAllTo(storagePath, true);
-  else await tar.extract({ file: archivePath, cwd: storagePath });
-  await fs.unlink(archivePath);
-
-  // The extracted binary is named with the full target triple (e.g. "oxlint-x86_64-apple-darwin").
-  // Rename it to a consistent name so getBinary can find it later.
-  const extractedName = `${toolName}-${triple}${process.platform === "win32" ? ".exe" : ""}`;
-  const finalPath = binaryPath(storagePath, toolName);
-  await fs.rename(join(storagePath, extractedName), finalPath);
-  // Ensure the binary is executable on Unix.
-  if (process.platform !== "win32") await fs.chmod(finalPath, 0o755);
-
-  // Persist version for future update checks.
-  await fs.writeFile(join(storagePath, "version"), version);
-  outputChannel.info(`Installed ${toolName} v${version} at ${finalPath}`);
-
-  return finalPath;
-}
-
-/** Prompt the user to download a missing binary, showing progress and offering reload on success. */
+/** Prompt the user to download a missing tool. */
 export async function promptDownloadBinary(
   storagePath: string,
-  toolName: ToolName,
+  toolName: string,
   outputChannel: LogOutputChannel,
 ): Promise<string | undefined> {
-  const choice = await window.showInformationMessage(
+  const confirm = await window.showInformationMessage(
     `${toolName} was not found. Would you like to download it?`,
     "Download",
     "Cancel",
   );
-
-  if (choice !== "Download") return undefined;
+  if (confirm !== "Download") return undefined;
 
   try {
     const result = await window.withProgress(
       { location: ProgressLocation.Notification, title: `Downloading ${toolName}...` },
-      async () => {
-        const version = await fetchLatestVersion();
-        return downloadAndExtract(storagePath, toolName, version, outputChannel);
-      },
+      () => install(storagePath, toolName, outputChannel),
     );
-
-    promptReload(`${toolName} has been downloaded. Reload to activate.`);
+    window.showInformationMessage(`${toolName} installed!`);
     return result;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    outputChannel.error(`Failed to download ${toolName}: ${msg}`);
-    window.showErrorMessage(`Failed to download ${toolName}: ${msg}`);
+    window.showErrorMessage(`Failed to install ${toolName}: ${e}`);
     return undefined;
   }
 }
 
-/** Ask the user to reload the window. */
-function promptReload(message: string) {
-  window.showInformationMessage(message, "Reload").then((action) => {
-    if (action === "Reload") commands.executeCommand("workbench.action.reloadWindow");
-  });
-}
-
-/** Check for a newer version and download it if available. Returns true if updated. */
+/** Check for a newer version and install it if available. */
 export async function checkForUpdate(
   storagePath: string,
-  toolName: ToolName,
+  toolName: string,
   outputChannel: LogOutputChannel,
-): Promise<boolean> {
+) {
+  const currentVersion = await fs
+    .readFile(versionFile(storagePath, toolName), "utf-8")
+    .catch(() => "");
+  if (!currentVersion) return false;
+
   try {
-    const versionFile = join(storagePath, "version");
-    const currentVersion = await fs.readFile(versionFile, "utf-8").catch(() => "");
+    const { version: latest } = await fetchNpmTarball(toolName);
+    if (latest === currentVersion) return false;
 
-    const version = await fetchLatestVersion();
-    if (version === currentVersion) return false;
-
-    outputChannel.info(`Updating ${toolName} from ${currentVersion || "unknown"} to ${version}`);
-    await downloadAndExtract(storagePath, toolName, version, outputChannel);
-    promptReload(`${toolName} has been updated to v${version}. Reload to apply.`);
+    outputChannel.info(`Updating ${toolName} to ${latest}...`);
+    await install(storagePath, toolName, outputChannel);
     return true;
   } catch (e) {
-    outputChannel.error(
-      `Update check failed for ${toolName}: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    outputChannel.warn(`Update failed for ${toolName}: ${e}`);
     return false;
   }
 }

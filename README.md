@@ -9,6 +9,8 @@ Any of the below options can be used to install the extension.
 - Install through the VS Code extensions marketplace by searching for `Oxc`. Verify the identifier is `oxc.oxc-vscode`.
 - From within VS Code, open the Quick Open (Ctrl+P or Cmd+P on macOS) and execute `ext install oxc.oxc-vscode`.
 
+If the extension cannot find `oxlint` or `oxfmt` binaries in your project's `node_modules`, it will offer to download them automatically. When using this auto-download feature, you must enable the `oxc.useExecPath` setting so the extension uses VS Code's bundled Node.js runtime to run the downloaded binaries, rather than requiring a system Node.js installation.
+
 ## Oxlint
 
 This is the linter for Oxc. The currently supported features are listed below.
