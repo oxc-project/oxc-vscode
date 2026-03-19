@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import * as os from "node:os";
 
-import { env, MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
+import { env, MarkdownString, StatusBarAlignment, StatusBarItem, version, window } from "vscode";
 
 type StatusBarTool = "linter" | "formatter";
 
@@ -106,7 +106,7 @@ export default class StatusBarItemHandler {
       `VS Code extension: v${this.extensionVersion}`,
       `oxlint: v${linterVersion}`,
       `oxfmt: v${formatterVersion}`,
-      `Editor: ${env.appName} ${env.appHost}`,
+      `Editor: ${env.appName} v${version} (${env.appHost})`,
       `Operating System and Version: ${osName} (${os.arch()})`,
       `Node Version: ${nodeVersion} (${nodeCommand})`,
       "```",
