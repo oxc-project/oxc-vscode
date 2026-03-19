@@ -185,17 +185,20 @@ suite("StatusBarItemHandler", () => {
 
       const clipboardContent = await env.clipboard.readText();
 
-      ok(clipboardContent.includes("VS Code extension: v1.50.0"), "should include extension version");
+      ok(
+        clipboardContent.includes("VS Code extension: v1.50.0"),
+        "should include extension version",
+      );
       ok(clipboardContent.includes("oxlint: v0.16.0"), "should include oxlint version");
       ok(clipboardContent.includes("oxfmt: v0.5.0"), "should include oxfmt version");
       ok(clipboardContent.includes("Editor:"), "should include editor info");
-      ok(
-        clipboardContent.includes("Operating System and Version:"),
-        "should include OS info",
-      );
+      ok(clipboardContent.includes("Operating System and Version:"), "should include OS info");
       ok(clipboardContent.includes("Node Version:"), "should include Node version");
       // Everything should be inside a single code fence
-      ok(clipboardContent.includes("```\nVS Code extension:"), "should start code fence before versions");
+      ok(
+        clipboardContent.includes("```\nVS Code extension:"),
+        "should start code fence before versions",
+      );
       ok(clipboardContent.endsWith("```"), "should end with code fence");
     });
 
@@ -219,10 +222,7 @@ suite("StatusBarItemHandler", () => {
 
       const clipboardContent = await env.clipboard.readText();
 
-      ok(
-        clipboardContent.includes(`(${process.execPath})`),
-        "should show the custom node path",
-      );
+      ok(clipboardContent.includes(`(${process.execPath})`), "should show the custom node path");
     });
 
     test("uses execPath when useExecPath is true", async () => {
