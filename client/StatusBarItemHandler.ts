@@ -1,4 +1,7 @@
-import { MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
+import { execFile } from "node:child_process";
+import * as os from "node:os";
+
+import { env, MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
 
 type StatusBarTool = "linter" | "formatter";
 
@@ -82,6 +85,66 @@ export default class StatusBarItemHandler {
     } else {
       // No tools are enabled.
       return "circle-slash";
+    }
+  }
+
+  public async copyDebugInfo(nodePath?: string, useExecPath?: boolean): Promise<void> {
+    const linter = this.tooltipSections.get("linter")!;
+    const formatter = this.tooltipSections.get("formatter")!;
+
+    const linterVersion = linter.version ?? "unknown";
+    const formatterVersion = formatter.version ?? "unknown";
+
+    const osName = this.getOsName();
+    const nodeCommand = this.resolveNodeCommand(nodePath, useExecPath);
+    const nodeVersion = await this.getNodeVersion(nodeCommand);
+
+    const info = [
+      "### Used Versions",
+      "",
+      "```",
+      `VS Code extension: v${this.extensionVersion}`,
+      `oxlint: v${linterVersion}`,
+      `oxfmt: v${formatterVersion}`,
+      `Editor: ${env.appName} ${env.appHost}`,
+      `Operating System and Version: ${osName} (${os.arch()})`,
+      `Node Version: ${nodeVersion} (${nodeCommand})`,
+      "```",
+    ].join("\n");
+
+    await env.clipboard.writeText(info);
+    window.showInformationMessage("Debug info copied to clipboard.");
+  }
+
+  private resolveNodeCommand(nodePath?: string, useExecPath?: boolean): string {
+    if (useExecPath) {
+      return process.execPath || nodePath || "node";
+    }
+    return nodePath || "node";
+  }
+
+  private getNodeVersion(nodeCommand: string): Promise<string> {
+    return new Promise((resolve) => {
+      execFile(nodeCommand, ["--version"], { timeout: 5000 }, (error, stdout) => {
+        if (error) {
+          resolve("unknown");
+        } else {
+          resolve(stdout.trim());
+        }
+      });
+    });
+  }
+
+  private getOsName(): string {
+    switch (os.platform()) {
+      case "darwin":
+        return `macOS ${os.release()}`;
+      case "win32":
+        return `Windows ${os.release()}`;
+      case "linux":
+        return `Linux ${os.release()}`;
+      default:
+        return `${os.platform()} ${os.release()}`;
     }
   }
 

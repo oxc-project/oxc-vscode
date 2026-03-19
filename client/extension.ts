@@ -28,12 +28,21 @@ export async function activate(context: ExtensionContext) {
     log: true,
   });
 
+  const statusBarItemHandler = new StatusBarItemHandler(context.extension.packageJSON?.version);
+
   const showOutputLintCommand = commands.registerCommand(OxcCommands.ShowOutputChannelLint, () => {
     outputChannelLint.show();
   });
 
   const showOutputFmtCommand = commands.registerCommand(OxcCommands.ShowOutputChannelFmt, () => {
     outputChannelFormat.show();
+  });
+
+  const copyDebugInfoCommand = commands.registerCommand(OxcCommands.CopyDebugInfo, async () => {
+    await statusBarItemHandler.copyDebugInfo(
+      configService.vsCodeConfig.nodePath,
+      configService.vsCodeConfig.useExecPath,
+    );
   });
 
   const onDidChangeWorkspaceFoldersDispose = workspace.onDidChangeWorkspaceFolders(
@@ -47,11 +56,10 @@ export async function activate(context: ExtensionContext) {
     },
   );
 
-  const statusBarItemHandler = new StatusBarItemHandler(context.extension.packageJSON?.version);
-
   context.subscriptions.push(
     showOutputLintCommand,
     showOutputFmtCommand,
+    copyDebugInfoCommand,
     configService,
     outputChannelLint,
     outputChannelFormat,

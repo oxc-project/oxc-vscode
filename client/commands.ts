@@ -13,4 +13,7 @@ export const enum OxcCommands {
   // only for formatter.ts usage
   RestartServerFmt = `${commandPrefix}.restartServerFormatter`,
   ToggleEnableFmt = `${commandPrefix}.toggleEnableFormatter`,
+
+  // always available
+  CopyDebugInfo = `${commandPrefix}.copyDebugInfo`,
 }

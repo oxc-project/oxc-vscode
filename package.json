@@ -100,6 +100,11 @@
         "command": "oxc.applyAllFixesFile",
         "title": "Fix all auto-fixable problems (file)",
         "category": "Oxc"
+      },
+      {
+        "command": "oxc.copyDebugInfo",
+        "title": "Copy Debug Info",
+        "category": "Oxc"
       }
     ],
     "configuration": {

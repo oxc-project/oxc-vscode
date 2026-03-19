@@ -28,7 +28,11 @@ suite("commands", () => {
   testSingleFolderMode("listed commands", async () => {
     const oxcCommands = (await commands.getCommands(true)).filter((x) => x.startsWith("oxc."));
 
-    const expectedCommands = ["oxc.showOutputChannel", "oxc.showOutputChannelFormatter"];
+    const expectedCommands = [
+      "oxc.showOutputChannel",
+      "oxc.showOutputChannelFormatter",
+      "oxc.copyDebugInfo",
+    ];
 
     if (process.env.SKIP_LINTER_TEST !== "true") {
       expectedCommands.push(
