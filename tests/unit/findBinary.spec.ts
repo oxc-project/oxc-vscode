@@ -152,29 +152,21 @@ suite("findBinary", () => {
       strictEqual(result, undefined);
     });
 
-    test("should find binary via mock .pnp.cjs", async () => {
-      const pkgDir = path.join(tmpDir, "node_modules", binaryName);
-      mkdirSync(path.join(pkgDir, "bin"), { recursive: true });
+    test("should return undefined when .pnp.cjs exists but binary is not installed", async () => {
+      // Create a .pnp.cjs that rejects all resolve requests in the workspace folder
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+      const pnpPath = path.join(workspacePath, ".pnp.cjs");
       writeFileSync(
-        path.join(pkgDir, "package.json"),
-        JSON.stringify({ name: binaryName, bin: { [binaryName]: "bin/oxlint.mjs" } }),
-      );
-      writeFileSync(path.join(pkgDir, "bin", "oxlint.mjs"), "");
-      writeFileSync(path.join(pkgDir, "index.js"), "");
-
-      const mainPath = path.join(pkgDir, "index.js");
-      writeFileSync(
-        path.join(tmpDir, ".pnp.cjs"),
-        `module.exports = { resolveRequest: function(req, issuer) { return ${JSON.stringify(mainPath)}; } };`,
+        pnpPath,
+        `module.exports = { resolveRequest: function(req, issuer) { throw new Error("not found"); } };`,
       );
 
-      // Note: this test verifies the PnP resolution logic works when .pnp.cjs exists
-      // in the workspace root. Full integration testing requires a real Yarn PnP project.
-      // The workspace mock does not include tmpDir, so this exercises the code path
-      // where no workspace folder matches the PnP file location.
-      const result = await searchYarnPnpBin(binaryName);
-      // Returns undefined because tmpDir is not a registered workspace folder
-      strictEqual(result, undefined);
+      try {
+        const result = await searchYarnPnpBin(binaryName);
+        strictEqual(result, undefined);
+      } finally {
+        rmSync(pnpPath, { force: true });
+      }
     });
   });
 
