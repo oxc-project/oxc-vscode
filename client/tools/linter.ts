@@ -122,6 +122,7 @@ export default class LinterTool implements ToolInterface {
       configService.vsCodeConfig.nodePath,
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressProgramErrors,
+      configService.pnpLoaderPath,
     );
     const serverOptions: ServerOptions = {
       run,

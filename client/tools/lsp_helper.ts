@@ -9,6 +9,7 @@ export function runExecutable(
   nodePath?: string,
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
+  pnpLoaderPath?: string,
 ): Executable {
   const serverEnv: Record<string, string> = {
     ...process.env,
@@ -48,10 +49,14 @@ export function runExecutable(
 
   const isWindows = process.platform === "win32";
 
+  // In Yarn PnP environments, inject the PnP loader so that require() calls
+  // within the binary (e.g., oxlint's NAPI-RS bindings) can resolve dependencies.
+  const pnpArgs = pnpLoaderPath ? ["--require", pnpLoaderPath] : [];
+
   return isNode || useExecPath
     ? {
         command: nodeCommand,
-        args: [binaryPath, "--lsp"],
+        args: [...pnpArgs, binaryPath, "--lsp"],
         options: {
           env: serverEnv,
         },
