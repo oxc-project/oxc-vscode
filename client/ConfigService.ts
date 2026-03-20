@@ -87,6 +87,9 @@ export class ConfigService implements IDisposable {
     return false;
   }
 
+  /** Path to the Yarn PnP loader (.pnp.cjs), set when a binary is found via PnP. */
+  public pnpLoaderPath: string | undefined;
+
   public async getOxlintServerBinPath(): Promise<string | undefined> {
     return this.searchBinaryPath(this.vsCodeConfig.binPathOxlint, "oxlint");
   }
@@ -120,11 +123,16 @@ export class ConfigService implements IDisposable {
       return searchSettingsBin(settingsBinary);
     }
 
-    return (
-      (await searchProjectNodeModulesBin(defaultBinaryName)) ??
-      (await searchYarnPnpBin(defaultBinaryName)) ??
-      (await searchGlobalNodeModulesBin(defaultBinaryName))
-    );
+    const projectBin = await searchProjectNodeModulesBin(defaultBinaryName);
+    if (projectBin) return projectBin;
+
+    const pnpResult = await searchYarnPnpBin(defaultBinaryName);
+    if (pnpResult) {
+      this.pnpLoaderPath = pnpResult.pnpLoaderPath;
+      return pnpResult.binPath;
+    }
+
+    return searchGlobalNodeModulesBin(defaultBinaryName);
   }
 
   private async onVscodeConfigChange(event: ConfigurationChangeEvent): Promise<void> {
