@@ -4,6 +4,7 @@ import {
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
   searchSettingsBin,
+  searchYarnPnpBin,
 } from "./findBinary";
 import { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";
@@ -121,6 +122,7 @@ export class ConfigService implements IDisposable {
 
     return (
       (await searchProjectNodeModulesBin(defaultBinaryName)) ??
+      (await searchYarnPnpBin(defaultBinaryName)) ??
       (await searchGlobalNodeModulesBin(defaultBinaryName))
     );
   }
