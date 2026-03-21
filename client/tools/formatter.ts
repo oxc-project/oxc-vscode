@@ -1,8 +1,25 @@
 import { promises as fsPromises } from "node:fs";
 
-import { commands, ConfigurationChangeEvent, LogOutputChannel, Uri, window } from "vscode";
+import {
+  CodeAction,
+  CodeActionKind,
+  commands,
+  ConfigurationChangeEvent,
+  languages,
+  LogOutputChannel,
+  TextEdit,
+  Uri,
+  window,
+  workspace,
+  WorkspaceEdit,
+  TextDocument,
+} from "vscode";
 
-import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
+import {
+  ConfigurationParams,
+  DocumentFormattingRequest,
+  ShowMessageNotification,
+} from "vscode-languageclient";
 
 import {
   Executable,
@@ -18,6 +35,8 @@ import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 
 const languageClientName = "oxc";
+
+const formatCodeActionKind = CodeActionKind.Source.append("format.oxc");
 
 export default class FormatterTool implements ToolInterface {
   // LSP client instance
@@ -64,6 +83,47 @@ export default class FormatterTool implements ToolInterface {
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
       await configService.vsCodeConfig.updateEnableOxfmt(!configService.vsCodeConfig.enableOxfmt);
     });
+
+    const formatDocumentCommand = commands.registerCommand(
+      OxcCommands.FormatDocument,
+      async (args) => {
+        if (!args || !args.uri) {
+          window.showErrorMessage("No document URI provided for formatting");
+          return;
+        }
+        const document = workspace.textDocuments.find((doc) => doc.uri.toString() === args.uri);
+
+        if (!document) {
+          window.showErrorMessage("Document not found for formatting");
+          return;
+        }
+
+        await this.formatCodeActions(document);
+      },
+    );
+
+    const formatAction = languages.registerCodeActionsProvider(
+      "*",
+      {
+        provideCodeActions: async (document, _range, context) => {
+          if (context.only?.value !== "source.format.oxc") {
+            return;
+          }
+
+          const action = new CodeAction("Format Document with oxfmt", formatCodeActionKind);
+
+          action.command = {
+            command: OxcCommands.FormatDocument,
+            title: "Format Document with oxfmt",
+            arguments: [{ uri: document.uri.toString() }],
+          };
+          return [action];
+        },
+      },
+      {
+        providedCodeActionKinds: [formatCodeActionKind],
+      },
+    );
 
     outputChannel.info(`Using server binary at: ${binaryPath}`);
 
@@ -340,6 +400,8 @@ export default class FormatterTool implements ToolInterface {
       await this.client?.dispose();
       restartCommand.dispose();
       toggleEnable.dispose();
+      formatAction.dispose();
+      formatDocumentCommand.dispose();
       onNotificationDispose.dispose();
     };
 
@@ -449,5 +511,32 @@ export default class FormatterTool implements ToolInterface {
       text,
       this.client?.initializeResult?.serverInfo?.version,
     );
+  }
+
+  async formatCodeActions(document: TextDocument): Promise<void> {
+    if (!this.client) {
+      window.showErrorMessage("oxfmt client not found");
+      return;
+    }
+    const textEdits: TextEdit[] | null = await this.client.sendRequest(
+      DocumentFormattingRequest.method,
+      {
+        textDocument: {
+          uri: document.uri.toString(),
+        },
+        options: {
+          tabSize: 2,
+          insertSpaces: true,
+        },
+      },
+    );
+
+    if (!textEdits) {
+      return;
+    }
+
+    const workspaceEdit = new WorkspaceEdit();
+    workspaceEdit.set(document.uri, textEdits);
+    await workspace.applyEdit(workspaceEdit);
   }
 }
