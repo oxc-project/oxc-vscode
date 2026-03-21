@@ -87,11 +87,12 @@ export default class FormatterTool implements ToolInterface {
     const formatDocumentCommand = commands.registerCommand(
       OxcCommands.FormatDocument,
       async (args) => {
-        if (!args || !args.uri) {
-          window.showErrorMessage("No document URI provided for formatting");
-          return;
+        let document: TextDocument | undefined;
+        if (args?.uri) {
+          document = workspace.textDocuments.find((doc) => doc.uri.toString() === args.uri);
+        } else {
+          document = window.activeTextEditor?.document;
         }
-        const document = workspace.textDocuments.find((doc) => doc.uri.toString() === args.uri);
 
         if (!document) {
           window.showErrorMessage("Document not found for formatting");
