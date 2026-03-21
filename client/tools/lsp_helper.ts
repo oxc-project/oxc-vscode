@@ -49,9 +49,16 @@ export function runExecutable(
 
   const isWindows = process.platform === "win32";
 
-  // In Yarn PnP environments, inject the PnP loader so that require() calls
-  // within the binary (e.g., oxlint's NAPI-RS bindings) can resolve dependencies.
-  const pnpArgs = pnpLoaderPath ? ["--require", pnpLoaderPath] : [];
+  // In Yarn PnP environments, inject the PnP loaders so that both CJS require()
+  // and ESM import calls can resolve dependencies through PnP.
+  // --require .pnp.cjs: patches CJS resolution (e.g., oxlint's NAPI-RS bindings via createRequire)
+  // --loader .pnp.loader.mjs: patches ESM resolution (e.g., oxfmt's tinypool import)
+  const pnpArgs: string[] = [];
+  if (pnpLoaderPath) {
+    pnpArgs.push("--require", pnpLoaderPath);
+    const esmLoaderPath = path.join(path.dirname(pnpLoaderPath), ".pnp.loader.mjs");
+    pnpArgs.push("--loader", esmLoaderPath);
+  }
 
   return isNode || useExecPath
     ? {
