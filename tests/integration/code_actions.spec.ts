@@ -21,6 +21,8 @@ import {
 } from "../test-helpers";
 import assert = require("assert");
 
+const LE = process.platform === "win32" ? "\r\n" : "\n";
+
 suiteSetup(async () => {
   await activateExtension();
 });
@@ -35,7 +37,7 @@ teardown(async () => {
   await deleteFixtures();
 });
 
-suite("code actions", () => {
+suite("code actions linter", () => {
   // Skip tests if linter tests are disabled
   if (process.env.SKIP_LINTER_TEST === "true") {
     return;
@@ -214,5 +216,45 @@ suite("code actions", () => {
       (action) => action.kind?.value === "quickfix",
     );
     strictEqual(quickFixesWithFix.length, 1);
+  });
+});
+
+suite("code actions formatter", () => {
+  // Skip tests if formatter tests are disabled
+  if (process.env.SKIP_FORMATTER_TEST === "true") {
+    return;
+  }
+
+  test("code action `source.format.oxc` on editor.codeActionsOnSave", async () => {
+    // no need for default formatter or formatOnSave editor configuration.
+    await workspace.getConfiguration("editor").update("codeActionsOnSave", {
+      "source.format.oxc": "always",
+    });
+    await workspace.saveAll();
+    await loadFixture("formatting");
+
+    await sleep(500);
+
+    const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "formatting.ts");
+
+    const range = new Range(new Position(0, 0), new Position(0, 0));
+    const edit = new WorkspaceEdit();
+    edit.replace(fileUri, range, " ");
+
+    await sleep(1000);
+
+    await loadFixture("fixall_code_action_ignore_only_disable_fix");
+    await workspace.openTextDocument(fileUri);
+    await workspace.applyEdit(edit);
+    await sleep(1000);
+    await workspace.saveAll();
+    await sleep(500);
+
+    const content = await workspace.fs.readFile(fileUri);
+
+    strictEqual(
+      content.toString(),
+      `class X {${LE}  foo() {${LE}    return 42;${LE}  }${LE}}${LE}`,
+    );
   });
 });
