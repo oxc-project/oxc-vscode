@@ -28,6 +28,7 @@ import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
+import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -50,17 +51,17 @@ export default class LinterTool implements ToolInterface {
   async getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
-  ): Promise<string | undefined> {
+  ): Promise<BinarySearchResult | undefined> {
     if (process.env.SERVER_PATH_DEV) {
-      return process.env.SERVER_PATH_DEV;
+      return { path: process.env.SERVER_PATH_DEV, loader: "native" };
     }
     const bin = await configService.getOxlintServerBinPath();
     if (bin) {
       try {
-        await fsPromises.access(bin);
+        await fsPromises.access(bin.path);
         return bin;
       } catch (e) {
-        outputChannel.error(`Invalid bin path: ${bin}`, e);
+        outputChannel.error(`Invalid bin path: ${bin.path}`, e);
       }
     }
   }
@@ -69,9 +70,9 @@ export default class LinterTool implements ToolInterface {
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
-    binaryPath?: string,
+    binary?: BinarySearchResult,
   ): Promise<void> {
-    if (!binaryPath) {
+    if (!binary) {
       statusBarItemHandler.updateTool("linter", false, "No valid oxlint binary found.");
       outputChannel.appendLine("No valid oxlint binary found. Linter will not be activated.");
       return Promise.resolve();
@@ -116,20 +117,18 @@ export default class LinterTool implements ToolInterface {
     });
 
     const run: Executable = runExecutable(
-      binaryPath,
-      "oxlint",
+      binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
       configService.vsCodeConfig.binPathTsGoLint,
       configService.vsCodeConfig.suppressProgramErrors,
-      configService.pnpLoaderPath,
     );
     const serverOptions: ServerOptions = {
       run,
       debug: run,
     };
 
-    outputChannel.info(`Using server binary at: ${binaryPath}`);
+    outputChannel.info(`Using server binary at: ${binary?.path}`);
 
     // see https://github.com/oxc-project/oxc/blob/9b475ad05b750f99762d63094174be6f6fc3c0eb/crates/oxc_linter/src/loader/partial_loader/mod.rs#L17-L20
     const supportedExtensions = [

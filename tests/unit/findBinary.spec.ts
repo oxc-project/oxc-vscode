@@ -78,8 +78,9 @@ suite("findBinary", () => {
     test("should replace dist/index.js with bin/<binary-name> in resolved path", async () => {
       const result = (await searchProjectNodeModulesBin(binaryName))!;
 
-      strictEqual(result.includes(`${path.sep}dist${path.sep}index.js`), false);
-      strictEqual(result.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+      strictEqual(result.loader, "node");
+      strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
+      strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
     });
 
     test("should fallback to workspace node_modules/.bin when package resolve fails", async () => {
@@ -94,7 +95,8 @@ suite("findBinary", () => {
       try {
         const result = await searchProjectNodeModulesBin(fallbackBinaryName);
 
-        strictEqual(result, fallbackPath);
+        strictEqual(result?.loader, "native");
+        strictEqual(result?.path, fallbackPath);
       } finally {
         await workspace.fs.delete(Uri.file(fallbackPath));
       }
@@ -120,7 +122,8 @@ suite("findBinary", () => {
       try {
         const result = await searchProjectNodeModulesBin(fallbackBinaryName);
 
-        strictEqual(result, nestedBinPath);
+        strictEqual(result?.loader, "native");
+        strictEqual(result?.path, nestedBinPath);
       } finally {
         clearWorkspacePackageJsonNodeModulesCache();
         await workspace.fs.delete(Uri.file(path.join(workspacePath, "packages")), {
@@ -180,8 +183,9 @@ suite("findBinary", () => {
     test.skip("should replace dist/index.js with bin/<binary-name> in resolved path", async () => {
       const result = (await searchGlobalNodeModulesBin(binaryName))!;
 
-      strictEqual(result.includes(`${path.sep}dist${path.sep}index.js`), false);
-      strictEqual(result.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+      strictEqual(result.loader, "node");
+      strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
+      strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
     });
   });
 });

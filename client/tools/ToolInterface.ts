@@ -1,6 +1,7 @@
 import { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
+import type { BinarySearchResult } from "../findBinary";
 
 export default interface ToolInterface {
   /**
@@ -9,7 +10,7 @@ export default interface ToolInterface {
   getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
-  ): Promise<string | undefined>;
+  ): Promise<BinarySearchResult | undefined>;
   /**
    * Activates the tool and initializes any necessary resources.
    */
@@ -17,7 +18,7 @@ export default interface ToolInterface {
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
-    binaryPath?: string,
+    binary?: BinarySearchResult,
   ): Promise<void>;
 
   /**

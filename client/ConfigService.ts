@@ -1,6 +1,7 @@
 import { ConfigurationChangeEvent, Uri, workspace, WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import {
+  BinarySearchResult,
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
   searchSettingsBin,
@@ -87,14 +88,11 @@ export class ConfigService implements IDisposable {
     return false;
   }
 
-  /** Path to the Yarn PnP loader (.pnp.cjs), set when a binary is found via PnP. */
-  public pnpLoaderPath: string | undefined;
-
-  public async getOxlintServerBinPath(): Promise<string | undefined> {
+  public async getOxlintServerBinPath(): Promise<BinarySearchResult | undefined> {
     return this.searchBinaryPath(this.vsCodeConfig.binPathOxlint, "oxlint");
   }
 
-  public async getOxfmtServerBinPath(): Promise<string | undefined> {
+  public async getOxfmtServerBinPath(): Promise<BinarySearchResult | undefined> {
     return this.searchBinaryPath(this.vsCodeConfig.binPathOxfmt, "oxfmt");
   }
 
@@ -118,21 +116,16 @@ export class ConfigService implements IDisposable {
   private async searchBinaryPath(
     settingsBinary: string | undefined,
     defaultBinaryName: string,
-  ): Promise<string | undefined> {
+  ): Promise<BinarySearchResult | undefined> {
     if (settingsBinary) {
-      return searchSettingsBin(settingsBinary);
+      return searchSettingsBin(defaultBinaryName, settingsBinary);
     }
 
-    const projectBin = await searchProjectNodeModulesBin(defaultBinaryName);
-    if (projectBin) return projectBin;
-
-    const pnpResult = await searchYarnPnpBin(defaultBinaryName);
-    if (pnpResult) {
-      this.pnpLoaderPath = pnpResult.pnpLoaderPath;
-      return pnpResult.binPath;
-    }
-
-    return searchGlobalNodeModulesBin(defaultBinaryName);
+    return (
+      (await searchProjectNodeModulesBin(defaultBinaryName)) ??
+      (await searchYarnPnpBin(defaultBinaryName)) ??
+      (await searchGlobalNodeModulesBin(defaultBinaryName))
+    );
   }
 
   private async onVscodeConfigChange(event: ConfigurationChangeEvent): Promise<void> {
