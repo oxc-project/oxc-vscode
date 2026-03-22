@@ -171,6 +171,28 @@ suite("findBinary", () => {
         rmSync(pnpPath, { force: true });
       }
     });
+
+    test("should detect binary using .pnp.cjs", async () => {
+      // Create a .pnp.cjs that resolves the binary path in the workspace folder
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+      const pnpPath = path.join(workspacePath, ".pnp.cjs");
+      writeFileSync(
+        pnpPath,
+        `module.exports = { resolveRequest: function(req, issuer) { return '${process.env.YARN_FOUND_BIN}'; } };`,
+      );
+
+      try {
+        const result = await searchYarnPnpBin(binaryName);
+        strictEqual(result?.loader, "node");
+        strictEqual(
+          result?.path,
+          process.env.YARN_FOUND_BIN!.replace(`dist${path.sep}cli.js`, `bin${path.sep}oxlint`),
+        );
+        strictEqual(result?.yarnPnpLoaderPath, pnpPath);
+      } finally {
+        rmSync(pnpPath, { force: true });
+      }
+    });
   });
 
   suite("searchGlobalNodeModulesBin", () => {
