@@ -178,7 +178,7 @@ suite("findBinary", () => {
       const pnpPath = path.join(workspacePath, ".pnp.cjs");
       writeFileSync(
         pnpPath,
-        `module.exports = { resolveRequest: function(req, issuer) { return '${process.env.YARN_FOUND_BIN}'; } };`,
+        `module.exports = { resolveRequest: function(req, issuer) { return '${process.env.YARN_FOUND_BIN?.replaceAll("\\", "\\\\")}'; } };`,
       );
 
       try {
