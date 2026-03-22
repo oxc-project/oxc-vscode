@@ -37,6 +37,7 @@ const allTestSuites = new Map([
       workspaceFolder: multiRootWorkspaceFile,
       env: {
         MULTI_FOLDER_WORKSPACE: "true",
+        YARN_FOUND_BIN: path.resolve(import.meta.dirname, "node_modules/oxlint/dist/cli.js"),
       },
     },
   ],

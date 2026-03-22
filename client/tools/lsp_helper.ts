@@ -1,10 +1,10 @@
 import * as path from "node:path";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
+import type { BinarySearchResult } from "../findBinary";
 
 export function runExecutable(
-  binaryPath: string,
-  nodeBinName: string,
+  binary: BinarySearchResult,
   useExecPath: boolean = false,
   nodePath?: string,
   tsgolintPath?: string,
@@ -26,11 +26,7 @@ export function runExecutable(
   // the path is defined in `ConfigService.searchNodeModulesBin`
   // Probably it would be better to read the shebang for unknown extensions, and run with `node` if the shebang contains `node`,
   // but for now we can just check for common node extensions and the known path for `oxlint`
-  const isNode =
-    binaryPath.endsWith(".js") ||
-    binaryPath.endsWith(".cjs") ||
-    binaryPath.endsWith(".mjs") ||
-    binaryPath.endsWith(`${nodeBinName}${path.sep}bin${path.sep}${nodeBinName}`);
+  const isNode = binary.loader === "node";
 
   let nodeCommand: string;
   if (useExecPath) {
@@ -48,17 +44,28 @@ export function runExecutable(
 
   const isWindows = process.platform === "win32";
 
+  // In Yarn PnP environments, inject the PnP loaders so that both CJS require()
+  // and ESM import calls can resolve dependencies through PnP.
+  // --require .pnp.cjs: patches CJS resolution (e.g., oxlint's NAPI-RS bindings via createRequire)
+  // --loader .pnp.loader.mjs: patches ESM resolution (e.g., oxfmt's tinypool import)
+  const pnpArgs: string[] = [];
+  if (isNode && binary.yarnPnpLoaderPath) {
+    pnpArgs.push("--require", binary.yarnPnpLoaderPath);
+    const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
+    pnpArgs.push("--loader", esmLoaderPath);
+  }
+
   return isNode || useExecPath
     ? {
         command: nodeCommand,
-        args: [binaryPath, "--lsp"],
+        args: [...pnpArgs, binary.path, "--lsp"],
         options: {
           env: serverEnv,
         },
       }
     : {
         // On Windows with shell, quote the command path to handle spaces in usernames/paths
-        command: isWindows ? `"${binaryPath}"` : binaryPath,
+        command: isWindows ? `"${binary.path}"` : binary.path,
         args: ["--lsp"],
         options: {
           // On Windows we need to run the binary in a shell to be able to execute the shell npm bin script.

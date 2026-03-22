@@ -8,6 +8,7 @@ import {
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
+  searchYarnPnpBin,
 } from "../../client/findBinary";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
 
@@ -77,8 +78,9 @@ suite("findBinary", () => {
     test("should replace dist/index.js with bin/<binary-name> in resolved path", async () => {
       const result = (await searchProjectNodeModulesBin(binaryName))!;
 
-      strictEqual(result.includes(`${path.sep}dist${path.sep}index.js`), false);
-      strictEqual(result.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+      strictEqual(result.loader, "node");
+      strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
+      strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
     });
 
     test("should fallback to workspace node_modules/.bin when package resolve fails", async () => {
@@ -93,7 +95,8 @@ suite("findBinary", () => {
       try {
         const result = await searchProjectNodeModulesBin(fallbackBinaryName);
 
-        strictEqual(result, fallbackPath);
+        strictEqual(result?.loader, "native");
+        strictEqual(result?.path, fallbackPath);
       } finally {
         await workspace.fs.delete(Uri.file(fallbackPath));
       }
@@ -119,12 +122,75 @@ suite("findBinary", () => {
       try {
         const result = await searchProjectNodeModulesBin(fallbackBinaryName);
 
-        strictEqual(result, nestedBinPath);
+        strictEqual(result?.loader, "native");
+        strictEqual(result?.path, nestedBinPath);
       } finally {
         clearWorkspacePackageJsonNodeModulesCache();
         await workspace.fs.delete(Uri.file(path.join(workspacePath, "packages")), {
           recursive: true,
         });
+      }
+    });
+  });
+
+  suite("searchYarnPnpBin", () => {
+    let tmpDir: string;
+
+    setup(() => {
+      tmpDir = mkdtempSync(path.join(tmpdir(), "test-pnp-"));
+    });
+
+    teardown(() => {
+      rmSync(tmpDir, { recursive: true, force: true });
+      // Clear require cache for any .pnp.cjs files we created
+      for (const key of Object.keys(require.cache)) {
+        if (key.includes(".pnp.")) {
+          delete require.cache[key];
+        }
+      }
+    });
+
+    test("should return undefined when no .pnp.cjs exists", async () => {
+      const result = await searchYarnPnpBin("non-existent-binary");
+      strictEqual(result, undefined);
+    });
+
+    test("should return undefined when .pnp.cjs exists but binary is not installed", async () => {
+      // Create a .pnp.cjs that rejects all resolve requests in the workspace folder
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+      const pnpPath = path.join(workspacePath, ".pnp.cjs");
+      writeFileSync(
+        pnpPath,
+        `module.exports = { resolveRequest: function(req, issuer) { throw new Error("not found"); } };`,
+      );
+
+      try {
+        const result = await searchYarnPnpBin(binaryName);
+        strictEqual(result, undefined);
+      } finally {
+        rmSync(pnpPath, { force: true });
+      }
+    });
+
+    test("should detect binary using .pnp.cjs", async () => {
+      // Create a .pnp.cjs that resolves the binary path in the workspace folder
+      const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+      const pnpPath = path.join(workspacePath, ".pnp.cjs");
+      writeFileSync(
+        pnpPath,
+        `module.exports = { resolveRequest: function(req, issuer) { return '${process.env.YARN_FOUND_BIN?.replaceAll("\\", "\\\\")}'; } };`,
+      );
+
+      try {
+        const result = await searchYarnPnpBin(binaryName);
+        strictEqual(result?.loader, "node");
+        strictEqual(
+          result?.path,
+          process.env.YARN_FOUND_BIN!.replace(`dist${path.sep}cli.js`, `bin${path.sep}oxlint`),
+        );
+        strictEqual(result?.yarnPnpLoaderPath, pnpPath);
+      } finally {
+        rmSync(pnpPath, { force: true });
       }
     });
   });
@@ -139,8 +205,9 @@ suite("findBinary", () => {
     test.skip("should replace dist/index.js with bin/<binary-name> in resolved path", async () => {
       const result = (await searchGlobalNodeModulesBin(binaryName))!;
 
-      strictEqual(result.includes(`${path.sep}dist${path.sep}index.js`), false);
-      strictEqual(result.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+      strictEqual(result.loader, "node");
+      strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
+      strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
     });
   });
 });

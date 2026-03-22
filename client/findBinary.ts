@@ -5,6 +5,12 @@ import * as path from "node:path";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 
+export type BinarySearchResult = {
+  path: string;
+  loader: "node" | "native";
+  yarnPnpLoaderPath?: string; // only set if loader is 'node' and found via Yarn PnP
+};
+
 /** @internal only used for testing */
 export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
   // Walk up from the resolved main file to find the nearest package.json
@@ -33,7 +39,7 @@ export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: str
 async function searchNodeModulesDefaultBinPath(
   binaryName: string,
   folders: string[],
-): Promise<string | undefined> {
+): Promise<BinarySearchResult | undefined> {
   const candidates = folders.flatMap((folder) => {
     const basePath = path.join(folder, ".bin", binaryName);
     return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
@@ -55,7 +61,7 @@ async function searchNodeModulesDefaultBinPath(
     return undefined;
   }
 
-  return candidates[firstExistingCandidateIndex];
+  return { path: candidates[firstExistingCandidateIndex], loader: "native" };
 }
 /**
  * Returns node_modules paths derived from all package.json files found in the workspace.
@@ -82,7 +88,9 @@ export function clearWorkspacePackageJsonNodeModulesCache(): void {
  * Search for the binary in all workspaces' node_modules/.bin directories.
  * If multiple workspaces contain the binary, the first one found is returned.
  */
-export async function searchProjectNodeModulesBin(binaryName: string): Promise<string | undefined> {
+export async function searchProjectNodeModulesBin(
+  binaryName: string,
+): Promise<BinarySearchResult | undefined> {
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
@@ -91,7 +99,7 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
       }),
       binaryName,
     );
-    return resolvedPath;
+    return { path: resolvedPath, loader: "node" };
   } catch {}
 
   // fallback to direct binary lookup in workspace node_modules/.bin
@@ -108,11 +116,85 @@ export async function searchProjectNodeModulesBin(binaryName: string): Promise<s
   return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
 }
 
+interface PnpApi {
+  resolveRequest(request: string, issuer: string): string | null;
+}
+
+function isPnpApi(value: unknown): value is PnpApi {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "resolveRequest" in value &&
+    typeof value.resolveRequest === "function"
+  );
+}
+
+/**
+ * Walk up from startDir to find and load a Yarn PnP API (.pnp.cjs or .pnp.js).
+ * Returns the PnP API object and the absolute path to the loader file.
+ *
+ * SECURITY: This function executes JavaScript via require().
+ * Callers MUST verify workspace.isTrusted before invoking.
+ */
+function findPnpApi(startDir: string): { api: PnpApi; loaderPath: string } | undefined {
+  let dir = startDir;
+  while (dir !== path.dirname(dir)) {
+    for (const name of [".pnp.cjs", ".pnp.js"]) {
+      try {
+        const pnpFilePath = path.join(dir, name);
+        const loaded: unknown = require(pnpFilePath);
+        if (isPnpApi(loaded)) {
+          return { api: loaded, loaderPath: pnpFilePath };
+        }
+      } catch {
+        // file doesn't exist or failed to load, try next
+      }
+    }
+    dir = path.dirname(dir);
+  }
+  return undefined;
+}
+
+/**
+ * Search for the binary using Yarn PnP resolution.
+ * Loads .pnp.cjs/.pnp.js from the workspace (searching upward for monorepo support)
+ * and uses pnpapi.resolveRequest() to locate the package.
+ * Returns both the binary path and the PnP loader path (needed for --require injection).
+ */
+export async function searchYarnPnpBin(
+  binaryName: string,
+): Promise<BinarySearchResult | undefined> {
+  if (!workspace.isTrusted) {
+    return undefined;
+  }
+
+  const results = await Promise.all(
+    (workspace.workspaceFolders ?? []).map(async (folder) => {
+      const folderPath = folder.uri.fsPath;
+      const pnpResult = findPnpApi(folderPath);
+      if (!pnpResult) return undefined;
+      try {
+        const resolvedMain = pnpResult.api.resolveRequest(binaryName, folderPath + path.sep);
+        if (!resolvedMain) return undefined;
+        const binPath = replaceTargetFromMainToBin(resolvedMain, binaryName);
+        await workspace.fs.stat(Uri.file(binPath));
+        return { path: binPath, loader: "node", yarnPnpLoaderPath: pnpResult.loaderPath } as const;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+
+  return results.find(Boolean);
+}
+
 /**
  * Search for the binary in global node_modules.
  * Returns undefined if not found.
  */
-export async function searchGlobalNodeModulesBin(binaryName: string): Promise<string | undefined> {
+export async function searchGlobalNodeModulesBin(
+  binaryName: string,
+): Promise<BinarySearchResult | undefined> {
   const globalPaths = globalNodeModulesPaths();
   // try to resolve via require.resolve
   try {
@@ -120,7 +202,7 @@ export async function searchGlobalNodeModulesBin(binaryName: string): Promise<st
       require.resolve(binaryName, { paths: globalPaths }),
       binaryName,
     );
-    return resolvedPath;
+    return { path: resolvedPath, loader: "node" };
   } catch {}
 
   // fallback to direct binary lookup in global node_modules/.bin
@@ -132,7 +214,10 @@ export async function searchGlobalNodeModulesBin(binaryName: string): Promise<st
  * If the path is relative, it is resolved against the first workspace folder.
  * Returns undefined if no valid binary is found or the path is unsafe.
  */
-export async function searchSettingsBin(settingsBinary: string): Promise<string | undefined> {
+export async function searchSettingsBin(
+  defaultBinaryName: string,
+  settingsBinary: string,
+): Promise<BinarySearchResult | undefined> {
   if (!workspace.isTrusted) {
     return;
   }
@@ -156,9 +241,15 @@ export async function searchSettingsBin(settingsBinary: string): Promise<string 
     settingsBinary = settingsBinary.slice(0, -4);
   }
 
+  const isNode =
+    settingsBinary.endsWith(".js") ||
+    settingsBinary.endsWith(".cjs") ||
+    settingsBinary.endsWith(".mjs") ||
+    settingsBinary.endsWith(`${defaultBinaryName}${path.sep}bin${path.sep}${defaultBinaryName}`);
+
   try {
     await workspace.fs.stat(Uri.file(settingsBinary));
-    return settingsBinary;
+    return { path: settingsBinary, loader: isNode ? "node" : "native" };
   } catch {}
 
   // on Windows, also check for `.exe` extension (bun uses `.exe` for its binaries)
@@ -169,7 +260,7 @@ export async function searchSettingsBin(settingsBinary: string): Promise<string 
 
     try {
       await workspace.fs.stat(Uri.file(settingsBinary));
-      return settingsBinary;
+      return { path: settingsBinary, loader: "native" };
     } catch {}
   }
 

@@ -33,6 +33,7 @@ import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
+import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -47,17 +48,17 @@ export default class FormatterTool implements ToolInterface {
   async getBinary(
     outputChannel: LogOutputChannel,
     configService: ConfigService,
-  ): Promise<string | undefined> {
+  ): Promise<BinarySearchResult | undefined> {
     if (process.env.SERVER_PATH_DEV) {
-      return process.env.SERVER_PATH_DEV;
+      return { path: process.env.SERVER_PATH_DEV, loader: "native" };
     }
     const bin = await configService.getOxfmtServerBinPath();
     if (bin) {
       try {
-        await fsPromises.access(bin);
+        await fsPromises.access(bin.path);
         return bin;
       } catch (e) {
-        outputChannel.error(`Invalid bin path: ${bin}`, e);
+        outputChannel.error(`Invalid bin path: ${bin.path}`, e);
       }
     }
   }
@@ -66,10 +67,10 @@ export default class FormatterTool implements ToolInterface {
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
-    binaryPath?: string,
+    binary?: BinarySearchResult,
   ) {
     // No valid binary found for the formatter.
-    if (!binaryPath) {
+    if (!binary) {
       statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
       outputChannel.appendLine("No valid oxfmt binary found. Formatter will not be activated.");
       return Promise.resolve();
@@ -126,11 +127,10 @@ export default class FormatterTool implements ToolInterface {
       },
     );
 
-    outputChannel.info(`Using server binary at: ${binaryPath}`);
+    outputChannel.info(`Using server binary at: ${binary?.path}`);
 
     const run: Executable = runExecutable(
-      binaryPath,
-      "oxfmt",
+      binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
     );

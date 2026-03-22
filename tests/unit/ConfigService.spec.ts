@@ -50,9 +50,10 @@ suite("ConfigService", () => {
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
 
       // it targets the oxc project's oxlint/bin/oxlint path
-      strictEqual(oxfmtPath.startsWith(cwd), true, "path should start with cwd");
+      strictEqual(oxfmtPath.loader, "node");
+      strictEqual(oxfmtPath.path.startsWith(cwd), true, "path should start with cwd");
       strictEqual(
-        oxfmtPath.endsWith(`oxfmt${sep}bin${sep}oxfmt`),
+        oxfmtPath.path.endsWith(`oxfmt${sep}bin${sep}oxfmt`),
         true,
         "path should end with oxfmt/bin/oxfmt",
       );
@@ -66,14 +67,16 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("relative/oxfmt");
 
       await conf.update("path.oxfmt", `${workspace_path}/absolute/oxfmt`);
-      const absoluteServerPath = await service.getOxfmtServerBinPath();
+      const absoluteServer = await service.getOxfmtServerBinPath();
 
-      strictEqual(absoluteServerPath, `${workspace_path}/absolute/oxfmt`);
+      strictEqual(absoluteServer?.loader, "native");
+      strictEqual(absoluteServer?.path, `${workspace_path}/absolute/oxfmt`);
 
       await conf.update("path.oxfmt", "./relative/oxfmt");
-      const relativeServerPath = await service.getOxfmtServerBinPath();
+      const relativeServer = await service.getOxfmtServerBinPath();
 
-      strictEqual(relativeServerPath, `${workspace_path}${sep}relative${sep}oxfmt`);
+      strictEqual(relativeServer?.loader, "native");
+      strictEqual(relativeServer?.path, `${workspace_path}${sep}relative${sep}oxfmt`);
 
       await deleteWorkspaceFolderFileUri("absolute/oxfmt");
       await deleteWorkspaceFolderFileUri("relative/oxfmt");
@@ -96,7 +99,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("./relative/oxfmt");
       const service = new ConfigService();
       await conf.update("path.oxfmt", "./relative/oxfmt");
-      const relativeServerPath = await service.getOxfmtServerBinPath();
+      const relativeServer = await service.getOxfmtServerBinPath();
       const workspace_path = getWorkspaceFolderPlatformSafe();
 
       strictEqual(
@@ -104,7 +107,7 @@ suite("ConfigService", () => {
         ":",
         "The test workspace folder must be an absolute path with a drive letter on Windows",
       );
-      strictEqual(relativeServerPath, `${workspace_path}\\relative\\oxfmt`);
+      strictEqual(relativeServer?.path, `${workspace_path}\\relative\\oxfmt`);
       await deleteWorkspaceFolderFileUri("./relative/oxfmt");
     });
   });
@@ -116,9 +119,10 @@ suite("ConfigService", () => {
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
 
       // it targets the oxc project's oxlint/bin/oxlint path
-      strictEqual(oxlintPath.startsWith(cwd), true, "path should start with cwd");
+      strictEqual(oxlintPath.loader, "node");
+      strictEqual(oxlintPath.path.startsWith(cwd), true, "path should start with cwd");
       strictEqual(
-        oxlintPath.endsWith(`oxlint${sep}bin${sep}oxlint`),
+        oxlintPath.path.endsWith(`oxlint${sep}bin${sep}oxlint`),
         true,
         "path should end with oxlint/bin/oxlint",
       );
@@ -132,14 +136,16 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("relative/oxlint");
 
       await conf.update("path.oxlint", `${workspace_path}/absolute/oxlint`);
-      const absoluteServerPath = await service.getOxlintServerBinPath();
+      const absoluteServer = await service.getOxlintServerBinPath();
 
-      strictEqual(absoluteServerPath, `${workspace_path}/absolute/oxlint`);
+      strictEqual(absoluteServer?.loader, "native");
+      strictEqual(absoluteServer?.path, `${workspace_path}/absolute/oxlint`);
 
       await conf.update("path.oxlint", "./relative/oxlint");
-      const relativeServerPath = await service.getOxlintServerBinPath();
+      const relativeServer = await service.getOxlintServerBinPath();
 
-      strictEqual(relativeServerPath, `${workspace_path}${sep}relative${sep}oxlint`);
+      strictEqual(relativeServer?.loader, "native");
+      strictEqual(relativeServer?.path, `${workspace_path}${sep}relative${sep}oxlint`);
 
       await deleteWorkspaceFolderFileUri("absolute/oxlint");
       await deleteWorkspaceFolderFileUri("relative/oxlint");
@@ -163,7 +169,7 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("./relative/oxlint");
       const service = new ConfigService();
       await conf.update("path.oxlint", "./relative/oxlint");
-      const relativeServerPath = await service.getOxlintServerBinPath();
+      const relativeServer = await service.getOxlintServerBinPath();
       const workspace_path = getWorkspaceFolderPlatformSafe();
 
       strictEqual(
@@ -171,7 +177,7 @@ suite("ConfigService", () => {
         ":",
         "The test workspace folder must be an absolute path with a drive letter on Windows",
       );
-      strictEqual(relativeServerPath, `${workspace_path}\\relative\\oxlint`);
+      strictEqual(relativeServer?.path, `${workspace_path}\\relative\\oxlint`);
 
       await deleteWorkspaceFolderFileUri("./relative/oxlint");
     });
