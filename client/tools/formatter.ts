@@ -7,19 +7,11 @@ import {
   ConfigurationChangeEvent,
   languages,
   LogOutputChannel,
-  TextEdit,
   Uri,
   window,
-  workspace,
-  WorkspaceEdit,
-  TextDocument,
 } from "vscode";
 
-import {
-  ConfigurationParams,
-  DocumentFormattingRequest,
-  ShowMessageNotification,
-} from "vscode-languageclient";
+import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
 import {
   Executable,
@@ -492,32 +484,5 @@ export default class FormatterTool implements ToolInterface {
       text,
       this.client?.initializeResult?.serverInfo?.version,
     );
-  }
-
-  async formatCodeActions(document: TextDocument): Promise<void> {
-    if (!this.client) {
-      window.showErrorMessage("oxfmt client not found");
-      return;
-    }
-    const textEdits: TextEdit[] | null = await this.client.sendRequest(
-      DocumentFormattingRequest.method,
-      {
-        textDocument: {
-          uri: document.uri.toString(),
-        },
-        options: {
-          tabSize: 2,
-          insertSpaces: true,
-        },
-      },
-    );
-
-    if (!textEdits) {
-      return;
-    }
-
-    const workspaceEdit = new WorkspaceEdit();
-    workspaceEdit.set(document.uri, textEdits);
-    await workspace.applyEdit(workspaceEdit);
   }
 }
