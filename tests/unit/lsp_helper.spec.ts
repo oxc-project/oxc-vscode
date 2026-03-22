@@ -137,7 +137,7 @@ suite("runExecutable", () => {
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
 
-  test("should set pnpm loader path when provided", () => {
+  test("should set yarn PnP loader path when provided", () => {
     const result = runExecutable({
       path: "/path/to/server.js",
       loader: "node",
