@@ -243,7 +243,6 @@ suite("code actions formatter", () => {
 
     await sleep(1000);
 
-    await loadFixture("fixall_code_action_ignore_only_disable_fix");
     await workspace.openTextDocument(fileUri);
     await workspace.applyEdit(edit);
     await sleep(1000);
