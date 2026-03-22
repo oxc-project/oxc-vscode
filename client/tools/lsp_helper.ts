@@ -9,7 +9,6 @@ export function runExecutable(
   nodePath?: string,
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
-  pnpLoaderPath?: string,
 ): Executable {
   const serverEnv: Record<string, string> = {
     ...process.env,

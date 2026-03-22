@@ -74,7 +74,6 @@ export default class FormatterTool implements ToolInterface {
       configService.vsCodeConfig.nodePath,
       undefined,
       undefined,
-      configService.pnpLoaderPath,
     );
 
     const serverOptions: ServerOptions = {
