@@ -16,7 +16,7 @@ import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
-import { BinarySearchResult } from "../findBinary";
+import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -72,8 +72,6 @@ export default class FormatterTool implements ToolInterface {
       binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
-      undefined,
-      undefined,
     );
 
     const serverOptions: ServerOptions = {

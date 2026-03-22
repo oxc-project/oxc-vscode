@@ -136,4 +136,16 @@ suite("runExecutable", () => {
     );
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
+
+  test("should set pnpm loader path when provided", () => {
+    const result = runExecutable({
+      path: "/path/to/server.js",
+      loader: "node",
+      yarnPnpLoaderPath: "/path/to/.pnp.cjs",
+    });
+    strictEqual(result.args?.includes("--require"), true);
+    strictEqual(result.args?.includes("/path/to/.pnp.cjs"), true);
+    strictEqual(result.args?.includes("--loader"), true);
+    strictEqual(result.args?.includes("/path/to/.pnp.loader.mjs"), true);
+  });
 });

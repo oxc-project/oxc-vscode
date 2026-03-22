@@ -260,7 +260,7 @@ export async function searchSettingsBin(
 
     try {
       await workspace.fs.stat(Uri.file(settingsBinary));
-      return { path: settingsBinary, loader: isNode ? "node" : "native" };
+      return { path: settingsBinary, loader: "native" };
     } catch {}
   }
 
