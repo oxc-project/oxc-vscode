@@ -4,16 +4,12 @@ import { ConfigService } from "../../client/ConfigService";
 import {
   activateExtension,
   deleteFixtures,
-  fixturesWorkspaceUri,
-  loadFixture,
   sleep,
   testSingleFolderMode,
   WORKSPACE_DIR,
 } from "../test-helpers";
 
 const fileUri = Uri.joinPath(WORKSPACE_DIR, "debugger.js");
-
-const LE = process.platform === "win32" ? "\r\n" : "\n";
 
 suiteSetup(async () => {
   await activateExtension();
@@ -47,11 +43,7 @@ suite("commands", () => {
       process.env.SKIP_FORMATTER_TEST !== "true" &&
       !process.env.SERVER_PATH_DEV?.includes("oxc_language_server")
     ) {
-      expectedCommands.push(
-        "oxc.restartServerFormatter",
-        "oxc.toggleEnableFormatter",
-        "oxc.formatDocument",
-      );
+      expectedCommands.push("oxc.restartServerFormatter", "oxc.toggleEnableFormatter");
     }
 
     deepStrictEqual(expectedCommands, oxcCommands);
@@ -136,27 +128,5 @@ suite("commands", () => {
     const content = await workspace.fs.readFile(fileUri);
 
     strictEqual(content.toString(), "/* 😊 */");
-  });
-
-  test("oxc.formatDocument", async () => {
-    // Skip tests if formatter tests are disabled
-    if (process.env.SKIP_FORMATTER_TEST === "true") {
-      return;
-    }
-    await loadFixture("formatting");
-    await sleep(500);
-
-    const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "formatting.ts");
-
-    const document = await workspace.openTextDocument(fileUri);
-    await window.showTextDocument(document);
-    await commands.executeCommand("oxc.formatDocument");
-    await workspace.saveAll();
-    const content = await workspace.fs.readFile(fileUri);
-
-    strictEqual(
-      content.toString(),
-      `class X {${LE}  foo() {${LE}    return 42;${LE}  }${LE}}${LE}`,
-    );
   });
 });

@@ -85,39 +85,20 @@ export default class FormatterTool implements ToolInterface {
       await configService.vsCodeConfig.updateEnableOxfmt(!configService.vsCodeConfig.enableOxfmt);
     });
 
-    const formatDocumentCommand = commands.registerCommand(
-      OxcCommands.FormatDocument,
-      async (args) => {
-        let document: TextDocument | undefined;
-        if (args?.uri) {
-          document = workspace.textDocuments.find((doc) => doc.uri.toString() === args.uri);
-        } else {
-          document = window.activeTextEditor?.document;
-        }
-
-        if (!document) {
-          window.showErrorMessage("Document not found for formatting");
-          return;
-        }
-
-        await this.formatCodeActions(document);
-      },
-    );
-
     const formatAction = languages.registerCodeActionsProvider(
       "*",
       {
-        provideCodeActions: async (document, _range, context) => {
+        provideCodeActions: async (_document, _range, context) => {
           if (context.only?.value !== "source.format.oxc") {
             return;
           }
 
-          const action = new CodeAction("Format Document with oxfmt", formatCodeActionKind);
+          const action = new CodeAction("Format Document", formatCodeActionKind);
 
           action.command = {
-            command: OxcCommands.FormatDocument,
-            title: "Format Document with oxfmt",
-            arguments: [{ uri: document.uri.toString() }],
+            command: "editor.action.formatDocument",
+            title: "Format Document",
+            tooltip: "Format the document using the default formatter",
           };
           return [action];
         },
@@ -402,7 +383,6 @@ export default class FormatterTool implements ToolInterface {
       restartCommand.dispose();
       toggleEnable.dispose();
       formatAction.dispose();
-      formatDocumentCommand.dispose();
       onNotificationDispose.dispose();
     };
 

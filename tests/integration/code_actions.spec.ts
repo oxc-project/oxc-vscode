@@ -226,7 +226,7 @@ suite("code actions formatter", () => {
   }
 
   test("code action `source.format.oxc` on editor.codeActionsOnSave", async () => {
-    // no need for default formatter or formatOnSave editor configuration.
+    await workspace.getConfiguration("editor").update("defaultFormatter", "oxc.oxc-vscode");
     await workspace.getConfiguration("editor").update("codeActionsOnSave", {
       "source.format.oxc": "always",
     });
