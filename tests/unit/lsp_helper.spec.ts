@@ -144,8 +144,12 @@ suite("runExecutable", () => {
       yarnPnpLoaderPath: "/path/to/.pnp.cjs",
     });
     strictEqual(result.args?.includes("--require"), true);
-    strictEqual(result.args?.includes("/path/to/.pnp.cjs"), true);
+    strictEqual(result.args?.includes("/path/to/.pnp.cjs"), true, JSON.stringify(result.args));
     strictEqual(result.args?.includes("--loader"), true);
-    strictEqual(result.args?.includes("/path/to/.pnp.loader.mjs"), true);
+    strictEqual(
+      result.args?.includes("/path/to/.pnp.loader.mjs"),
+      true,
+      JSON.stringify(result.args),
+    );
   });
 });
