@@ -6,6 +6,7 @@ import {
   searchProjectNodeModulesBin,
   searchSettingsBin,
   searchYarnPnpBin,
+  searchYarnPnpBin,
 } from "./findBinary";
 import { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";

@@ -72,6 +72,9 @@ export default class FormatterTool implements ToolInterface {
       binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
+      undefined,
+      undefined,
+      configService.pnpLoaderPath,
     );
 
     const serverOptions: ServerOptions = {
