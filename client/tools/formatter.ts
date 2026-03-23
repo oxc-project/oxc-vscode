@@ -11,7 +11,11 @@ import {
   window,
 } from "vscode";
 
-import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
+import {
+  ConfigurationParams,
+  DocumentSelector,
+  ShowMessageNotification,
+} from "vscode-languageclient";
 
 import {
   Executable,
@@ -31,9 +35,236 @@ const languageClientName = "oxc";
 
 const formatCodeActionKind = CodeActionKind.Source.append("format.oxc");
 
+const formatCodeAction = new CodeAction("Format Document", formatCodeActionKind);
+formatCodeAction.command = {
+  command: "editor.action.formatDocument",
+  title: "Format Document",
+  tooltip: "Format the document using the default formatter",
+};
+
+// This list is not used as-is for implementation to determine whether formatting processing is possible.
+const supportedExtensions = [
+  "cjs",
+  "cts",
+  "js",
+  "jsx",
+  "mjs",
+  "mts",
+  "ts",
+  "tsx",
+  // https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L24-L45
+  "_js",
+  "bones",
+  "es",
+  "es6",
+  "gs",
+  "jake",
+  "javascript",
+  "jsb",
+  "jscad",
+  "jsfl",
+  "jslib",
+  "jsm",
+  "jspre",
+  "jss",
+  "njs",
+  "pac",
+  "sjs",
+  "ssjs",
+  "xsjs",
+  "xsjslib",
+  // https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L73
+  // allow `*.start.frag` and `*.end.frag`,
+  "frag",
+  // https://github.com/oxc-project/oxc/pull/16524/
+  // JSON
+  "json",
+  "4DForm",
+  "4DProject",
+  "avsc",
+  "geojson",
+  "gltf",
+  "har",
+  "ice",
+  "JSON-tmLanguage",
+  "json.example",
+  "mcmeta",
+  "sarif",
+  "tact",
+  "tfstate",
+  "tfstate.backup",
+  "topojson",
+  "webapp",
+  "webmanifest",
+  "yy",
+  "yyp",
+  // JSONC
+  "jsonc",
+  "json5",
+  "code-snippets",
+  "code-workspace",
+  "sublime-build",
+  "sublime-color-scheme",
+  "sublime-commands",
+  "sublime-completions",
+  "sublime-keymap",
+  "sublime-macro",
+  "sublime-menu",
+  "sublime-mousemap",
+  "sublime-project",
+  "sublime-settings",
+  "sublime-theme",
+  "sublime-workspace",
+  "sublime_metrics",
+  "sublime_session",
+  // HTML
+  "html",
+  "hta",
+  "htm",
+  "inc",
+  "xht",
+  "xhtml",
+  // Vue
+  "vue",
+  // Angular
+  // mjml
+  "mjml",
+  // CSS
+  "css",
+  "wxss",
+  "pcss",
+  "postcss",
+  // less
+  "less",
+  // scss
+  "scss",
+  // GraphQL
+  "graphql",
+  "gql",
+  "graphqls",
+  // Handlebars
+  "handlebars",
+  "hbs",
+  // Markdown
+  "md",
+  "livemd",
+  "markdown",
+  "mdown",
+  "mdwn",
+  "mkd",
+  "mkdn",
+  "mkdown",
+  "ronn",
+  "scd",
+  "workbook",
+  // mdx
+  "mdx",
+  // YAML
+  "yml",
+  "mir",
+  "reek",
+  "rviz",
+  "sublime-syntax",
+  "syntax",
+  "yaml",
+  "yaml-tmlanguage",
+  // https://github.com/oxc-project/oxc/pull/17113/
+  // TOML
+  "toml",
+  "toml.example",
+  // https://github.com/oxc-project/oxc/pull/19807
+  // Svelte
+  "svelte",
+];
+
+// Special filenames that are valid JS files
+// https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L47C4-L52
+const specialFilenames = [
+  "Jakefile",
+
+  // covered by the "frag" extension above
+  // "start.frag",
+  // "end.frag",
+
+  // JSON filenames
+  ".all-contributorsrc",
+  ".arcconfig",
+  ".auto-changelog",
+  ".c8rc",
+  ".htmlhintrc",
+  ".imgbotconfig",
+  ".nycrc",
+  ".tern-config",
+  ".tern-project",
+  ".watchmanconfig",
+  ".babelrc",
+  ".jscsrc",
+  ".jshintrc",
+  ".jslintrc",
+  ".swcrc",
+  // Markdown filenames
+  "contents.lr",
+  "README",
+  // YAML filenames
+  ".clang-format",
+  ".clang-tidy",
+  ".clangd",
+  ".gemrc",
+  "CITATION.cff",
+  "glide.lock",
+  "pixi.lock",
+  ".prettierrc",
+  ".stylelintrc",
+  ".lintstagedrc",
+  // https://github.com/oxc-project/oxc/pull/17113/
+  // TOML filenames
+  "Pipfile",
+  "Cargo.toml.orig",
+];
+
+// used for unsaved files with schema `untitled` that have no filename yet
+// https://github.com/oxc-project/oxc/blob/3e478df9a329244c005a09da05da503dd2b4d64b/apps/oxfmt/src/lsp/mod.rs#L59-L92
+const supportedLanguageIds = [
+  "javascript",
+  "typescript",
+  "javascriptreact",
+  "typescriptreact",
+  "css",
+  "graphql",
+  "handlebars",
+  "json",
+  "jsonc",
+  "json5",
+  "less",
+  "markdown",
+  "mdx",
+  "mjml",
+  "html",
+  "scss",
+  "toml",
+  "vue",
+  "yaml",
+  "svelte",
+  // astro
+];
+
 export default class FormatterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
+
+  private documentSelectors: DocumentSelector = [
+    {
+      pattern: `**/*.{${supportedExtensions.join(",")}}`,
+      scheme: "file",
+    },
+    ...specialFilenames.map((filename) => ({
+      pattern: `**/${filename}`,
+      scheme: "file",
+    })),
+    ...supportedLanguageIds.map((language) => ({
+      language,
+    })),
+  ];
 
   private disposeResources: (() => Promise<void>) | undefined;
 
@@ -78,22 +309,9 @@ export default class FormatterTool implements ToolInterface {
     });
 
     const formatAction = languages.registerCodeActionsProvider(
-      "*",
+      this.documentSelectors,
       {
-        provideCodeActions: async (_document, _range, context) => {
-          if (context.only?.value !== "source.format.oxc") {
-            return;
-          }
-
-          const action = new CodeAction("Format Document", formatCodeActionKind);
-
-          action.command = {
-            command: "editor.action.formatDocument",
-            title: "Format Document",
-            tooltip: "Format the document using the default formatter",
-          };
-          return [action];
-        },
+        provideCodeActions: () => [formatCodeAction],
       },
       {
         providedCodeActionKinds: [formatCodeActionKind],
@@ -113,230 +331,12 @@ export default class FormatterTool implements ToolInterface {
       debug: run,
     };
 
-    // This list is not used as-is for implementation to determine whether formatting processing is possible.
-    const supportedExtensions = [
-      "cjs",
-      "cts",
-      "js",
-      "jsx",
-      "mjs",
-      "mts",
-      "ts",
-      "tsx",
-      // https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L24-L45
-      "_js",
-      "bones",
-      "es",
-      "es6",
-      "gs",
-      "jake",
-      "javascript",
-      "jsb",
-      "jscad",
-      "jsfl",
-      "jslib",
-      "jsm",
-      "jspre",
-      "jss",
-      "njs",
-      "pac",
-      "sjs",
-      "ssjs",
-      "xsjs",
-      "xsjslib",
-      // https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L73
-      // allow `*.start.frag` and `*.end.frag`,
-      "frag",
-      // https://github.com/oxc-project/oxc/pull/16524/
-      // JSON
-      "json",
-      "4DForm",
-      "4DProject",
-      "avsc",
-      "geojson",
-      "gltf",
-      "har",
-      "ice",
-      "JSON-tmLanguage",
-      "json.example",
-      "mcmeta",
-      "sarif",
-      "tact",
-      "tfstate",
-      "tfstate.backup",
-      "topojson",
-      "webapp",
-      "webmanifest",
-      "yy",
-      "yyp",
-      // JSONC
-      "jsonc",
-      "json5",
-      "code-snippets",
-      "code-workspace",
-      "sublime-build",
-      "sublime-color-scheme",
-      "sublime-commands",
-      "sublime-completions",
-      "sublime-keymap",
-      "sublime-macro",
-      "sublime-menu",
-      "sublime-mousemap",
-      "sublime-project",
-      "sublime-settings",
-      "sublime-theme",
-      "sublime-workspace",
-      "sublime_metrics",
-      "sublime_session",
-      // HTML
-      "html",
-      "hta",
-      "htm",
-      "inc",
-      "xht",
-      "xhtml",
-      // Vue
-      "vue",
-      // Angular
-      // mjml
-      "mjml",
-      // CSS
-      "css",
-      "wxss",
-      "pcss",
-      "postcss",
-      // less
-      "less",
-      // scss
-      "scss",
-      // GraphQL
-      "graphql",
-      "gql",
-      "graphqls",
-      // Handlebars
-      "handlebars",
-      "hbs",
-      // Markdown
-      "md",
-      "livemd",
-      "markdown",
-      "mdown",
-      "mdwn",
-      "mkd",
-      "mkdn",
-      "mkdown",
-      "ronn",
-      "scd",
-      "workbook",
-      // mdx
-      "mdx",
-      // YAML
-      "yml",
-      "mir",
-      "reek",
-      "rviz",
-      "sublime-syntax",
-      "syntax",
-      "yaml",
-      "yaml-tmlanguage",
-      // https://github.com/oxc-project/oxc/pull/17113/
-      // TOML
-      "toml",
-      "toml.example",
-      // https://github.com/oxc-project/oxc/pull/19807
-      // Svelte
-      "svelte",
-    ];
-
-    // Special filenames that are valid JS files
-    // https://github.com/oxc-project/oxc/blob/f3e9913f534e36195b9b5a6244dd21076ed8715e/crates/oxc_formatter/src/service/parse_utils.rs#L47C4-L52
-    const specialFilenames = [
-      "Jakefile",
-
-      // covered by the "frag" extension above
-      // "start.frag",
-      // "end.frag",
-
-      // JSON filenames
-      ".all-contributorsrc",
-      ".arcconfig",
-      ".auto-changelog",
-      ".c8rc",
-      ".htmlhintrc",
-      ".imgbotconfig",
-      ".nycrc",
-      ".tern-config",
-      ".tern-project",
-      ".watchmanconfig",
-      ".babelrc",
-      ".jscsrc",
-      ".jshintrc",
-      ".jslintrc",
-      ".swcrc",
-      // Markdown filenames
-      "contents.lr",
-      "README",
-      // YAML filenames
-      ".clang-format",
-      ".clang-tidy",
-      ".clangd",
-      ".gemrc",
-      "CITATION.cff",
-      "glide.lock",
-      "pixi.lock",
-      ".prettierrc",
-      ".stylelintrc",
-      ".lintstagedrc",
-      // https://github.com/oxc-project/oxc/pull/17113/
-      // TOML filenames
-      "Pipfile",
-      "Cargo.toml.orig",
-    ];
-
-    // used for unsaved files with schema `untitled` that have no filename yet
-    // https://github.com/oxc-project/oxc/blob/3e478df9a329244c005a09da05da503dd2b4d64b/apps/oxfmt/src/lsp/mod.rs#L59-L92
-    const supportedLanguageIds = [
-      "javascript",
-      "typescript",
-      "javascriptreact",
-      "typescriptreact",
-      "css",
-      "graphql",
-      "handlebars",
-      "json",
-      "jsonc",
-      "json5",
-      "less",
-      "markdown",
-      "mdx",
-      "mjml",
-      "html",
-      "scss",
-      "toml",
-      "vue",
-      "yaml",
-      "svelte",
-      // astro
-    ];
-
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
       // Register the server for plain text documents
-      documentSelector: [
-        {
-          pattern: `**/*.{${supportedExtensions.join(",")}}`,
-          scheme: "file",
-        },
-        ...specialFilenames.map((filename) => ({
-          pattern: `**/${filename}`,
-          scheme: "file",
-        })),
-        ...supportedLanguageIds.map((language) => ({
-          language,
-        })),
-      ],
+      documentSelector: this.documentSelectors,
       initializationOptions: configService.formatterServerConfig,
       outputChannel,
       traceOutputChannel: outputChannel,
