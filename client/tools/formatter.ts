@@ -81,7 +81,7 @@ export default class FormatterTool implements ToolInterface {
       "*",
       {
         provideCodeActions: async (_document, _range, context) => {
-          if (context.only?.value !== "source.format.oxc") {
+          if (context.only?.value !== formatCodeActionKind.value) {
             return;
           }
 
