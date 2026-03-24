@@ -4,6 +4,10 @@ import StatusBarItemHandler from "../StatusBarItemHandler";
 
 export default interface ToolInterface {
   /**
+   * Gets the version of the tool's language server (if applicable).
+   */
+  getLspVersion(): string | undefined;
+  /**
    * Gets the path to the tool's language server binary (if applicable).
    */
   getBinary(

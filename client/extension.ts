@@ -1,6 +1,6 @@
 import { commands, ExtensionContext, LogOutputChannel, window, workspace } from "vscode";
 
-import { OxcCommands } from "./commands";
+import { copyDebugCommand, OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
 import StatusBarItemHandler from "./StatusBarItemHandler";
 import Formatter from "./tools/formatter";
@@ -39,9 +39,11 @@ export async function activate(context: ExtensionContext) {
   });
 
   const copyDebugInfoCommand = commands.registerCommand(OxcCommands.CopyDebugInfo, async () => {
-    await statusBarItemHandler.copyDebugInfo(
-      configService.vsCodeConfig.nodePath,
-      configService.vsCodeConfig.useExecPath,
+    await copyDebugCommand(
+      context.extension.packageJSON?.version ?? "unknown",
+      tools.find((tool) => tool instanceof Linter)?.getLspVersion() ?? "unknown",
+      tools.find((tool) => tool instanceof Formatter)?.getLspVersion() ?? "unknown",
+      configService.vsCodeConfig,
     );
   });
 
