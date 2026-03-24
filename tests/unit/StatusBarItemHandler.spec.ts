@@ -173,5 +173,4 @@ suite("StatusBarItemHandler", () => {
       handler.dispose();
     });
   });
-
 });
