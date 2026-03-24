@@ -56,6 +56,7 @@ Running formatting as a code action on save, allows to define the order of chang
 
 ```json
 {
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": false, // disable default behavior
   "editor.codeActionsOnSave": {
     "source.format.oxc": "always", // run formatter first

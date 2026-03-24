@@ -314,11 +314,9 @@ export default class FormatterTool implements ToolInterface {
       {
         provideCodeActions: (doc) => {
           if (
+            configService.vsCodeConfig.enableOxfmt === false ||
             workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
           ) {
-            outputChannel.appendLine(
-              `Skipping providing format code action for ${doc.uri.toString()} because the default formatter is not set to oxc.oxc-vscode`,
-            );
             return [];
           }
           return [formatCodeAction];
