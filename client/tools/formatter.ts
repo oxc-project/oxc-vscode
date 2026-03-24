@@ -9,6 +9,7 @@ import {
   LogOutputChannel,
   Uri,
   window,
+  workspace,
 } from "vscode";
 
 import {
@@ -311,7 +312,17 @@ export default class FormatterTool implements ToolInterface {
     const formatAction = languages.registerCodeActionsProvider(
       this.documentSelectors,
       {
-        provideCodeActions: () => [formatCodeAction],
+        provideCodeActions: (doc) => {
+          if (
+            workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
+          ) {
+            outputChannel.appendLine(
+              `Skipping providing format code action for ${doc.uri.toString()} because the default formatter is not set to oxc.oxc-vscode`,
+            );
+            return [];
+          }
+          return [formatCodeAction];
+        },
       },
       {
         providedCodeActionKinds: [formatCodeActionKind],
