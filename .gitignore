@@ -17,3 +17,4 @@ icon.png
 
 # Rust
 vscode_docs/target/
+package-lock.json
