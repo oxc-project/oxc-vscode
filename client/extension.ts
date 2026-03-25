@@ -139,8 +139,11 @@ export async function activate(context: ExtensionContext) {
   ) => {
     const tool = tools.find((t) => t instanceof toolClass);
     if (tool) {
+      const binary = binaryPaths[tools.indexOf(tool)];
       context.subscriptions.push(
-        new BinaryWatcher(binaryName, outputChannel, () => restartTool(tool, outputChannel)),
+        new BinaryWatcher(binary, binaryName, outputChannel, () =>
+          restartTool(tool, outputChannel),
+        ),
       );
     }
   };
