@@ -26,7 +26,7 @@ export const enum OxcCommands {
 export async function copyDebugCommand(
   extensionVersion: string,
   oxlintVersion: string,
-  oxcVersion: string,
+  oxfmtVersion: string,
   vscodeConfig: VSCodeConfig,
 ) {
   const osName = getOsName();
@@ -39,7 +39,7 @@ export async function copyDebugCommand(
     "```",
     `VS Code extension: v${extensionVersion}`,
     `oxlint: v${oxlintVersion}`,
-    `oxfmt: v${oxcVersion}`,
+    `oxfmt: v${oxfmtVersion}`,
     `Editor: ${env.appName} v${version} (${env.appHost})`,
     `Operating System and Version: ${osName} (${os.arch()})`,
     `Node Version: ${nodeVersion} (${nodeCommand})`,
