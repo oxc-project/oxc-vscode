@@ -130,7 +130,7 @@ export async function activate(context: ExtensionContext) {
   // Finally show the status bar item.
   statusBarItemHandler.show();
 
-  // Watch for binary creation/deletion (e.g. after npm/bun install) so that
+  // Watch for lock file changes (e.g. after npm/pnpm/yarn/bun install) so that
   // tools are restarted automatically without requiring a VS Code restart.
   const createBinaryWatcher = (
     toolClass: typeof Linter | typeof Formatter,
