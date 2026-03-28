@@ -21,22 +21,21 @@ const LOCK_FILE_NAMES = [
 ] as const;
 
 /**
- * Watches dependency lock files for changes so that tools are restarted
- * automatically after `npm install`, `pnpm install`, `yarn install`, or
- * `bun install` — without requiring a VS Code restart.
+ * Watches for dependency changes so that tools are restarted automatically
+ * after `npm install`, `pnpm install`, `yarn install`, or `bun install` —
+ * without requiring a VS Code restart.
  *
- * When a binary was found, the watcher walks up from the resolved binary path
- * to locate the project root (the first ancestor directory that contains a
- * lock file). This correctly handles pnpm's versioned store layout
- * (`.pnpm/pkg@version/node_modules/…`) where the binary itself is replaced by
- * a file in a brand-new directory on update, making direct binary watching
- * unreliable.
+ * **Project-local binaries** (no `watcherPath` set on `BinarySearchResult`):
+ * Walks up from the resolved binary path to find the project root containing a
+ * lock file and watches that directory. This correctly handles pnpm's versioned
+ * store layout (`.pnpm/pkg@version/node_modules/…`) where updating a package
+ * creates a brand-new directory instead of modifying the existing binary.
+ * Falls back to all workspace folders when no binary is found yet (initial
+ * install) or no lock file is found on the walk.
  *
- * When no binary was found yet, every workspace folder is watched so that an
- * initial installation is detected too.
- *
- * On any lock file creation, change, or deletion the callback is invoked and
- * the tool restarts with a freshly resolved binary path.
+ * **Global / settings-specified binaries** (`watcherPath` set on
+ * `BinarySearchResult`): Watches that specific file for creation, change, and
+ * deletion, since global installs have no project lock file.
  */
 export class BinaryWatcher {
   private readonly watchers: FileSystemWatcher[] = [];
@@ -47,14 +46,31 @@ export class BinaryWatcher {
     outputChannel: LogOutputChannel,
     onBinaryChanged: () => Promise<void>,
   ) {
-    const watchDirs = resolveWatchDirectories(binary);
+    if (binary?.watcherPath) {
+      // Global or settings-specified binary: watch the resolved binary file directly.
+      const watcher = workspace.createFileSystemWatcher(
+        new RelativePattern(
+          Uri.file(path.dirname(binary.watcherPath)),
+          path.basename(binary.watcherPath),
+        ),
+        false,
+        false,
+        false,
+      );
+      const fileHandler = async () => {
+        outputChannel.info(`Binary "${binaryName}" changed, restarting tool...`);
+        clearWorkspacePackageJsonNodeModulesCache();
+        await onBinaryChanged();
+      };
+      watcher.onDidCreate(fileHandler);
+      watcher.onDidChange(fileHandler);
+      watcher.onDidDelete(fileHandler);
+      this.watchers.push(watcher);
+      return;
+    }
 
-    const handler = async () => {
-      outputChannel.info(`Dependency lock file changed, restarting "${binaryName}" tool...`);
-      clearWorkspacePackageJsonNodeModulesCache();
-      await onBinaryChanged();
-    };
-
+    // Project-local binary (or no binary found yet): watch lock files.
+    const watchDirs = resolveLockFileWatchDirectories(binary);
     for (const dir of watchDirs) {
       const watcher = workspace.createFileSystemWatcher(
         new RelativePattern(Uri.file(dir), LOCK_FILE_GLOB),
@@ -62,9 +78,14 @@ export class BinaryWatcher {
         false,
         false,
       );
-      watcher.onDidCreate(handler);
-      watcher.onDidChange(handler);
-      watcher.onDidDelete(handler);
+      const lockHandler = async () => {
+        outputChannel.info(`Dependency lock file changed, restarting "${binaryName}" tool...`);
+        clearWorkspacePackageJsonNodeModulesCache();
+        await onBinaryChanged();
+      };
+      watcher.onDidCreate(lockHandler);
+      watcher.onDidChange(lockHandler);
+      watcher.onDidDelete(lockHandler);
       this.watchers.push(watcher);
     }
   }
@@ -83,7 +104,7 @@ export class BinaryWatcher {
  * (the first ancestor containing a lock file). Falls back to all workspace
  * folders when the binary is not found or no lock file exists on the walk.
  */
-function resolveWatchDirectories(binary: BinarySearchResult | undefined): string[] {
+function resolveLockFileWatchDirectories(binary: BinarySearchResult | undefined): string[] {
   const workspaceFolderPaths = (workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
 
   if (!binary) {
