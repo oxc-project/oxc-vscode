@@ -359,7 +359,7 @@
   "engines": {
     "vscode": "^1.93.0"
   },
-  "packageManager": "pnpm@10.30.2",
+  "packageManager": "pnpm@10.33.0",
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
