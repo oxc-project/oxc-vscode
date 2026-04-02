@@ -88,8 +88,7 @@ export default class LinterTool implements ToolInterface {
       : true;
 
     const restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
-      await this.restartClient();
-      this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
+      await this.restart(outputChannel, configService, statusBarItemHandler);
     });
 
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
@@ -269,22 +268,14 @@ export default class LinterTool implements ToolInterface {
     }
   }
 
-  async restartClient(): Promise<void> {
-    if (this.client === undefined) {
-      window.showErrorMessage("oxlint client not found");
-      return;
-    }
-
-    try {
-      if (this.client.isRunning()) {
-        await this.client.restart();
-        window.showInformationMessage("oxlint server restarted.");
-      } else {
-        await this.client.start();
-      }
-    } catch (err) {
-      this.client.error("Restarting oxlint client failed", err, "force");
-    }
+  async restart(
+    outputChannel: LogOutputChannel,
+    configService: ConfigService,
+    statusBarItemHandler: StatusBarItemHandler,
+  ): Promise<void> {
+    await this.deactivate();
+    const newBinaryPath = await this.getBinary(outputChannel, configService);
+    await this.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
   }
 
   async onConfigChange(

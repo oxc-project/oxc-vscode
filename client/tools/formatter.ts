@@ -8,7 +8,6 @@ import {
   languages,
   LogOutputChannel,
   Uri,
-  window,
   workspace,
 } from "vscode";
 
@@ -305,8 +304,7 @@ export default class FormatterTool implements ToolInterface {
     }
 
     const restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
-      await this.restartClient();
-      this.updateStatusBar(statusBarItemHandler, configService);
+      await this.restart(outputChannel, configService, statusBarItemHandler);
     });
 
     const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
@@ -409,22 +407,14 @@ export default class FormatterTool implements ToolInterface {
     this.client = undefined;
   }
 
-  async restartClient(): Promise<void> {
-    if (this.client === undefined) {
-      window.showErrorMessage("oxfmt client not found");
-      return;
-    }
-
-    try {
-      if (this.client.isRunning()) {
-        await this.client.restart();
-        window.showInformationMessage("oxfmt server restarted.");
-      } else {
-        await this.client.start();
-      }
-    } catch (err) {
-      this.client.error("Restarting oxfmt client failed", err, "force");
-    }
+  async restart(
+    outputChannel: LogOutputChannel,
+    configService: ConfigService,
+    statusBarItemHandler: StatusBarItemHandler,
+  ): Promise<void> {
+    await this.deactivate();
+    const newBinaryPath = await this.getBinary(outputChannel, configService);
+    await this.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
   }
 
   async toggleClient(configService: ConfigService): Promise<void> {

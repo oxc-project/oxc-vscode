@@ -71,9 +71,7 @@ export async function activate(context: ExtensionContext) {
 
   const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
     try {
-      await tool.deactivate();
-      const newBinaryPath = await tool.getBinary(outputChannel, configService);
-      await tool.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+      await tool.restart(outputChannel, configService, statusBarItemHandler);
     } catch (e) {
       outputChannel.error(`Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
       Try to restart the editor manually.

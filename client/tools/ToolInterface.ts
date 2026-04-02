@@ -31,6 +31,15 @@ export default interface ToolInterface {
   deactivate(): Promise<void>;
 
   /**
+   * Restarts the tool, cleaning up resources and reinitializing with the current configuration.
+   */
+  restart(
+    outputChannel: LogOutputChannel,
+    configService: ConfigService,
+    statusBarItemHandler: StatusBarItemHandler,
+  ): Promise<void>;
+
+  /**
    * Handles configuration changes.
    */
   onConfigChange(
