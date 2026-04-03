@@ -57,7 +57,7 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "cross-env": "^10.1.0",
-    "ovsx": "^0.10.9",
+    "ovsx": "^0.10.10",
     "oxfmt": "latest",
     "oxlint": "latest",
     "oxlint-tsgolint": "^0.19.0",
