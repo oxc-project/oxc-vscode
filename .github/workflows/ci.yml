@@ -78,10 +78,19 @@ jobs:
           retention-days: 1
           path: ~/.vscode-test/
 
-  test-oxlint:
-    name: Test (Oxlint LSP)
+  test-integration:
+    name: Test (${{ matrix.suite.name }})
     needs: test-unit
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.suite.continue_on_error }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - { name: "Oxlint LSP", test_suite: "oxlint-lsp", continue_on_error: false }
+          - { name: "Oxlint LSP Multi-Root", test_suite: "oxlint-lsp-multi-root", continue_on_error: false }
+          - { name: "Oxlint JS Plugin (flaky)", test_suite: "oxlint-js", continue_on_error: true }
+          - { name: "Oxfmt LSP", test_suite: "oxfmt-lsp", continue_on_error: false }
     steps:
       - uses: taiki-e/checkout-action@83ed61bfbe2b8abbb3c66e8b65b1335484c70009 # v1.4.1
 
@@ -106,81 +115,9 @@ jobs:
           name: vscode-binary
           path: ~/.vscode-test/
 
-      - name: Oxlint LSP Tests
+      - name: Run Tests
         env:
-          TEST_SUITE: oxlint-lsp
-        run: xvfb-run -a pnpm exec vscode-test
-
-      - name: Oxlint LSP Multi-Root Tests
-        env:
-          TEST_SUITE: oxlint-lsp-multi-root
-        run: xvfb-run -a pnpm exec vscode-test
-
-  test-oxlint-js:
-    name: Test (Oxlint JS Plugin, flaky)
-    needs: test-unit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: taiki-e/checkout-action@83ed61bfbe2b8abbb3c66e8b65b1335484c70009 # v1.4.1
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Download compiled output
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: compiled-output
-          path: .
-
-      - name: Download VS Code binary
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: vscode-binary
-          path: ~/.vscode-test/
-
-      - name: Oxlint JS Plugin Test (flaky)
-        continue-on-error: true
-        env:
-          TEST_SUITE: oxlint-js
-        run: xvfb-run -a pnpm exec vscode-test
-
-  test-oxfmt:
-    name: Test (Oxfmt LSP)
-    needs: test-unit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: taiki-e/checkout-action@83ed61bfbe2b8abbb3c66e8b65b1335484c70009 # v1.4.1
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Download compiled output
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: compiled-output
-          path: .
-
-      - name: Download VS Code binary
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: vscode-binary
-          path: ~/.vscode-test/
-
-      - name: Oxfmt LSP Tests
-        env:
-          TEST_SUITE: oxfmt-lsp
+          TEST_SUITE: ${{ matrix.suite.test_suite }}
         run: xvfb-run -a pnpm exec vscode-test
 
   test-windows:
