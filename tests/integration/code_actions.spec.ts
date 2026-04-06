@@ -226,8 +226,56 @@ suite("code actions formatter", () => {
     return;
   }
 
-  // TODO: re-enable this test after fixing the underlying issue of code actions on save not being triggered in tests
-  test.skip("code action `source.format.oxc` on editor.codeActionsOnSave", async () => {
+  test("code action `source.format.oxc` is suppressed when configured in codeActionsOnSave", async () => {
+    await workspace.getConfiguration("editor").update("defaultFormatter", "oxc.oxc-vscode");
+    await workspace.getConfiguration("editor").update("codeActionsOnSave", {
+      "source.format.oxc": "always",
+    });
+    await workspace.saveAll();
+    await loadFixture("formatting");
+
+    await sleep(500);
+
+    const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "formatting.ts");
+    await window.showTextDocument(fileUri);
+
+    const codeActions = await commands.executeCommand(
+      "vscode.executeCodeActionProvider",
+      fileUri,
+      new Range(new Position(0, 0), new Position(0, 0)),
+    ) as CodeAction[];
+
+    assert(Array.isArray(codeActions));
+    const formatActions = codeActions.filter((a) => a.kind?.value === "source.format.oxc");
+    strictEqual(formatActions.length, 0, "should return no format code action when source.format.oxc is in codeActionsOnSave");
+  });
+
+  test("code action `source.format.oxc` is returned when NOT configured in codeActionsOnSave", async () => {
+    await workspace.getConfiguration("editor").update("defaultFormatter", "oxc.oxc-vscode");
+    await workspace.getConfiguration("editor").update("codeActionsOnSave", undefined);
+    await workspace.saveAll();
+    await loadFixture("formatting");
+
+    await sleep(500);
+
+    const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "formatting.ts");
+    await window.showTextDocument(fileUri);
+
+    const codeActions = await commands.executeCommand(
+      "vscode.executeCodeActionProvider",
+      fileUri,
+      new Range(new Position(0, 0), new Position(0, 0)),
+    ) as CodeAction[];
+
+    assert(Array.isArray(codeActions));
+    const formatActions = codeActions.filter((a) => a.kind?.value === "source.format.oxc");
+    strictEqual(formatActions.length, 1, "should return format code action when source.format.oxc is NOT in codeActionsOnSave");
+    strictEqual(formatActions[0].title, "Format Document");
+  });
+
+  // TODO: re-enable after fixing the test infrastructure issue where
+  // onWillSaveTextDocument edits are not applied during save in the test environment
+  test.skip("code action `source.format.oxc` on editor.codeActionsOnSave applies formatting on save", async () => {
     await workspace.getConfiguration("editor").update("defaultFormatter", "oxc.oxc-vscode");
     await workspace.getConfiguration("editor").update("codeActionsOnSave", {
       "source.format.oxc": "always",
@@ -239,6 +287,7 @@ suite("code actions formatter", () => {
 
     const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "formatting.ts");
 
+    // Dirty the file by making a small edit
     const range = new Range(new Position(0, 0), new Position(0, 0));
     const edit = new WorkspaceEdit();
     edit.replace(fileUri, range, " ");

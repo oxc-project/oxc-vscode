@@ -7,6 +7,8 @@ import {
   ConfigurationChangeEvent,
   languages,
   LogOutputChannel,
+  Range,
+  TextEdit,
   Uri,
   workspace,
 } from "vscode";
@@ -321,6 +323,18 @@ export default class FormatterTool implements ToolInterface {
           ) {
             return [];
           }
+
+          // When source.format.oxc is configured in codeActionsOnSave,
+          // formatting is handled by the onWillSaveTextDocument listener
+          // which runs BEFORE code actions are collected.  Returning a
+          // code action with a command here would run the formatter
+          // AFTER lint fixes, undoing them.
+          const codeActionsOnSave = workspace.getConfiguration("editor", doc)
+            .get<Record<string, string>>("codeActionsOnSave");
+          if (codeActionsOnSave?.["source.format.oxc"]) {
+            return [];
+          }
+
           return [formatCodeAction];
         },
       },
@@ -328,6 +342,53 @@ export default class FormatterTool implements ToolInterface {
         providedCodeActionKinds: [formatCodeActionKind],
       },
     );
+
+    // Apply formatting via onWillSaveTextDocument so that edits are in the
+    // document BEFORE codeActionsOnSave are collected.  This guarantees the
+    // format→lint order when both source.format.oxc and source.fixAll.oxc
+    // are configured in editor.codeActionsOnSave.
+    const onWillSave = workspace.onWillSaveTextDocument(async (event) => {
+      if (
+        configService.vsCodeConfig.enableOxfmt === false ||
+        !this.client
+      ) {
+        return;
+      }
+
+      const codeActionsOnSave = workspace.getConfiguration("editor", event.document)
+        .get<Record<string, string>>("codeActionsOnSave");
+
+      // Only apply formatting via this listener when source.format.oxc is
+      // configured in codeActionsOnSave.
+      if (!codeActionsOnSave?.["source.format.oxc"]) {
+        return;
+      }
+
+      try {
+        const edits = await this.client.sendRequest<
+          { range: { start: { line: number; character: number }; end: { line: number; character: number } }; newText: string }[]
+        >("textDocument/formatting", {
+          textDocument: { uri: event.document.uri.toString() },
+          options: { tabSize: 2, insertSpaces: true },
+        });
+
+        if (edits) {
+          event.waitUntil(Promise.resolve(
+            edits.map((edit) => new TextEdit(
+              new Range(
+                edit.range.start.line,
+                edit.range.start.character,
+                edit.range.end.line,
+                edit.range.end.character,
+              ),
+              edit.newText,
+            )),
+          ));
+        }
+      } catch {
+        // Formatting failed – let the normal formatOnSave or code action handle it
+      }
+    });
 
     outputChannel.info(`Using server binary at: ${binary?.path}`);
 
@@ -386,6 +447,7 @@ export default class FormatterTool implements ToolInterface {
       restartCommand.dispose();
       toggleEnable.dispose();
       formatAction.dispose();
+      onWillSave.dispose();
       onNotificationDispose.dispose();
     };
 
