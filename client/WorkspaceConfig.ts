@@ -75,9 +75,9 @@ interface WorkspaceConfigInterface {
   /**
    * Fix kind to use when applying fixes
    * `oxc.fixKind`
-   * @default 'safe_fix'
+   * @default null
    */
-  fixKind?: FixKind;
+  fixKind?: FixKind | null;
 
   /**
    * Additional flags to pass to the LSP binary
@@ -105,7 +105,7 @@ export class WorkspaceConfig {
   private _unusedDisableDirectives: UnusedDisableDirectives | null = null;
   private _typeAware: boolean | null = null;
   private _disableNestedConfig: boolean = false;
-  private _fixKind: FixKind = FixKind.SafeFix;
+  private _fixKind: FixKind | null = null;
   private _formattingConfigPath: string | null = null;
 
   constructor(private readonly workspace: WorkspaceFolder) {
@@ -119,14 +119,10 @@ export class WorkspaceConfig {
   public refresh(): void {
     const flags = this.configuration.get<Record<string, string>>("flags") ?? {};
 
-    // `configuration.get` takes the default value from the package.json, which is always `safe_fix`.
+    // `configuration.get` takes the default value from the package.json, which is `null`.
     // We need to check the deprecated flags.fix_kind for the real default value.
-    let fixKind = this.configuration.get<FixKind>("fixKind");
-    if (
-      fixKind === FixKind.SafeFix &&
-      flags.fix_kind !== undefined &&
-      flags.fix_kind !== "safe_fix"
-    ) {
+    let fixKind = this.configuration.get<FixKind | null>("fixKind");
+    if (fixKind === null && flags.fix_kind !== undefined) {
       fixKind = flags.fix_kind as FixKind;
     }
 
@@ -144,7 +140,7 @@ export class WorkspaceConfig {
       this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
     this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
     this._disableNestedConfig = disableNestedConfig ?? false;
-    this._fixKind = fixKind ?? FixKind.SafeFix;
+    this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
   }
 
@@ -253,11 +249,11 @@ export class WorkspaceConfig {
     );
   }
 
-  get fixKind(): FixKind {
+  get fixKind(): FixKind | null {
     return this._fixKind;
   }
 
-  updateFixKind(value: FixKind): PromiseLike<void> {
+  updateFixKind(value: FixKind | null): PromiseLike<void> {
     this._fixKind = value;
     return this.configuration.update("fixKind", value, ConfigurationTarget.WorkspaceFolder);
   }
@@ -282,7 +278,7 @@ export class WorkspaceConfig {
       unusedDisableDirectives: this.unusedDisableDirectives ?? undefined,
       typeAware: this.typeAware ?? undefined,
       disableNestedConfig: this.disableNestedConfig,
-      fixKind: this.fixKind,
+      fixKind: this.fixKind ?? undefined,
       // keep for backward compatibility
       run: this.runTrigger,
       // deprecated, kept for backward compatibility

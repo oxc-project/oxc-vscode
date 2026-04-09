@@ -33,7 +33,6 @@ suite("WorkspaceConfig", () => {
   setup(async () => {
     await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
   });
-
   teardown(async () => {
     await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
   });
@@ -46,7 +45,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.unusedDisableDirectives, null);
     strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
-    strictEqual(config.fixKind, "safe_fix");
+    strictEqual(config.fixKind, null);
     strictEqual(config.formattingConfigPath, null);
   });
 
@@ -97,7 +96,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.unusedDisableDirectives, undefined);
     strictEqual(oxlintConfig.typeAware, undefined);
     strictEqual(oxlintConfig.disableNestedConfig, false);
-    strictEqual(oxlintConfig.fixKind, "safe_fix");
+    strictEqual(oxlintConfig.fixKind, undefined);
 
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),

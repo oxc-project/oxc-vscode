@@ -217,7 +217,10 @@
           "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used."
         },
         "oxc.fixKind": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "scope": "resource",
           "enum": [
             "safe_fix",
@@ -235,7 +238,7 @@
             "No fixes will be applied",
             "All fixes and suggestions will be applied"
           ],
-          "default": "safe_fix",
+          "default": null,
           "markdownDescription": "Specify the kind of fixes to suggest/apply."
         },
         "oxc.flags": {
