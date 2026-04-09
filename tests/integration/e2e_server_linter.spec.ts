@@ -183,6 +183,9 @@ suite("E2E Server Linter", () => {
   // but to be safe that everything works, we will check the applied changes.
   // This way we can be sure that everything works as expected.
   test("auto detect changing `fixKind` with fixAll command", async () => {
+    await workspace.getConfiguration("oxc").update("fixKind", "safe_fix");
+    await sleep(500);
+
     const originalContent = "if (x === -0) { bar();}";
     await createOxlintConfiguration({
       rules: {
@@ -207,7 +210,7 @@ suite("E2E Server Linter", () => {
     const content = await workspace.fs.readFile(fileUri);
 
     strictEqual(content.toString(), originalContent);
-    await workspace.getConfiguration("oxc").update("fixKind", "safe_fix_or_suggestion");
+    await workspace.getConfiguration("oxc").update("fixKind", undefined);
     // wait for server to update the internal linter
     await sleep(500);
     await workspace.saveAll();
