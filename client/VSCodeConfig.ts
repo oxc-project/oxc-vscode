@@ -1,4 +1,4 @@
-import { ConfigurationChangeEvent, workspace } from "vscode";
+import { type ConfigurationChangeEvent, workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
@@ -18,15 +18,15 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   public refresh(): void {
-    let enable =
-      this.configuration.get<boolean | null>("enable") ?? true;
+    const enable = this.configuration.get<boolean | null>("enable") ?? true;
 
     this._enableBiome = enable;
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathBiome = this.configuration.get<string>("path.biome");
     this._nodePath = this.configuration.get<string>("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
-    this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
+    this._requireConfig =
+      this.configuration.get<boolean>("requireConfig") ?? false;
   }
 
   get enableBiome(): boolean {
@@ -86,7 +86,9 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   /**
    * These configuration changes need a complete restart of the language server
    */
-  private effectsGeneralLSPConnection(event: ConfigurationChangeEvent): boolean {
+  private effectsGeneralLSPConnection(
+    event: ConfigurationChangeEvent,
+  ): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.node`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.useExecPath`)

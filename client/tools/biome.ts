@@ -1,28 +1,27 @@
 import {
+  type ConfigurationChangeEvent,
   commands,
-  ConfigurationChangeEvent,
-  LogOutputChannel,
+  type LogOutputChannel,
   Uri,
   window,
   workspace,
 } from "vscode";
+import { ExecuteCommandRequest } from "vscode-languageclient";
 import {
-  ConfigurationParams,
-  Executable,
+  type ConfigurationParams,
+  type Executable,
   LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
+  type LanguageClientOptions,
+  type ServerOptions,
   ShowMessageNotification,
 } from "vscode-languageclient/node";
-
-import { BiomeCommands, LspCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
-import { ExecuteCommandRequest } from "vscode-languageclient";
-import { BinarySearchResult } from "../findBinary";
-import StatusBarItemHandler from "../StatusBarItemHandler";
-import { onClientNotification, runExecutable } from "./lsp_helper";
-import ToolInterface from "./ToolInterface";
+import { BiomeCommands, LspCommands } from "../commands";
+import type { BinarySearchResult } from "../findBinary";
+import type StatusBarItemHandler from "../StatusBarItemHandler";
 import { biomeConfigDefaultFilePattern } from "../WorkspaceConfig";
+import { onClientNotification, runExecutable } from "./lsp_helper";
+import type ToolInterface from "./ToolInterface";
 
 const languageClientName = "biome";
 
@@ -54,43 +53,65 @@ export default class BiomeTool implements ToolInterface {
     binary?: BinarySearchResult,
   ): Promise<void> {
     if (!binary) {
-      statusBarItemHandler.updateTool("biome", false, "No valid biome binary found.");
-      outputChannel.appendLine("No valid biome binary found. Biome will not be activated.");
+      statusBarItemHandler.updateTool(
+        "biome",
+        false,
+        "No valid biome binary found.",
+      );
+      outputChannel.appendLine(
+        "No valid biome binary found. Biome will not be activated.",
+      );
       return;
     }
 
     this.allowedToStartServer = configService.vsCodeConfig.requireConfig
-      ? (await workspace.findFiles(biomeConfigDefaultFilePattern, "**/node_modules/**", 1))
-          .length > 0
+      ? (
+          await workspace.findFiles(
+            biomeConfigDefaultFilePattern,
+            "**/node_modules/**",
+            1,
+          )
+        ).length > 0
       : true;
 
-    const restartCommand = commands.registerCommand(BiomeCommands.RestartServerLint, async () => {
-      await this.restartClient();
-      this.updateStatusBar(statusBarItemHandler, configService);
-    });
+    const restartCommand = commands.registerCommand(
+      BiomeCommands.RestartServerLint,
+      async () => {
+        await this.restartClient();
+        this.updateStatusBar(statusBarItemHandler, configService);
+      },
+    );
 
-    const toggleEnable = commands.registerCommand(BiomeCommands.ToggleEnableLint, async () => {
-      await configService.vsCodeConfig.updateEnableBiome(!configService.vsCodeConfig.enableBiome);
-    });
+    const toggleEnable = commands.registerCommand(
+      BiomeCommands.ToggleEnableLint,
+      async () => {
+        await configService.vsCodeConfig.updateEnableBiome(
+          !configService.vsCodeConfig.enableBiome,
+        );
+      },
+    );
 
-    const applyAllFixesFile = commands.registerCommand(BiomeCommands.ApplyAllFixesFile, async () => {
-      if (!this.client) {
-        window.showErrorMessage("biome client not found");
-        return;
-      }
-      const textEditor = window.activeTextEditor;
-      if (!textEditor) {
-        window.showErrorMessage("active text editor not found");
-        return;
-      }
+    const applyAllFixesFile = commands.registerCommand(
+      BiomeCommands.ApplyAllFixesFile,
+      async () => {
+        if (!this.client) {
+          window.showErrorMessage("biome client not found");
+          return;
+        }
+        const textEditor = window.activeTextEditor;
+        if (!textEditor) {
+          window.showErrorMessage("active text editor not found");
+          return;
+        }
 
-      const params = {
-        command: LspCommands.FixAll,
-        arguments: [{ uri: textEditor.document.uri.toString() }],
-      };
+        const params = {
+          command: LspCommands.FixAll,
+          arguments: [{ uri: textEditor.document.uri.toString() }],
+        };
 
-      await this.client.sendRequest(ExecuteCommandRequest.type, params);
-    });
+        await this.client.sendRequest(ExecuteCommandRequest.type, params);
+      },
+    );
 
     const run: Executable = runExecutable(
       binary,
@@ -126,7 +147,9 @@ export default class BiomeTool implements ToolInterface {
                 return null;
               }
               return (
-                configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toBiomeConfig() ?? null
+                configService
+                  .getWorkspaceConfig(Uri.parse(item.scopeUri))
+                  ?.toBiomeConfig() ?? null
               );
             });
           },
@@ -134,7 +157,11 @@ export default class BiomeTool implements ToolInterface {
       },
     };
 
-    this.client = new LanguageClient(languageClientName, serverOptions, clientOptions);
+    this.client = new LanguageClient(
+      languageClientName,
+      serverOptions,
+      clientOptions,
+    );
 
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
@@ -192,23 +219,35 @@ export default class BiomeTool implements ToolInterface {
   ): Promise<void> {
     if (event.affectsConfiguration(`${ConfigService.namespace}.enable`)) {
       if (this.client) {
-        if (configService.vsCodeConfig.enableBiome && !this.client.isRunning()) {
+        if (
+          configService.vsCodeConfig.enableBiome &&
+          !this.client.isRunning()
+        ) {
           await this.client.start();
-        } else if (!configService.vsCodeConfig.enableBiome && this.client.isRunning()) {
+        } else if (
+          !configService.vsCodeConfig.enableBiome &&
+          this.client.isRunning()
+        ) {
           await this.client.stop();
         }
       }
     }
     this.updateStatusBar(statusBarItemHandler, configService);
 
-    if (this.client?.isRunning() && configService.effectsWorkspaceConfigChange(event)) {
+    if (
+      this.client?.isRunning() &&
+      configService.effectsWorkspaceConfigChange(event)
+    ) {
       await this.client.sendNotification("workspace/didChangeConfiguration", {
         settings: configService.biomeServerConfig,
       });
     }
   }
 
-  private updateStatusBar(statusBarItemHandler: StatusBarItemHandler, configService: ConfigService) {
+  private updateStatusBar(
+    statusBarItemHandler: StatusBarItemHandler,
+    configService: ConfigService,
+  ) {
     const enable = configService.vsCodeConfig.enableBiome;
     const isEnabled = this.allowedToStartServer && enable;
 

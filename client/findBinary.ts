@@ -12,7 +12,10 @@ export type BinarySearchResult = {
 };
 
 /** @internal only used for testing */
-export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
+export function replaceTargetFromMainToBin(
+  resolvedPath: string,
+  binaryName: string,
+): string {
   // Walk up from the resolved main file to find the nearest package.json
   // and use its "bin" entry to get the actual binary path
   let dir = path.dirname(resolvedPath);
@@ -25,9 +28,12 @@ export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: str
       continue;
     }
     // Found the package.json — stop walking up here
-    const packageJson: { bin?: string | Record<string, string> } = JSON.parse(rawContent);
+    const packageJson: { bin?: string | Record<string, string> } =
+      JSON.parse(rawContent);
     const binEntry =
-      typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.[binaryName];
+      typeof packageJson.bin === "string"
+        ? packageJson.bin
+        : packageJson.bin?.[binaryName];
     if (!binEntry) {
       throw new Error(`No bin entry for "${binaryName}" found in package.json`);
     }
@@ -42,7 +48,9 @@ async function searchNodeModulesDefaultBinPath(
 ): Promise<BinarySearchResult | undefined> {
   const candidates = folders.flatMap((folder) => {
     const basePath = path.join(folder, ".bin", binaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    return process.platform === "win32"
+      ? [basePath, `${basePath}.exe`]
+      : [basePath];
   });
 
   const exists = await Promise.all(
@@ -73,7 +81,11 @@ function getWorkspacePackageJsonNodeModules(): Promise<string[]> {
     cachedWorkspacePackageJsonNodeModules = Promise.resolve(
       workspace
         .findFiles("**/package.json", "**/node_modules/**")
-        .then((uris) => uris.map((uri) => path.join(path.dirname(uri.fsPath), "node_modules"))),
+        .then((uris) =>
+          uris.map((uri) =>
+            path.join(path.dirname(uri.fsPath), "node_modules"),
+          ),
+        ),
     );
   }
   return cachedWorkspacePackageJsonNodeModules;
@@ -95,7 +107,8 @@ export async function searchProjectNodeModulesBin(
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, {
-        paths: workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
+        paths:
+          workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
       }),
       binaryName,
     );
@@ -103,10 +116,13 @@ export async function searchProjectNodeModulesBin(
   } catch {}
 
   // fallback to direct binary lookup in workspace node_modules/.bin
-  const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
-    path.join(folder.uri.fsPath, "node_modules"),
+  const workspaceNodeModules = (workspace.workspaceFolders ?? []).map(
+    (folder) => path.join(folder.uri.fsPath, "node_modules"),
   );
-  const result = await searchNodeModulesDefaultBinPath(binaryName, workspaceNodeModules);
+  const result = await searchNodeModulesDefaultBinPath(
+    binaryName,
+    workspaceNodeModules,
+  );
   if (result) {
     return result;
   }
@@ -136,7 +152,9 @@ function isPnpApi(value: unknown): value is PnpApi {
  * SECURITY: This function executes JavaScript via require().
  * Callers MUST verify workspace.isTrusted before invoking.
  */
-function findPnpApi(startDir: string): { api: PnpApi; loaderPath: string } | undefined {
+function findPnpApi(
+  startDir: string,
+): { api: PnpApi; loaderPath: string } | undefined {
   let dir = startDir;
   while (dir !== path.dirname(dir)) {
     for (const name of [".pnp.cjs", ".pnp.js"]) {
@@ -174,11 +192,18 @@ export async function searchYarnPnpBin(
       const pnpResult = findPnpApi(folderPath);
       if (!pnpResult) return undefined;
       try {
-        const resolvedMain = pnpResult.api.resolveRequest(binaryName, folderPath + path.sep);
+        const resolvedMain = pnpResult.api.resolveRequest(
+          binaryName,
+          folderPath + path.sep,
+        );
         if (!resolvedMain) return undefined;
         const binPath = replaceTargetFromMainToBin(resolvedMain, binaryName);
         await workspace.fs.stat(Uri.file(binPath));
-        return { path: binPath, loader: "node", yarnPnpLoaderPath: pnpResult.loaderPath } as const;
+        return {
+          path: binPath,
+          loader: "node",
+          yarnPnpLoaderPath: pnpResult.loaderPath,
+        } as const;
       } catch {
         return undefined;
       }
@@ -245,7 +270,9 @@ export async function searchSettingsBin(
     settingsBinary.endsWith(".js") ||
     settingsBinary.endsWith(".cjs") ||
     settingsBinary.endsWith(".mjs") ||
-    settingsBinary.endsWith(`${defaultBinaryName}${path.sep}bin${path.sep}${defaultBinaryName}`);
+    settingsBinary.endsWith(
+      `${defaultBinaryName}${path.sep}bin${path.sep}${defaultBinaryName}`,
+    );
 
   try {
     await workspace.fs.stat(Uri.file(settingsBinary));
@@ -272,16 +299,24 @@ export async function searchSettingsBin(
 function globalNodeModulesPaths(): string[] {
   const npmGlobalNodeModulesPath = safeSpawnSync("npm", ["root", "-g"]);
   const pnpmGlobalNodeModulesPath = safeSpawnSync("pnpm", ["root", "-g"]);
-  const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");
+  const bunGlobalNodeModulesPath = path.resolve(
+    homedir(),
+    ".bun/install/global/node_modules",
+  );
 
-  return [npmGlobalNodeModulesPath, pnpmGlobalNodeModulesPath, bunGlobalNodeModulesPath].filter(
-    Boolean,
-  ) as string[];
+  return [
+    npmGlobalNodeModulesPath,
+    pnpmGlobalNodeModulesPath,
+    bunGlobalNodeModulesPath,
+  ].filter(Boolean) as string[];
 }
 
 // only use this function with internal code, because it executes shell commands
 // which could be a security risk if the command or args are user-controlled
-const safeSpawnSync = (command: string, args: readonly string[] = []): string | undefined => {
+const safeSpawnSync = (
+  command: string,
+  args: readonly string[] = [],
+): string | undefined => {
   let output: string | undefined;
 
   try {

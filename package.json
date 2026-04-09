@@ -33,7 +33,6 @@
     "install-extension": "code --install-extension biome_formatter.vsix --force",
     "test": "cross-env TEST=true pnpm run compile && vscode-test",
     "test:unit": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=unit vscode-test",
-    "test:biome": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=biome-lsp vscode-test",
     "lint": "biome lint",
     "fmt": "biome format --write"
   },
@@ -41,7 +40,7 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
+    "@biomejs/biome": "^2.3.11",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.1.0",
     "@types/vscode": "1.93.0",

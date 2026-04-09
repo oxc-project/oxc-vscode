@@ -1,7 +1,7 @@
-import { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
-import { ConfigService } from "../ConfigService";
-import StatusBarItemHandler from "../StatusBarItemHandler";
+import type { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
+import type { ConfigService } from "../ConfigService";
 import type { BinarySearchResult } from "../findBinary";
+import type StatusBarItemHandler from "../StatusBarItemHandler";
 
 export default interface ToolInterface {
   /**

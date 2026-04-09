@@ -1,11 +1,11 @@
-import { VSCodeConfig } from "./VSCodeConfig";
 import { execFile } from "node:child_process";
 import * as os from "node:os";
 import { env, version, window } from "vscode";
+import type { VSCodeConfig } from "./VSCodeConfig";
 
-const commandPrefix = "biome";
+const _commandPrefix = "biome";
 
-export const enum BiomeCommands {
+export enum BiomeCommands {
   ShowOutputChannelLint = "biome.showOutputChannel",
   RestartServerLint = "biome.restartServer",
   ToggleEnableLint = "biome.toggleEnable",
@@ -13,7 +13,7 @@ export const enum BiomeCommands {
   CopyDebugInfo = "biome.copyDebugInfo",
 }
 
-export const enum LspCommands {
+export enum LspCommands {
   FixAll = "biome.fixAll",
 }
 
@@ -23,7 +23,10 @@ export async function copyDebugCommand(
   vscodeConfig: VSCodeConfig,
 ) {
   const osName = getOsName();
-  const nodeCommand = resolveNodeCommand(vscodeConfig.nodePath, vscodeConfig.useExecPath);
+  const nodeCommand = resolveNodeCommand(
+    vscodeConfig.nodePath,
+    vscodeConfig.useExecPath,
+  );
   const nodeVersion = await getNodeVersion(nodeCommand);
 
   const info = [

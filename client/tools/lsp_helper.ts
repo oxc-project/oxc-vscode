@@ -1,6 +1,10 @@
 import * as path from "node:path";
-import { LogOutputChannel, window } from "vscode";
-import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
+import { type LogOutputChannel, window } from "vscode";
+import {
+  type Executable,
+  MessageType,
+  type ShowMessageParams,
+} from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
 
 export function runExecutable(
@@ -51,7 +55,10 @@ export function runExecutable(
   const pnpArgs: string[] = [];
   if (isNode && binary.yarnPnpLoaderPath) {
     pnpArgs.push("--require", binary.yarnPnpLoaderPath);
-    const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
+    const esmLoaderPath = path.join(
+      path.dirname(binary.yarnPnpLoaderPath),
+      ".pnp.loader.mjs",
+    );
     pnpArgs.push("--loader", esmLoaderPath);
   }
 
@@ -79,7 +86,10 @@ export function runExecutable(
       };
 }
 
-export function onClientNotification(params: ShowMessageParams, outputChannel: LogOutputChannel) {
+export function onClientNotification(
+  params: ShowMessageParams,
+  outputChannel: LogOutputChannel,
+) {
   switch (params.type) {
     case MessageType.Debug:
       outputChannel.debug(params.message);

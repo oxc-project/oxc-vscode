@@ -1,4 +1,9 @@
-import { MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
+import {
+  MarkdownString,
+  StatusBarAlignment,
+  type StatusBarItem,
+  window,
+} from "vscode";
 
 type ToolState = {
   isEnabled: boolean;
@@ -7,8 +12,15 @@ type ToolState = {
 };
 
 export default class StatusBarItemHandler {
-  private biomeState: ToolState = { isEnabled: false, content: "", version: "unknown" };
-  private statusBarItem: StatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100);
+  private biomeState: ToolState = {
+    isEnabled: false,
+    content: "",
+    version: "unknown",
+  };
+  private statusBarItem: StatusBarItem = window.createStatusBarItem(
+    StatusBarAlignment.Right,
+    100,
+  );
   private extensionVersion: string = "<unknown>";
 
   constructor(extensionVersion?: string) {
@@ -37,8 +49,12 @@ export default class StatusBarItemHandler {
   }
 
   private updateFullTooltip(): void {
-    const version = this.biomeState.version ? `v${this.biomeState.version}` : "unknown version";
-    const statusText = this.biomeState.isEnabled ? `enabled (${version})` : "disabled";
+    const version = this.biomeState.version
+      ? `v${this.biomeState.version}`
+      : "unknown version";
+    const statusText = this.biomeState.isEnabled
+      ? `enabled (${version})`
+      : "disabled";
     const text = `**Biome is ${statusText}**\n\n${this.biomeState.content}`;
 
     this.statusBarItem.tooltip = new MarkdownString("", true);

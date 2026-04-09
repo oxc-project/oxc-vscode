@@ -1,4 +1,4 @@
-import { strictEqual } from "assert";
+import { strictEqual } from "node:assert";
 import { validateSafeBinaryPath } from "../../client/PathValidator";
 
 suite("validateSafeBinaryPath", () => {
@@ -12,8 +12,14 @@ suite("validateSafeBinaryPath", () => {
   test("should accept case variations of biome", () => {
     strictEqual(validateSafeBinaryPath("BIOME_LANGUAGE_SERVER"), true);
     strictEqual(validateSafeBinaryPath("BIOME_LANGUAGE_SERVER.exe"), true);
-    strictEqual(validateSafeBinaryPath("/usr/local/bin/BIOME_LANGUAGE_SERVER"), true);
-    strictEqual(validateSafeBinaryPath("C:\\Program Files\\BIOME_LANGUAGE_SERVER.exe"), true);
+    strictEqual(
+      validateSafeBinaryPath("/usr/local/bin/BIOME_LANGUAGE_SERVER"),
+      true,
+    );
+    strictEqual(
+      validateSafeBinaryPath("C:\\Program Files\\BIOME_LANGUAGE_SERVER.exe"),
+      true,
+    );
   });
 
   test("should reject paths with directory traversal", () => {

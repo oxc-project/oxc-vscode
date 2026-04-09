@@ -1,4 +1,8 @@
-import { ConfigurationChangeEvent, ConfigurationTarget, workspace, WorkspaceFolder } from "vscode";
+import {
+  type ConfigurationChangeEvent,
+  type WorkspaceFolder,
+  workspace,
+} from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "./ConfigService";
 
@@ -45,9 +49,12 @@ export class WorkspaceConfig {
 
   public refresh(): void {
     this._runTrigger =
-      this.configuration.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
-    this._configPath = this.configuration.get<string | null>("configPath") ?? null;
-    this._disableNestedConfig = this.configuration.get<boolean>("disableNestedConfig") ?? false;
+      this.configuration.get<DiagnosticPullMode>("lint.run") ||
+      DiagnosticPullMode.onType;
+    this._configPath =
+      this.configuration.get<string | null>("configPath") ?? null;
+    this._disableNestedConfig =
+      this.configuration.get<boolean>("disableNestedConfig") ?? false;
   }
 
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
@@ -71,7 +78,9 @@ export class WorkspaceConfig {
     return this._disableNestedConfig;
   }
 
-  public shouldRequestDiagnostics(diagnosticPullMode: DiagnosticPullMode): boolean {
+  public shouldRequestDiagnostics(
+    diagnosticPullMode: DiagnosticPullMode,
+  ): boolean {
     return diagnosticPullMode === this.runTrigger;
   }
 

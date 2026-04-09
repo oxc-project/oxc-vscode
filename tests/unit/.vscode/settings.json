@@ -1,0 +1,8 @@
+{
+  "biome.enable": false,
+  "biome.trace.server": "verbose",
+  "biome.path.biome": "./biome",
+  "biome.path.node": "./node",
+  "biome.useExecPath": true,
+  "biome.requireConfig": true
+}

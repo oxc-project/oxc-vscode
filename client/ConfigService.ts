@@ -1,16 +1,21 @@
-import { ConfigurationChangeEvent, Uri, workspace, WorkspaceFolder } from "vscode";
-import { DiagnosticPullMode } from "vscode-languageclient";
 import {
-  BinarySearchResult,
+  type ConfigurationChangeEvent,
+  Uri,
+  type WorkspaceFolder,
+  workspace,
+} from "vscode";
+import type { DiagnosticPullMode } from "vscode-languageclient";
+import {
+  type BinarySearchResult,
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
   searchSettingsBin,
   searchYarnPnpBin,
 } from "./findBinary";
-import { IDisposable } from "./types";
+import type { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";
 import {
-  BiomeWorkspaceConfigInterface,
+  type BiomeWorkspaceConfigInterface,
   WorkspaceConfig,
 } from "./WorkspaceConfig";
 
@@ -55,7 +60,10 @@ export class ConfigService implements IDisposable {
   }
 
   public addWorkspaceConfig(workspace: WorkspaceFolder): void {
-    this.workspaceConfigs.set(workspace.uri.fsPath, new WorkspaceConfig(workspace));
+    this.workspaceConfigs.set(
+      workspace.uri.fsPath,
+      new WorkspaceConfig(workspace),
+    );
   }
 
   public removeWorkspaceConfig(workspace: WorkspaceFolder): void {
@@ -66,7 +74,9 @@ export class ConfigService implements IDisposable {
     return this.workspaceConfigs.get(workspace.fsPath);
   }
 
-  public effectsWorkspaceConfigChange(event: ConfigurationChangeEvent): boolean {
+  public effectsWorkspaceConfigChange(
+    event: ConfigurationChangeEvent,
+  ): boolean {
     for (const workspaceConfig of this.workspaceConfigs.values()) {
       if (workspaceConfig.effectsConfigChange(event)) {
         return true;
@@ -75,7 +85,9 @@ export class ConfigService implements IDisposable {
     return false;
   }
 
-  public async getBiomeServerBinPath(): Promise<BinarySearchResult | undefined> {
+  public async getBiomeServerBinPath(): Promise<
+    BinarySearchResult | undefined
+  > {
     return this.searchBinaryPath(this.vsCodeConfig.binPathBiome, "biome");
   }
 
@@ -93,7 +105,9 @@ export class ConfigService implements IDisposable {
     }
     const workspaceConfig = this.getWorkspaceConfig(ws.uri);
 
-    return workspaceConfig?.shouldRequestDiagnostics(diagnosticPullMode) ?? false;
+    return (
+      workspaceConfig?.shouldRequestDiagnostics(diagnosticPullMode) ?? false
+    );
   }
 
   private async searchBinaryPath(
@@ -111,7 +125,9 @@ export class ConfigService implements IDisposable {
     );
   }
 
-  private async onVscodeConfigChange(event: ConfigurationChangeEvent): Promise<void> {
+  private async onVscodeConfigChange(
+    event: ConfigurationChangeEvent,
+  ): Promise<void> {
     let isConfigChanged = false;
 
     if (event.affectsConfiguration(ConfigService.namespace)) {
