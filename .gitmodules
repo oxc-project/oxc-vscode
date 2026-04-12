@@ -1,3 +1,4 @@
 [submodule "agent-resources"]
 	path = agent-resources
 	url = https://github.com/simwai/agent-resources
+	ignore = dirty
