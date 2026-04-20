@@ -91,17 +91,6 @@ export function clearWorkspacePackageJsonNodeModulesCache(): void {
 export async function searchProjectNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
-  // try to resolve via require.resolve
-  try {
-    const resolvedPath = replaceTargetFromMainToBin(
-      require.resolve(binaryName, {
-        paths: workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
-      }),
-      binaryName,
-    );
-    return { path: resolvedPath, loader: "node" };
-  } catch {}
-
   // fallback to direct binary lookup in workspace node_modules/.bin
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
@@ -113,7 +102,21 @@ export async function searchProjectNodeModulesBin(
 
   // fallback to searching for package.json in workspace subfolders (monorepo support)
   const packageJsonNodeModules = await getWorkspacePackageJsonNodeModules();
-  return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+  const result2 = await searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+  if (result2) {
+    return result2;
+  }
+
+  // try to resolve via require.resolve
+  try {
+    const resolvedPath = replaceTargetFromMainToBin(
+      require.resolve(binaryName, {
+        paths: workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
+      }),
+      binaryName,
+    );
+    return { path: resolvedPath, loader: "node" };
+  } catch {}
 }
 
 interface PnpApi {
@@ -196,6 +199,12 @@ export async function searchGlobalNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
   const globalPaths = globalNodeModulesPaths();
+
+  // fallback to direct binary lookup in global node_modules/.bin
+  const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
+  if (result) {
+    return result;
+  }
   // try to resolve via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
@@ -204,9 +213,6 @@ export async function searchGlobalNodeModulesBin(
     );
     return { path: resolvedPath, loader: "node" };
   } catch {}
-
-  // fallback to direct binary lookup in global node_modules/.bin
-  return searchNodeModulesDefaultBinPath(binaryName, globalPaths);
 }
 
 /**
