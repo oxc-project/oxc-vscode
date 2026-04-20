@@ -9,6 +9,12 @@ export type BinarySearchResult = {
   path: string;
   loader: "node" | "native";
   yarnPnpLoaderPath?: string; // only set if loader is 'node' and found via Yarn PnP
+  /**
+   * When set, `BinaryWatcher` will watch this specific file instead of
+   * searching for a lock file. Used for global and settings-specified
+   * binaries that have no project lock file to watch.
+   */
+  watcherPath?: string;
 };
 
 /** @internal only used for testing */
@@ -188,6 +194,13 @@ export async function searchYarnPnpBin(
   return results.find(Boolean);
 }
 
+/** Attaches `watcherPath: result.path` to an existing result, used for global and settings binaries. */
+function withWatcherPath(
+  result: BinarySearchResult | undefined,
+): BinarySearchResult | undefined {
+  return result ? { ...result, watcherPath: result.path } : undefined;
+}
+
 /**
  * Search for the binary in global node_modules.
  * Returns undefined if not found.
@@ -202,11 +215,11 @@ export async function searchGlobalNodeModulesBin(
       require.resolve(binaryName, { paths: globalPaths }),
       binaryName,
     );
-    return { path: resolvedPath, loader: "node" };
+    return withWatcherPath({ path: resolvedPath, loader: "node" });
   } catch {}
 
   // fallback to direct binary lookup in global node_modules/.bin
-  return searchNodeModulesDefaultBinPath(binaryName, globalPaths);
+  return withWatcherPath(await searchNodeModulesDefaultBinPath(binaryName, globalPaths));
 }
 
 /**
@@ -249,7 +262,7 @@ export async function searchSettingsBin(
 
   try {
     await workspace.fs.stat(Uri.file(settingsBinary));
-    return { path: settingsBinary, loader: isNode ? "node" : "native" };
+    return withWatcherPath({ path: settingsBinary, loader: isNode ? "node" : "native" });
   } catch {}
 
   // on Windows, also check for `.exe` extension (bun uses `.exe` for its binaries)
@@ -260,7 +273,7 @@ export async function searchSettingsBin(
 
     try {
       await workspace.fs.stat(Uri.file(settingsBinary));
-      return { path: settingsBinary, loader: "native" };
+      return withWatcherPath({ path: settingsBinary, loader: "native" });
     } catch {}
   }
 

@@ -3,6 +3,7 @@ import { commands, ExtensionContext, LogOutputChannel, window, workspace } from 
 import { copyDebugCommand, OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
 import StatusBarItemHandler from "./StatusBarItemHandler";
+import { BinaryWatcher } from "./tools/BinaryWatcher";
 import Formatter from "./tools/formatter";
 import Linter from "./tools/linter";
 import ToolInterface from "./tools/ToolInterface";
@@ -126,6 +127,27 @@ export async function activate(context: ExtensionContext) {
 
   // Finally show the status bar item.
   statusBarItemHandler.show();
+
+  // Watch for lock file changes (e.g. after npm/pnpm/yarn/bun install) so that
+  // tools are restarted automatically without requiring a VS Code restart.
+  const createBinaryWatcher = (
+    toolClass: typeof Linter | typeof Formatter,
+    binaryName: string,
+    outputChannel: LogOutputChannel,
+  ) => {
+    const tool = tools.find((t) => t instanceof toolClass);
+    if (tool) {
+      const binary = binaryPaths[tools.indexOf(tool)];
+      context.subscriptions.push(
+        new BinaryWatcher(binary, binaryName, outputChannel, () =>
+          restartTool(tool, outputChannel),
+        ),
+      );
+    }
+  };
+
+  createBinaryWatcher(Linter, "oxlint", outputChannelLint);
+  createBinaryWatcher(Formatter, "oxfmt", outputChannelFormat);
 }
 
 export async function deactivate(): Promise<void> {
