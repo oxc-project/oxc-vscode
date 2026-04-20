@@ -91,7 +91,10 @@ export function clearWorkspacePackageJsonNodeModulesCache(): void {
 export async function searchProjectNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
-  // fallback to direct binary lookup in workspace node_modules/.bin
+  // try to find shared binary inside `node_modules/.bin` of each workspace folder
+  // This is required, because the project can use `vite-plus`,
+  // which has different environment variables for `oxlint` and `oxfmt`.
+  // Example: It will skip the `vite.config.ts` search without `VP_VERSION` env variable.
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
   );
@@ -107,7 +110,7 @@ export async function searchProjectNodeModulesBin(
     return result2;
   }
 
-  // try to resolve via require.resolve
+  // fallback to direct binary lookupvia require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, {
@@ -200,12 +203,15 @@ export async function searchGlobalNodeModulesBin(
 ): Promise<BinarySearchResult | undefined> {
   const globalPaths = globalNodeModulesPaths();
 
-  // fallback to direct binary lookup in global node_modules/.bin
+  // try to find shared binary inside `node_modules/.bin` of each workspace folder
+  // This is required, because the project can use `vite-plus`,
+  // which has different environment variables for `oxlint` and `oxfmt`.
+  // Example: It will skip the `vite.config.ts` search without `VP_VERSION` env variable.
   const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
   if (result) {
     return result;
   }
-  // try to resolve via require.resolve
+  // fallback to direct binary lookup via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, { paths: globalPaths }),
