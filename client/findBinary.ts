@@ -110,7 +110,7 @@ export async function searchProjectNodeModulesBin(
     return result2;
   }
 
-  // fallback to direct binary lookupvia require.resolve
+  // fallback to direct binary lookup via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, {
