@@ -174,7 +174,10 @@ export default class LinterTool implements ToolInterface {
             // https://github.com/oxc-project/oxc/issues/12404
             if (
               typeof diag.code === "object" &&
-              diag.code?.value === "eslint-plugin-unicorn(filename-case)"
+              // old diagnostic code since oxlint v1.63.0, but respect the js plugin version too
+              (diag.code?.value === "eslint-plugin-unicorn(filename-case)" ||
+                // new diagnostic code since oxlint v1.63.0
+                diag.code?.value === "unicorn(filename-case)")
             ) {
               diag.message +=
                 "\nYou may need to close the file and restart VSCode after renaming a file by only casing.";
