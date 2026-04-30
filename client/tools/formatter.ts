@@ -7,12 +7,16 @@ import {
   ConfigurationChangeEvent,
   languages,
   LogOutputChannel,
+  TextEdit,
   Uri,
+  window,
   workspace,
+  WorkspaceEdit,
 } from "vscode";
 
 import {
   ConfigurationParams,
+  DocumentFormattingRequest,
   DocumentSelector,
   ShowMessageNotification,
 } from "vscode-languageclient";
@@ -37,9 +41,9 @@ const formatCodeActionKind = CodeActionKind.Source.append("format.oxc");
 
 const formatCodeAction = new CodeAction("Format Document", formatCodeActionKind);
 formatCodeAction.command = {
-  command: "editor.action.formatDocument",
+  command: OxcCommands.FormatDocument,
   title: "Format Document",
-  tooltip: "Format the document using the default formatter",
+  tooltip: "Format the document with oxfmt",
 };
 
 // This list is not used as-is for implementation to determine whether formatting processing is possible.
@@ -314,11 +318,8 @@ export default class FormatterTool implements ToolInterface {
     const formatAction = languages.registerCodeActionsProvider(
       this.documentSelectors,
       {
-        provideCodeActions: (doc) => {
-          if (
-            configService.vsCodeConfig.enableOxfmt === false ||
-            workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
-          ) {
+        provideCodeActions: (_doc) => {
+          if (configService.vsCodeConfig.enableOxfmt === false) {
             return [];
           }
           return [formatCodeAction];
@@ -374,6 +375,31 @@ export default class FormatterTool implements ToolInterface {
     // Create the language client and start the client.
     this.client = new LanguageClient(languageClientName, serverOptions, clientOptions);
 
+    const formatCommand = commands.registerCommand(OxcCommands.FormatDocument, async () => {
+      const editor = window.activeTextEditor;
+      if (!editor || !this.client) return;
+
+      const doc = editor.document;
+      const editorConfig = workspace.getConfiguration("editor", doc);
+      const tabSize = editorConfig.get<number>("tabSize") ?? 4;
+      const insertSpaces = editorConfig.get<boolean>("insertSpaces") ?? true;
+
+      try {
+        const edits = await this.client.sendRequest(DocumentFormattingRequest.type, {
+          textDocument: { uri: doc.uri.toString() },
+          options: { tabSize, insertSpaces },
+        });
+
+        if (edits && edits.length > 0) {
+          const edit = new WorkspaceEdit();
+          edit.set(doc.uri, edits as TextEdit[]);
+          await workspace.applyEdit(edit);
+        }
+      } catch {
+        // Server might not support formatting for this document type
+      }
+    });
+
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
       (params) => {
@@ -386,6 +412,7 @@ export default class FormatterTool implements ToolInterface {
       restartCommand.dispose();
       toggleEnable.dispose();
       formatAction.dispose();
+      formatCommand.dispose();
       onNotificationDispose.dispose();
     };
 
