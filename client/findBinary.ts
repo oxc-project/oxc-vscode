@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
+import { env } from "node:process";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 
@@ -219,6 +220,36 @@ export async function searchGlobalNodeModulesBin(
     );
     return { path: resolvedPath, loader: "node" };
   } catch {}
+}
+
+/**
+ * Search for the binary in the PATH.
+ * Returns undefined if not found.
+ */
+export async function searchPath(
+  defaultBinaryName: string,
+): Promise<BinarySearchResult | undefined> {
+  const envPath = env.PATH;
+
+  if (!envPath) {
+    return undefined;
+  }
+
+  for (const dir of envPath.split(path.delimiter)) {
+    // validates the given path is safe to use
+    if (!validateSafeBinaryPath(dir)) {
+      continue;
+    }
+
+    const binary = Uri.joinPath(Uri.file(dir), defaultBinaryName);
+    try {
+      await workspace.fs.stat(binary);
+      return { path: binary.fsPath, loader: "native" };
+    } catch {}
+  }
+
+  // no valid binary found
+  return undefined;
 }
 
 /**
