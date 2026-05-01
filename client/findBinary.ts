@@ -235,21 +235,24 @@ export async function searchPath(
     return undefined;
   }
 
-  for (const dir of envPath.split(path.delimiter)) {
-    // validates the given path is safe to use
-    if (!validateSafeBinaryPath(dir)) {
-      continue;
-    }
+  const binary = await Promise.all(
+    envPath.split(path.delimiter).map(async (dir) => {
+      // validates the given path is safe to use
+      if (!validateSafeBinaryPath(dir)) {
+        return undefined;
+      }
 
-    const binary = Uri.joinPath(Uri.file(dir), defaultBinaryName);
-    try {
-      await workspace.fs.stat(binary);
-      return { path: binary.fsPath, loader: "native" };
-    } catch {}
-  }
+      const candidate = Uri.joinPath(Uri.file(dir), defaultBinaryName);
+      try {
+        await workspace.fs.stat(candidate);
+        return { path: candidate.fsPath, loader: "native" } as const;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
 
-  // no valid binary found
-  return undefined;
+  return binary.find(Boolean);
 }
 
 /**
