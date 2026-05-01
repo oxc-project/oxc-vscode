@@ -7,6 +7,7 @@ import {
   clearWorkspacePackageJsonNodeModulesCache,
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
+  searchPath,
   searchProjectNodeModulesBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
@@ -208,6 +209,45 @@ suite("findBinary", () => {
       strictEqual(result.loader, "node");
       strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
       strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+    });
+  });
+
+  suite("searchPath", () => {
+    let originalPath: string | undefined;
+
+    setup(() => {
+      originalPath = process.env.PATH;
+    });
+
+    teardown(() => {
+      if (originalPath === undefined) {
+        delete process.env.PATH;
+      } else {
+        process.env.PATH = originalPath;
+      }
+    });
+
+    test("should find binary in PATH", async () => {
+      const tmpPathDir = mkdtempSync(path.join(tmpdir(), "test-search-path-"));
+      const binaryPath = path.join(tmpPathDir, binaryName);
+      writeFileSync(binaryPath, "");
+
+      process.env.PATH = tmpPathDir;
+
+      try {
+        const result = await searchPath(binaryName);
+        strictEqual(result?.loader, "native");
+        strictEqual(result?.path, binaryPath);
+      } finally {
+        rmSync(tmpPathDir, { recursive: true, force: true });
+      }
+    });
+
+    test("should return undefined when PATH is not set", async () => {
+      delete process.env.PATH;
+      const result = await searchPath(binaryName);
+
+      strictEqual(result, undefined);
     });
   });
 });
