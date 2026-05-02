@@ -1,8 +1,23 @@
 {
+  "js/ts.tsc.autoDetect": "off",
+  "js/ts.tsdk": "node_modules/typescript/lib",
+  "js/ts.tsserver.experimental.enableProjectDiagnostics": false,
+  "search.quickOpen.includeHistory": true,
+  "search.exclude": {
+    "/node_modules": true,
+    "/dist": true,
+    "/out": true
+  },
+  "js/ts.suggest.paths": true,
+  "js/ts.preferences.importModuleSpecifier": "shortest",
+  "js/ts.preferences.importModuleSpecifierEnding": "js",
+  "terminal.integrated.detectLocale": "on",
+  "files.encoding": "utf8",
+  "files.eol": "\n",
   "editor.defaultFormatter": "simwai.biome-vscode",
   "editor.formatOnSave": true,
-  "editor.formatOnSaveMode": "file", // biome can only format whole files
+  "editor.formatOnSaveMode": "file",
   "editor.codeActionsOnSave": {
-    "source.organizeImports": "never" // let biome handle import organization
+    "source.organizeImports": "never"
   }
 }

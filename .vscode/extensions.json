@@ -1,5 +1,6 @@
 {
   "recommendations": [
-    "simwai.biome-vscode" // biome linter and formatter
+    "simwai.biome-vscode",
+    "ms-vscode.extension-test-runner"
   ]
 }
