@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import * as os from "node:os";
-import { env, type LogOutputChannel, version, window } from "vscode";
+import * as path from "node:path";
+import { env, type LogOutputChannel, version, window, workspace } from "vscode";
 import type { BinarySearchResult } from "./findBinary";
 import type { VSCodeConfig } from "./VSCodeConfig";
 
@@ -34,13 +35,13 @@ export async function copyDebugCommand(
   const info = [
     "### Used Versions",
     "",
-    "\\`\\`\\`\\`",
+    "````",
     `VS Code extension: v${extensionVersion}`,
     `biome: v${biomeVersion}`,
     `Editor: ${env.appName} v${version} (${env.appHost})`,
     `Operating System and Version: ${osName} (${os.release()})`,
     `Node Version: ${nodeVersion} (${nodeCommand})`,
-    "\\`\\`\\`\\`",
+    "````",
   ].join("\n");
 
   await env.clipboard.writeText(info);
@@ -60,6 +61,8 @@ export async function rageCommand(
     return;
   }
 
+  const isWindows = os.platform() === "win32";
+  const isNode = binary.loader === "node";
   const nodeCommand = resolveNodeCommand(
     vscodeConfig.nodePath,
     vscodeConfig.useExecPath,
@@ -68,13 +71,54 @@ export async function rageCommand(
   outputChannel.show();
   outputChannel.info("Running 'biome rage'...");
 
-  const args = ["rage"];
-  const options = {
-    cwd: os.homedir(), // Or workspace root if possible
-    env: { ...process.env },
+  const serverEnv: Record<string, string> = {
+    ...process.env,
+    RUST_LOG: process.env.RUST_LOG || "info",
+    BIOME_LOG: process.env.BIOME_LOG || "info",
+    NO_COLOR: "1",
   };
 
-  execFile(binary.path, args, options, (error, stdout, stderr) => {
+  if (vscodeConfig.useExecPath) {
+    serverEnv.ELECTRON_RUN_AS_NODE = "1";
+  } else {
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
+  }
+
+  if (path.isAbsolute(nodeCommand)) {
+    const nodeDir = path.dirname(nodeCommand);
+    serverEnv.PATH = `${nodeDir}${isWindows ? ";" : ":"}${process.env.PATH ?? ""}`;
+  }
+
+  const pnpArgs: string[] = [];
+  if (isNode && binary.yarnPnpLoaderPath) {
+    pnpArgs.push("--require", binary.yarnPnpLoaderPath);
+    const esmLoaderPath = path.join(
+      path.dirname(binary.yarnPnpLoaderPath),
+      ".pnp.loader.mjs",
+    );
+    pnpArgs.push("--loader", esmLoaderPath);
+  }
+
+  let command: string;
+  let args: string[];
+  let shell = false;
+
+  if (isNode || vscodeConfig.useExecPath) {
+    command = nodeCommand;
+    args = [...pnpArgs, binary.path, "rage"];
+  } else {
+    command = isWindows ? `"${binary.path}"` : binary.path;
+    args = ["rage"];
+    shell = isWindows;
+  }
+
+  const options = {
+    cwd: workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir(),
+    env: serverEnv,
+    shell,
+  };
+
+  execFile(command, args, options, (error, stdout, stderr) => {
     if (error) {
       outputChannel.error(`'biome rage' failed: ${error.message}`);
       if (stderr) {
