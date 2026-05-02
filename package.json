@@ -33,7 +33,7 @@
     "test": "cross-env TEST=true pnpm run compile && vscode-test",
     "test:unit": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=unit vscode-test",
     "lint": "biome lint",
-    "format": "biome check --write ."
+    "format": "biome check --write ./client && biome check --write ./tests"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

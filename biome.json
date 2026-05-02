@@ -6,9 +6,9 @@
   "files": {
     "ignoreUnknown": false,
     "experimentalScannerIgnores": [
-      "out/**",
+      "out",
       "biome_formatter.vsix",
-      "node_modules/**"
+      "node_modules"
     ]
   },
   "formatter": {
