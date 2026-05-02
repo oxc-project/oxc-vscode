@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
+import test, { suite } from "node:test";
 import { workspace } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
-import test, { suite } from 'node:test';
 
 suite("ConfigService", () => {
   test("biomeServerConfig correctly maps workspace configs", () => {

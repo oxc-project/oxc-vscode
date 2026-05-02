@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import * as path from "node:path";
+import test, { suite } from "node:test";
 import { replaceTargetFromMainToBin } from "../../client/findBinary.js";
-import test, { suite } from 'node:test';
 
 suite("findBinary", () => {
   test("replaceTargetFromMainToBin correctly finds bin from package.json", () => {

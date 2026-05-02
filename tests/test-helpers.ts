@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test from "node:test";
 import {
   extensions,
   languages,
@@ -36,8 +36,10 @@ export const WORKSPACE_SECOND_FOLDER: WorkspaceFolder | undefined =
 export const WORKSPACE_DIR = WORKSPACE_FOLDER?.uri;
 export const WORKSPACE_SECOND_DIR = WORKSPACE_SECOND_FOLDER?.uri;
 
-const rootBiomeConfigUri = WORKSPACE_DIR ? Uri.joinPath(WORKSPACE_DIR, ".biomerc.json") : Uri.from({ scheme: '', path: '' });
-if (!rootBiomeConfigUri.scheme) console.warn('Invalid root biome config URI')
+const rootBiomeConfigUri = WORKSPACE_DIR
+  ? Uri.joinPath(WORKSPACE_DIR, ".biomerc.json")
+  : Uri.from({ scheme: "", path: "" });
+if (!rootBiomeConfigUri.scheme) console.warn("Invalid root biome config URI");
 
 export function testSingleFolderMode(title: string, fn: Func) {
   if (process.env.SINGLE_FOLDER_WORKSPACE !== "true") {

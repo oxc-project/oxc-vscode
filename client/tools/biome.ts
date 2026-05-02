@@ -66,12 +66,12 @@ export default class BiomeTool implements ToolInterface {
 
     this.allowedToStartServer = configService.vsCodeConfig.requireConfig
       ? (
-        await workspace.findFiles(
-          biomeConfigDefaultFilePattern,
-          "**/node_modules/**",
-          1,
-        )
-      ).length > 0
+          await workspace.findFiles(
+            biomeConfigDefaultFilePattern,
+            "**/node_modules/**",
+            1,
+          )
+        ).length > 0
       : true;
 
     const restartCommand = commands.registerCommand(

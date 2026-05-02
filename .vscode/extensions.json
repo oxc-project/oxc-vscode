@@ -1,6 +1,3 @@
 {
-  "recommendations": [
-    "simwai.biome-vscode",
-    "ms-vscode.extension-test-runner"
-  ]
+  "recommendations": ["simwai.biome-vscode", "ms-vscode.extension-test-runner"]
 }
