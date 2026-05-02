@@ -4,7 +4,7 @@ import { env, type LogOutputChannel, version, window } from "vscode";
 import type { BinarySearchResult } from "./findBinary";
 import type { VSCodeConfig } from "./VSCodeConfig";
 
-const commandPrefix = "biome";
+const _commandPrefix = "biome";
 
 export enum BiomeCommands {
   ShowOutputChannelLint = "biome.showOutputChannel",

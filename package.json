@@ -39,7 +39,7 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
+    "@biomejs/biome": "^2.3.11",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.1.0",
     "@types/vscode": "1.93.0",

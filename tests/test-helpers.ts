@@ -1,7 +1,5 @@
-import * as path from "node:path";
+import test from 'node:test';
 import {
-  commands,
-  Diagnostic,
   extensions,
   languages,
   Uri,
@@ -30,17 +28,19 @@ export type BiomeConfig = {
   ignorePatterns?: BiomeConfigIgnorePatterns;
 };
 
-export const WORKSPACE_FOLDER: WorkspaceFolder = workspace.workspaceFolders![0];
+export const WORKSPACE_FOLDER: WorkspaceFolder | undefined =
+  workspace.workspaceFolders?.[0];
 export const WORKSPACE_SECOND_FOLDER: WorkspaceFolder | undefined =
-  workspace.workspaceFolders![1];
+  workspace.workspaceFolders?.[1];
 
-export const WORKSPACE_DIR = WORKSPACE_FOLDER.uri;
+export const WORKSPACE_DIR = WORKSPACE_FOLDER?.uri;
 export const WORKSPACE_SECOND_DIR = WORKSPACE_SECOND_FOLDER?.uri;
 
-const rootBiomeConfigUri = Uri.joinPath(WORKSPACE_DIR, ".biomerc.json");
+const rootBiomeConfigUri = WORKSPACE_DIR ? Uri.joinPath(WORKSPACE_DIR, ".biomerc.json") : Uri.from({ scheme: '', path: '' });
+if (!rootBiomeConfigUri.scheme) console.warn('Invalid root biome config URI')
 
 export function testSingleFolderMode(title: string, fn: Func) {
-  if (process.env["SINGLE_FOLDER_WORKSPACE"] !== "true") {
+  if (process.env.SINGLE_FOLDER_WORKSPACE !== "true") {
     return;
   }
 
@@ -48,7 +48,7 @@ export function testSingleFolderMode(title: string, fn: Func) {
 }
 
 export function testMultiFolderMode(title: string, fn: Func) {
-  if (process.env["MULTI_FOLDER_WORKSPACE"] !== "true") {
+  if (process.env.MULTI_FOLDER_WORKSPACE !== "true") {
     return;
   }
 

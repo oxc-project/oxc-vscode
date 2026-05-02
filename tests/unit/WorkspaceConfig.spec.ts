@@ -1,6 +1,5 @@
 import { strictEqual } from "node:assert";
 import { workspace } from "vscode";
-import { DiagnosticPullMode } from "vscode-languageclient";
 import { WorkspaceConfig } from "../../client/WorkspaceConfig.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
 

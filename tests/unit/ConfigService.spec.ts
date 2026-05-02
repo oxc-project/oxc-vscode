@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { workspace } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
-import { WORKSPACE_FOLDER } from "../test-helpers.js";
+import test, { suite } from 'node:test';
 
 suite("ConfigService", () => {
   test("biomeServerConfig correctly maps workspace configs", () => {
@@ -12,7 +12,7 @@ suite("ConfigService", () => {
     if (serverConfigs.length > 0) {
       strictEqual(
         serverConfigs[0].workspaceUri,
-        workspace.workspaceFolders![0].uri.toString(),
+        workspace.workspaceFolders?.[0].uri.toString(),
       );
     }
   });
