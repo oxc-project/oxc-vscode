@@ -235,17 +235,23 @@ export async function searchPath(
     return undefined;
   }
 
-  const binary = await Promise.all(
-    envPath.split(path.delimiter).map(async (dir) => {
-      // validates the given path is safe to use
-      if (!validateSafeBinaryPath(dir)) {
-        return undefined;
-      }
+  // generate candidate paths by joining each PATH entry with the binary name
+  // on Windows, also consider the .exe extension
+  const candidates = envPath.split(path.delimiter).flatMap((folder) => {
+    // filter out empty entries which can occur if PATH starts or ends with a delimiter
+    if (!folder) {
+      return [];
+    }
+    const basePath = path.join(folder, defaultBinaryName);
+    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+  });
 
-      const candidate = Uri.joinPath(Uri.file(dir), defaultBinaryName);
+  const binary = await Promise.all(
+    candidates.map(async (candidate) => {
+      const candidateUri = Uri.file(candidate);
       try {
-        await workspace.fs.stat(candidate);
-        return { path: candidate.fsPath, loader: "native" } as const;
+        await workspace.fs.stat(candidateUri);
+        return { path: candidateUri.fsPath, loader: "native" } as const;
       } catch {
         return undefined;
       }
