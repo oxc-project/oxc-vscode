@@ -7,7 +7,7 @@ import {
   clearWorkspacePackageJsonNodeModulesCache,
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
-  searchPath,
+  searchEnvPath,
   searchProjectNodeModulesBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
@@ -212,7 +212,7 @@ suite("findBinary", () => {
     });
   });
 
-  suite("searchPath", () => {
+  suite("searchEnvPath", () => {
     let originalPath: string | undefined;
 
     setup(() => {
@@ -235,7 +235,11 @@ suite("findBinary", () => {
       process.env.PATH = tmpPathDir;
 
       try {
-        const result = await searchPath(binaryName);
+        const result = await searchEnvPath(binaryName);
+        if (process.platform === "win32" && result) {
+          // Uppercase drive letter for assertion on Windows
+          result.path = `${result.path[0].toUpperCase()}${result.path.slice(1)}`;
+        }
         strictEqual(result?.loader, "native");
         strictEqual(result?.path, binaryPath);
       } finally {
@@ -245,7 +249,7 @@ suite("findBinary", () => {
 
     test("should return undefined when PATH is not set", async () => {
       delete process.env.PATH;
-      const result = await searchPath(binaryName);
+      const result = await searchEnvPath(binaryName);
 
       strictEqual(result, undefined);
     });

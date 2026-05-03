@@ -226,7 +226,7 @@ export async function searchGlobalNodeModulesBin(
  * Search for the binary in the PATH.
  * Returns undefined if not found.
  */
-export async function searchPath(
+export async function searchEnvPath(
   defaultBinaryName: string,
 ): Promise<BinarySearchResult | undefined> {
   const envPath = env.PATH;
