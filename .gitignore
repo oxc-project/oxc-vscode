@@ -15,3 +15,5 @@ out_test/
 
 # Rust
 vscode_docs/target/
+
+.env
