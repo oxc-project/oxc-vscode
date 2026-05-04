@@ -1,6 +1,5 @@
 # Biome Formatter (Unofficial)
 
-> [!CAUTION]
 > **Unofficial & Experimental**
 >
 > This extension is **not** the official Biome extension. It is an experimental fork of the [oxlint VS Code extension](https://github.com/oxc-project/oxc-vscode), modified to support [Biome](https://biomejs.dev/). Use it with caution.
