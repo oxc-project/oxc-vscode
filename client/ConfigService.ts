@@ -7,6 +7,7 @@ import {
 import type { DiagnosticPullMode } from "vscode-languageclient";
 import {
   type BinarySearchResult,
+  searchEnvPath,
   searchGlobalNodeModulesBin,
   searchProjectNodeModulesBin,
   searchSettingsBin,
@@ -121,7 +122,8 @@ export class ConfigService implements IDisposable {
     return (
       (await searchProjectNodeModulesBin(defaultBinaryName)) ??
       (await searchYarnPnpBin(defaultBinaryName)) ??
-      (await searchGlobalNodeModulesBin(defaultBinaryName))
+      (await searchGlobalNodeModulesBin(defaultBinaryName)) ??
+      (await searchEnvPath(defaultBinaryName))
     );
   }
 

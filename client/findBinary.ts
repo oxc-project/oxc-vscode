@@ -1,15 +1,47 @@
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 import * as path from "node:path";
+import { env } from "node:process";
+import { spawnSync } from "node:child_process";
 import { Uri, workspace } from "vscode";
-import { validateSafeBinaryPath } from "./PathValidator";
 
-export type BinarySearchResult = {
+export type BinaryLoader = "node" | "native";
+
+export interface BinarySearchResult {
   path: string;
-  loader: "node" | "native";
-  yarnPnpLoaderPath?: string; // only set if loader is 'node' and found via Yarn PnP
-};
+  loader: BinaryLoader;
+  yarnPnpLoaderPath?: string;
+}
+
+/**
+ * Validates the given path is safe to use.
+ * Returns true if the path is safe, false otherwise.
+ *
+ * Current safety checks:
+ * - No directory traversal (..)
+ * - No malicious characters (&, |, ;, $, <, >, `, \r, \n)
+ */
+export function validateSafeBinaryPath(binaryPath: string): boolean {
+  // Check for directory traversal
+  if (binaryPath.includes("..")) {
+    return false;
+  }
+
+  // Check for malicious characters
+  const maliciousChars = /[&|;$<>`\r\n]/;
+  if (maliciousChars.test(binaryPath)) {
+    return false;
+  }
+
+  // Check for case-insensitive versions of 'biome'
+  const lowerPath = binaryPath.toLowerCase();
+  if (!lowerPath.includes("biome")) {
+    return false;
+  }
+
+  return true;
+}
 
 /** @internal only used for testing */
 export function replaceTargetFromMainToBin(
@@ -103,19 +135,7 @@ export function clearWorkspacePackageJsonNodeModulesCache(): void {
 export async function searchProjectNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
-  // try to resolve via require.resolve
-  try {
-    const resolvedPath = replaceTargetFromMainToBin(
-      require.resolve(binaryName, {
-        paths:
-          workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
-      }),
-      binaryName,
-    );
-    return { path: resolvedPath, loader: "node" };
-  } catch {}
-
-  // fallback to direct binary lookup in workspace node_modules/.bin
+  // try to find shared binary inside `node_modules/.bin` of each workspace folder
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map(
     (folder) => path.join(folder.uri.fsPath, "node_modules"),
   );
@@ -129,7 +149,22 @@ export async function searchProjectNodeModulesBin(
 
   // fallback to searching for package.json in workspace subfolders (monorepo support)
   const packageJsonNodeModules = await getWorkspacePackageJsonNodeModules();
-  return searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+  const result2 = await searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+  if (result2) {
+    return result2;
+  }
+
+  // fallback to direct binary lookup via require.resolve
+  try {
+    const resolvedPath = replaceTargetFromMainToBin(
+      require.resolve(binaryName, {
+        paths:
+          workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
+      }),
+      binaryName,
+    );
+    return { path: resolvedPath, loader: "node" };
+  } catch {}
 }
 
 interface PnpApi {
@@ -221,7 +256,14 @@ export async function searchGlobalNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
   const globalPaths = globalNodeModulesPaths();
-  // try to resolve via require.resolve
+
+  // try to find shared binary inside `node_modules/.bin`
+  const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
+  if (result) {
+    return result;
+  }
+
+  // fallback to direct binary lookup via require.resolve
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, { paths: globalPaths }),
@@ -229,9 +271,45 @@ export async function searchGlobalNodeModulesBin(
     );
     return { path: resolvedPath, loader: "node" };
   } catch {}
+}
 
-  // fallback to direct binary lookup in global node_modules/.bin
-  return searchNodeModulesDefaultBinPath(binaryName, globalPaths);
+/**
+ * Search for the binary in the PATH.
+ * Returns undefined if not found.
+ */
+export async function searchEnvPath(
+  defaultBinaryName: string,
+): Promise<BinarySearchResult | undefined> {
+  const envPath = env.PATH;
+
+  if (!envPath) {
+    return undefined;
+  }
+
+  // generate candidate paths by joining each PATH entry with the binary name
+  // on Windows, also consider the .exe extension
+  const candidates = envPath.split(path.delimiter).flatMap((folder) => {
+    // filter out empty entries which can occur if PATH starts or ends with a delimiter
+    if (!folder) {
+      return [];
+    }
+    const basePath = path.join(folder, defaultBinaryName);
+    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+  });
+
+  const binary = await Promise.all(
+    candidates.map(async (candidate) => {
+      const candidateUri = Uri.file(candidate);
+      try {
+        await workspace.fs.stat(candidateUri);
+        return { path: candidateUri.fsPath, loader: "native" } as const;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+
+  return binary.find(Boolean);
 }
 
 /**
