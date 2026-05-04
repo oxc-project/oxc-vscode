@@ -1,7 +1,5 @@
 # Biome Formatter (Unofficial)
 
-![Biome Formatter Banner](banner.svg)
-
 > [!CAUTION]
 > **Unofficial & Experimental**
 >
@@ -59,13 +57,13 @@ This extension provides several commands accessible via the Command Palette (`Ct
 
 While the official Biome extension (`biomejs.biome`) is the recommended choice for most users, this version (`simwai.biome-vscode`) offers some differences:
 
-| Feature | simwai.biome-vscode (This) | biomejs.biome (Official) |
-| :--- | :--- | :--- |
-| **Origin** | Forked from `oxlint` extension | Built from scratch for Biome |
+| Feature             | simwai.biome-vscode (This)         | biomejs.biome (Official)                   |
+| :------------------ | :--------------------------------- | :----------------------------------------- |
+| **Origin**          | Forked from `oxlint` extension     | Built from scratch for Biome               |
 | **Settings Prefix** | `biome.enable`, `biome.configPath` | `biome.enabled`, `biome.configurationPath` |
-| **Languages** | Broad (Astro, Svelte, Vue, etc.) | Standard JS/TS/JSON |
-| **Diagnostics** | Includes `biome.rage` command | Standard LSP diagnostics |
-| **Status** | Experimental | Stable |
+| **Languages**       | Broad (Astro, Svelte, Vue, etc.)   | Standard JS/TS/JSON                        |
+| **Diagnostics**     | Includes `biome.rage` command      | Standard LSP diagnostics                   |
+| **Status**          | Experimental                       | Stable                                     |
 
 ## Contributing
 

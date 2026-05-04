@@ -1,9 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { pathToFileURL } from "node:url";
 import * as path from "node:path";
 import { env } from "node:process";
-import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { Uri, workspace } from "vscode";
 
 export type BinaryLoader = "node" | "native";
@@ -149,7 +149,10 @@ export async function searchProjectNodeModulesBin(
 
   // fallback to searching for package.json in workspace subfolders (monorepo support)
   const packageJsonNodeModules = await getWorkspacePackageJsonNodeModules();
-  const result2 = await searchNodeModulesDefaultBinPath(binaryName, packageJsonNodeModules);
+  const result2 = await searchNodeModulesDefaultBinPath(
+    binaryName,
+    packageJsonNodeModules,
+  );
   if (result2) {
     return result2;
   }
@@ -294,7 +297,9 @@ export async function searchEnvPath(
       return [];
     }
     const basePath = path.join(folder, defaultBinaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    return process.platform === "win32"
+      ? [basePath, `${basePath}.exe`]
+      : [basePath];
   });
 
   const binary = await Promise.all(

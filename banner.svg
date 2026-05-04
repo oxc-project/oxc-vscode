@@ -23,8 +23,4 @@
   <!-- Main Text -->
   <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="80" font-weight="900" fill="url(#textGrad)" filter="url(#glow)">BIOME</text>
   <text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="32" font-weight="300" fill="#94a3b8" letter-spacing="10">FORMATTER &amp; LINTER</text>
-
-  <!-- Status Tag -->
-  <rect x="525" y="210" width="150" height="30" rx="15" fill="#3b82f6" opacity="0.2" />
-  <text x="600" y="230" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="14" font-weight="bold" fill="#60a5fa">UNOFFICIAL • EXP</text>
 </svg>

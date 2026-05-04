@@ -55,7 +55,10 @@ export function runExecutable(
   const pnpArgs: string[] = [];
   if (isNode && binary.yarnPnpLoaderPath) {
     pnpArgs.push("--require", binary.yarnPnpLoaderPath);
-    const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
+    const esmLoaderPath = path.join(
+      path.dirname(binary.yarnPnpLoaderPath),
+      ".pnp.loader.mjs",
+    );
     pnpArgs.push("--loader", esmLoaderPath);
   }
 
