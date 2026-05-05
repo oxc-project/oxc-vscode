@@ -420,3 +420,22 @@ const safeSpawnSync = (
 
   return output;
 };
+
+/**
+ * Search for the binary in the extension's own node_modules.
+ * This is used as a final fallback.
+ */
+export async function searchExtensionNodeModulesBin(
+  binaryName: string,
+): Promise<BinarySearchResult | undefined> {
+  try {
+    // In the extension context, require.resolve("@biomejs/biome") will find the bundled version
+    const resolvedPath = replaceTargetFromMainToBin(
+      require.resolve("@biomejs/biome"),
+      binaryName,
+    );
+    return { path: resolvedPath, loader: "node" };
+  } catch {
+    return undefined;
+  }
+}

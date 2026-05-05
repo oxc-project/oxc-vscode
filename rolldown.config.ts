@@ -25,7 +25,7 @@ if (process.env.TEST === "true") {
 export default defineConfig({
   input,
   output,
-  external: ["vscode"],
+  external: ["vscode", "@biomejs/biome"],
   platform: "node",
   transform: {
     target: "node16",

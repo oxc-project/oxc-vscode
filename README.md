@@ -15,7 +15,7 @@ Install through the VS Code extensions marketplace by searching for `Biome Forma
 - **Unified LSP**: Provides both linting and formatting through a single connection.
 - **Extended Language Support**: Supports JavaScript, TypeScript, JSON, HTML, CSS, Astro, Svelte, Vue, Markdown, and more.
 - **Auto-fixes**: Command to fix all auto-fixable issues in a file.
-- **Monorepo & Multi-root Support**: Works seamlessly with multi-root workspaces and monorepos (supports nested `biome.json` files).
+- **Monorepo & Multi-root Support**: Works seamlessly with multi-root workspaces and monorepos (supports nested `biome.json`, `biome.jsonc`, `.biome.json`, or `.biome.jsonc` files).
 
 ## Configuration
 
@@ -45,7 +45,7 @@ This extension provides several commands accessible via the Command Palette (`Ct
 
 - `biome.enable`: Enable or disable the extension. (Default: `true`)
 - `biome.lint.run`: Run the linter `onSave` or `onType`. (Default: `onType`)
-- `biome.requireConfig`: Start the server only when a `biome.json` or `biome.jsonc` file exists. (Default: `false`)
+- `biome.requireConfig`: Start the server only when a `biome.json`, `biome.jsonc`, `.biome.json` or `.biome.jsonc` file exists. (Default: `false`)
 - `biome.configPath`: Custom path to the Biome configuration file.
 - `biome.disableNestedConfig`: Disable searching for nested configuration files.
 - `biome.path.biome`: Custom path to a Biome binary.

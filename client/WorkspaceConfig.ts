@@ -6,7 +6,7 @@ import {
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "./ConfigService";
 
-export const biomeConfigDefaultFilePattern = "**/{biome.json,biome.jsonc}";
+export const biomeConfigDefaultFilePattern = "**/{biome.json,biome.jsonc,.biome.json,.biome.jsonc}";
 
 /**
  * This interface defines the configuration sent between the VS Code extension and the LSP.
