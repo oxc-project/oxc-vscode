@@ -34,7 +34,8 @@
     "test": "cross-env TEST=true pnpm run compile && vscode-test",
     "test:unit": "cross-env TEST=true pnpm run compile && cross-env TEST_SUITE=unit vscode-test",
     "lint": "biome lint",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "release": "node --env-file=.env ./node_modules/semantic-release/bin/semantic-release.js --no-ci"
   },
   "lint-staged": {
     "*.{js,ts,cjs,mjs,json,jsonc}": "biome check --write --no-errors-on-unmatched"
@@ -44,6 +45,14 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.6",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.1.0",
     "@types/vscode": "1.93.0",
@@ -55,6 +64,8 @@
     "lint-staged": "^16.4.0",
     "ovsx": "^0.10.9",
     "rolldown": "1.0.0-rc.12",
+    "semantic-release": "^25.0.3",
+    "semantic-release-vsce": "^6.1.3",
     "tinyglobby": "^0.2.15"
   },
   "contributes": {
