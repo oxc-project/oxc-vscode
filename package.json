@@ -33,8 +33,6 @@
     "package": "vsce package --no-dependencies -o biome_formatter.vsix",
     "start": "pnpm run watch",
     "watch": "pnpm run compile -- --watch",
-    "dev": "pnpm run compile",
-    "debug": "pnpm run compile",
     "build": "pnpm run compile && pnpm run package",
     "install-extension": "pnpm run build && code --install-extension biome_formatter.vsix --force",
     "release": "node --env-file=.env ./node_modules/semantic-release/bin/semantic-release.js --no-ci"
