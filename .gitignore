@@ -17,3 +17,5 @@ out_test/
 vscode_docs/target/
 
 .env
+# Logs
+*.log
