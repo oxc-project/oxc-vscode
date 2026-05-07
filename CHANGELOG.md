@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/simwai/biome-formatter-vscode/compare/v1.0.0...v1.0.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* disable successComment in @semantic-release/github to prevent 404 on missing PRs ([89ce71b](https://github.com/simwai/biome-formatter-vscode/commit/89ce71b9aa7d45207e5828208dc3b117b4ef4739))
+
 # 1.0.0 (2026-05-06)
 
 
