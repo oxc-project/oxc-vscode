@@ -1,3 +1,21 @@
+# [1.52.0](https://github.com/simwai/biome-formatter-vscode/compare/v1.51.1...v1.52.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* disable successComment in @semantic-release/github to prevent 404 on missing PRs ([89ce71b](https://github.com/simwai/biome-formatter-vscode/commit/89ce71b9aa7d45207e5828208dc3b117b4ef4739))
+* remove release notes from git commit message to prevent Windows command line length overflow ([eaddba1](https://github.com/simwai/biome-formatter-vscode/commit/eaddba18334b902f285297048a14aef9f4e4eb12))
+
+
+### Features
+
+* add semantic-release and commitlint configuration ([#11](https://github.com/simwai/biome-formatter-vscode/issues/11)) ([3a8d0ec](https://github.com/simwai/biome-formatter-vscode/commit/3a8d0ec3f3f6e97f0eef3641b65e688c98413d97))
+
+
+### Reverts
+
+* reverted package.json and related changes ([306e21f](https://github.com/simwai/biome-formatter-vscode/commit/306e21fe333b26ff768a9efaca7be554956ddef1))
+
 ## [1.0.1](https://github.com/simwai/biome-formatter-vscode/compare/v1.0.0...v1.0.1) (2026-05-07)
 
 
