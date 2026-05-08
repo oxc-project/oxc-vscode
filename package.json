@@ -249,6 +249,12 @@
           "deprecated": true,
           "markdownDeprecationMessage": "deprecated since 1.25.0, use `oxc.fixKind` or `oxc.disableNestedConfig` instead."
         },
+        "oxc.lint.customization": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "markdownDescription": "Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details."
+        },
         "oxc.fmt.experimental": {
           "type": "boolean",
           "scope": "resource",

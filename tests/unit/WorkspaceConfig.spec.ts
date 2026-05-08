@@ -1,7 +1,7 @@
 import { strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
-import { FixKind, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
+import { FixKind, RuleCustomization, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
 
 const keys = [
@@ -12,6 +12,7 @@ const keys = [
   "typeAware",
   "disableNestedConfig",
   "fixKind",
+  "lint.customization",
   "fmt.configPath",
   // deprecated
   "flags",
@@ -46,6 +47,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, null);
+    strictEqual(config.rulesCustomization, {});
     strictEqual(config.formattingConfigPath, null);
   });
 
@@ -71,6 +73,7 @@ suite("WorkspaceConfig", () => {
       config.updateTypeAware(true),
       config.updateDisableNestedConfig(true),
       config.updateFixKind(FixKind.DangerousFix),
+      config.updateRulesCustomization({ "some.rule": { autofix: false } }),
       config.updateFormattingConfigPath("./oxfmt.json"),
     ]);
 
@@ -83,6 +86,12 @@ suite("WorkspaceConfig", () => {
     strictEqual(wsConfig.get("typeAware"), true);
     strictEqual(wsConfig.get("disableNestedConfig"), true);
     strictEqual(wsConfig.get("fixKind"), "dangerous_fix");
+    strictEqual(
+      wsConfig.get<Record<string, RuleCustomization>>("lint.customization")!["some.rule"]?.[
+        "autofix"
+      ],
+      false,
+    );
     strictEqual(wsConfig.get("fmt.configPath"), "./oxfmt.json");
   });
 
@@ -97,6 +106,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.typeAware, undefined);
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, undefined);
+    strictEqual(oxlintConfig.rulesCustomization, {});
 
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
@@ -107,6 +117,7 @@ suite("WorkspaceConfig", () => {
       config.updateDisableNestedConfig(true),
       config.updateFixKind(FixKind.DangerousFix),
       config.updateFormattingConfigPath("./oxfmt.json"),
+      config.updateRulesCustomization({ "some.rule": { autofix: false } }),
     ]);
 
     const oxlintConfigUpdated = config.toOxlintConfig();
@@ -118,6 +129,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfigUpdated.typeAware, true);
     strictEqual(oxlintConfigUpdated.disableNestedConfig, true);
     strictEqual(oxlintConfigUpdated.fixKind, "dangerous_fix");
+    strictEqual(oxlintConfigUpdated.rulesCustomization!["some.rule"]?.autofix, false);
   });
 
   test("toOxfmtConfig method", async () => {

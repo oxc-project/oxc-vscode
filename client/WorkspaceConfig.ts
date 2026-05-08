@@ -15,6 +15,10 @@ export enum FixKind {
   All = "all",
 }
 
+export type RuleCustomization = {
+  autofix?: boolean;
+  severity?: "error" | "warning" | "info" | "hint" | "off";
+};
 /**
  * This interface defines the configuration sent between the VS Code extension and the LSP.
  * Extension configuration is handled by `VSCodeConfig`.
@@ -80,6 +84,13 @@ interface WorkspaceConfigInterface {
   fixKind?: FixKind | null;
 
   /**
+   * Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details.
+   * `oxc.lint.customization`
+   * @default {}
+   */
+  rulesCustomization?: Record<string, RuleCustomization>;
+
+  /**
    * Additional flags to pass to the LSP binary
    * `oxc.flags`
    *
@@ -106,6 +117,8 @@ export class WorkspaceConfig {
   private _typeAware: boolean | null = null;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind | null = null;
+  private _rulesCustomization!: Record<string, RuleCustomization>;
+
   private _formattingConfigPath: string | null = null;
 
   constructor(private readonly workspace: WorkspaceFolder) {
@@ -142,6 +155,8 @@ export class WorkspaceConfig {
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
+    this._rulesCustomization =
+      this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? {};
   }
 
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
@@ -258,6 +273,19 @@ export class WorkspaceConfig {
     return this.configuration.update("fixKind", value, ConfigurationTarget.WorkspaceFolder);
   }
 
+  updateRulesCustomization(value: Record<string, RuleCustomization>): PromiseLike<void> {
+    this._rulesCustomization = value;
+    return this.configuration.update(
+      "lint.customization",
+      value,
+      ConfigurationTarget.WorkspaceFolder,
+    );
+  }
+
+  get rulesCustomization(): Record<string, RuleCustomization> {
+    return this._rulesCustomization;
+  }
+
   get formattingConfigPath(): string | null {
     return this._formattingConfigPath;
   }
@@ -279,6 +307,7 @@ export class WorkspaceConfig {
       typeAware: this.typeAware ?? undefined,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind ?? undefined,
+      rulesCustomization: this.rulesCustomization,
       // keep for backward compatibility
       run: this.runTrigger,
       // deprecated, kept for backward compatibility
