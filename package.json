@@ -253,6 +253,26 @@
           "type": "object",
           "scope": "resource",
           "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "autofix": {
+                "type": "boolean",
+                "markdownDescription": "Whether autofix should be enabled for this rule."
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "markdownDescription": "Diagnostic severity override for this rule."
+              }
+            }
+          },
           "markdownDescription": "Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details."
         },
         "oxc.fmt.experimental": {
