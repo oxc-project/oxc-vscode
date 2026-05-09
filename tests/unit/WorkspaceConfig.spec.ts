@@ -47,7 +47,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.typeAware, null);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, null);
-    strictEqual(config.rulesCustomization, {});
+    strictEqual(JSON.stringify(config.rulesCustomization), "{}");
     strictEqual(config.formattingConfigPath, null);
   });
 
@@ -106,7 +106,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.typeAware, undefined);
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, undefined);
-    strictEqual(oxlintConfig.rulesCustomization, {});
+    strictEqual(JSON.stringify(oxlintConfig.rulesCustomization), "{}");
 
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
