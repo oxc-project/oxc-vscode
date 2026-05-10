@@ -117,7 +117,7 @@ export class WorkspaceConfig {
   private _typeAware: boolean | null = null;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind | null = null;
-  private _rulesCustomization!: Record<string, RuleCustomization>;
+  private _rulesCustomization: Record<string, RuleCustomization> | null = null;
 
   private _formattingConfigPath: string | null = null;
 
@@ -156,7 +156,7 @@ export class WorkspaceConfig {
     this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
     this._rulesCustomization =
-      this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? {};
+      this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
   }
 
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
@@ -273,7 +273,7 @@ export class WorkspaceConfig {
     return this.configuration.update("fixKind", value, ConfigurationTarget.WorkspaceFolder);
   }
 
-  updateRulesCustomization(value: Record<string, RuleCustomization>): PromiseLike<void> {
+  updateRulesCustomization(value: Record<string, RuleCustomization> | null): PromiseLike<void> {
     this._rulesCustomization = value;
     return this.configuration.update(
       "lint.customization",
@@ -282,7 +282,7 @@ export class WorkspaceConfig {
     );
   }
 
-  get rulesCustomization(): Record<string, RuleCustomization> {
+  get rulesCustomization(): Record<string, RuleCustomization> | null {
     return this._rulesCustomization;
   }
 
@@ -307,7 +307,7 @@ export class WorkspaceConfig {
       typeAware: this.typeAware ?? undefined,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind ?? undefined,
-      rulesCustomization: this.rulesCustomization,
+      rulesCustomization: this.rulesCustomization ?? undefined,
       // keep for backward compatibility
       run: this.runTrigger,
       // deprecated, kept for backward compatibility

@@ -250,9 +250,12 @@
           "markdownDeprecationMessage": "deprecated since 1.25.0, use `oxc.fixKind` or `oxc.disableNestedConfig` instead."
         },
         "oxc.lint.customization": {
-          "type": "object",
+          "type": [
+            "object",
+            "null"
+          ],
           "scope": "resource",
-          "default": {},
+          "default": null,
           "additionalProperties": {
             "type": "object",
             "properties": {
