@@ -73,40 +73,40 @@ Running formatting as a code action on save, allows to define the order of chang
 
 Following configurations are supported via `settings.json` and affect the window editor:
 
-| Key                         | Default Value | Possible Values                  | Description                                                                                                                                                                                                                                                                        |
-| --------------------------- | ------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `oxc.enable`                | `null`        | `true` \| `false` \| `<null>`    | This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`.                                                                                                                                                                                                       |
-| `oxc.enable.oxfmt`          | `true`        | `true` \| `false`                | Enable oxfmt (formatter). Falls back to `oxc.enable` if not set.                                                                                                                                                                                                                   |
-| `oxc.enable.oxlint`         | `true`        | `true` \| `false`                | Enable oxlint (linter). Falls back to `oxc.enable` if not set.                                                                                                                                                                                                                     |
-| `oxc.path.node`             | -             | `<string>`                       | Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment.                                                                                                                                                                                            |
-| `oxc.path.oxfmt`            | -             | `<string>`                       | Path to an Oxc formatter binary. Default: auto detection in `node_modules`.                                                                                                                                                                                                        |
-| `oxc.path.oxlint`           | -             | `<string>`                       | Path to an Oxc linter binary. Default: auto detection in `node_modules`.                                                                                                                                                                                                           |
-| `oxc.path.tsgolint`         | -             | `<string>`                       | Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`.                                                                                                                                                                                                             |
-| `oxc.suppressProgramErrors` | `false`       | `true` \| `false`                | Suppress tsconfig errors from tsgolint and still lint files under partially-valid tsconfig projects. When enabled, sets `OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS=true`. **Note:** Type-aware lint rules may produce degraded results when the tsconfig is broken. |
-| `oxc.trace.server`          | `off`         | `off` \| `messages` \| `verbose` | Traces the communication between VS Code and the language server.                                                                                                                                                                                                                  |
-| `oxc.useExecPath`           | `false`       | `true` \| `false`                | Whether to use the extension's execPath (Electron's bundled Node.js) as the JavaScript runtime for running Oxc tools, instead of looking for a system Node.js installation.                                                                                                        |
-| Deprecated                  |               |                                  |                                                                                                                                                                                                                                                                                    |
-| `oxc.path.server`           | -             | `<string>`                       | Path to Oxc language server binary. Mostly for testing the language server.                                                                                                                                                                                                        |
+| Key | Default Value | Possible Values | Description |
+| --- | ------------- | --------------- | ----------- |
+| `oxc.enable` | `null` | `true` \| `false` \| `<null>` | This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`. |
+| `oxc.enable.oxfmt` | `true` | `true` \| `false` | Enable oxfmt (formatter). Falls back to `oxc.enable` if not set. |
+| `oxc.enable.oxlint` | `true` | `true` \| `false` | Enable oxlint (linter). Falls back to `oxc.enable` if not set. |
+| `oxc.path.node` | - | `<string>` | Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment. |
+| `oxc.path.oxfmt` | - | `<string>` | Path to an Oxc formatter binary. Default: auto detection in `node_modules`. |
+| `oxc.path.oxlint` | - | `<string>` | Path to an Oxc linter binary. Default: auto detection in `node_modules`. |
+| `oxc.path.tsgolint` | - | `<string>` | Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. |
+| `oxc.suppressProgramErrors` | `false` | `true` \| `false` | Suppress tsconfig errors from tsgolint and still lint files under partially-valid tsconfig projects. When enabled, sets `OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS=true`. **Note:** Type-aware lint rules may produce degraded results when the tsconfig is broken. |
+| `oxc.trace.server` | `off` | `off` \| `messages` \| `verbose` | Traces the communication between VS Code and the language server. |
+| `oxc.useExecPath` | `false` | `true` \| `false` | Whether to use the extension's execPath (Electron's bundled Node.js) as the JavaScript runtime for running Oxc tools, instead of looking for a system Node.js installation. |
+| Deprecated | | | |
+| `oxc.path.server` | - | `<string>` | Path to Oxc language server binary. Mostly for testing the language server. |
 
 ### Workspace Configuration
 
 Following configurations are supported via `settings.json` and can be changed for each workspace:
 
-| Key                           | Default Value | Possible Values                                                                                               | Description                                                                                                                                                                                                                            |
-| ----------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `oxc.configPath`              | `null`        | `<string>` \| `<null>`                                                                                        | Path to oxlint configuration. Keep it empty to enable nested configuration.                                                                                                                                                            |
-| `oxc.disableNestedConfig`     | `false`       | `true` \| `false`                                                                                             | Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used.                                                                                   |
-| `oxc.fixKind`                 | `null`        | `safe_fix` \| `safe_fix_or_suggestion` \| `dangerous_fix` \| `dangerous_fix_or_suggestion` \| `none` \| `all` | Specify the kind of fixes to suggest/apply.                                                                                                                                                                                            |
-| `oxc.fmt.configPath`          | `null`        | `<string>` \| `<null>`                                                                                        | Path to an oxfmt configuration file                                                                                                                                                                                                    |
-| `oxc.lint.customization`      | `null`        | `Record<string, string>` \| `<null>`                                                                          | Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details.                                                                                                |
-| `oxc.lint.run`                | `onType`      | `onSave` \| `onType`                                                                                          | Run the linter on save (onSave) or on type (onType)                                                                                                                                                                                    |
-| `oxc.requireConfig`           | `false`       | `true` \| `false`                                                                                             | Start the language server only when a `.oxlintrc.json(c)` or `oxlint.config.ts` file exists in one of the workspaces.                                                                                                                  |
-| `oxc.tsConfigPath`            | `null`        | `<string>` \| `<null>`                                                                                        | Path to the project's TypeScript config file. If your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly.                                                           |
-| `oxc.typeAware`               | `null`        | `true` \| `false` \| `<null>`                                                                                 | Forces type-aware linting. Requires the `oxlint-tsgolint` package. It is preferred to use `options.typeAware` in your configuration file                                                                                               |
-| `oxc.unusedDisableDirectives` | `null`        | `allow` \| `warn` \| `deny`                                                                                   | Define how directive comments like `// oxlint-disable-line` should be reported, when no errors would have been reported on that line anyway. It is preferred to use `options.reportUnusedDisableDirectives` in your configuration file |
-| Deprecated                    |               |                                                                                                               |                                                                                                                                                                                                                                        |
-| `oxc.flags`                   | `{}`          | `Record<string, string>`                                                                                      | Specific Oxlint flags to pass to the language server.                                                                                                                                                                                  |
-| `oxc.fmt.experimental`        | `true`        | `true` \| `false`                                                                                             | Enable Oxfmt formatting support.                                                                                                                                                                                                       |
+| Key | Default Value | Possible Values | Description |
+| --- | ------------- | --------------- | ----------- |
+| `oxc.configPath` | `null` | `<string>` \| `<null>` | Path to oxlint configuration. Keep it empty to enable nested configuration. |
+| `oxc.disableNestedConfig` | `false` | `true` \| `false` | Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used. |
+| `oxc.fixKind` | `null` | `safe_fix` \| `safe_fix_or_suggestion` \| `dangerous_fix` \| `dangerous_fix_or_suggestion` \| `none` \| `all` | Specify the kind of fixes to suggest/apply. |
+| `oxc.fmt.configPath` | `null` | `<string>` \| `<null>` | Path to an oxfmt configuration file |
+| `oxc.lint.customization` | `null` | `Record<string, object>` \| `<null>` | Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details. |
+| `oxc.lint.run` | `onType` | `onSave` \| `onType` | Run the linter on save (onSave) or on type (onType) |
+| `oxc.requireConfig` | `false` | `true` \| `false` | Start the language server only when a `.oxlintrc.json(c)` or `oxlint.config.ts` file exists in one of the workspaces. |
+| `oxc.tsConfigPath` | `null` | `<string>` \| `<null>` | Path to the project's TypeScript config file.  If your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. |
+| `oxc.typeAware` | `null` | `true` \| `false` \| `<null>` | Forces type-aware linting. Requires the `oxlint-tsgolint` package. It is preferred to use `options.typeAware` in your configuration file |
+| `oxc.unusedDisableDirectives` | `null` | `allow` \| `warn` \| `deny` | Define how directive comments like `// oxlint-disable-line` should be reported, when no errors would have been reported on that line anyway. It is preferred to use `options.reportUnusedDisableDirectives` in your configuration file |
+| Deprecated | | | |
+| `oxc.flags` | `{}` | `Record<string, string>` | Specific Oxlint flags to pass to the language server. |
+| `oxc.fmt.experimental` | `true` | `true` \| `false` | Enable Oxfmt formatting support. |
 
 #### FixKind
 
@@ -116,5 +116,25 @@ Following configurations are supported via `settings.json` and can be changed fo
 - `"dangerous_fix_or_suggestion"`
 - `"none"`
 - `"all"`
+
+#### RulesCustomization
+
+Each rule name maps to an object with the following optional properties:
+
+- `autofix`: `true` \| `false` — Whether autofix should be enabled for this rule.
+- `severity`: `"error"` \| `"warning"` \| `"info"` \| `"hint"` \| `"off"` — Diagnostic severity override for this rule.
+
+**Example:**
+
+```json
+{
+  "oxc.lint.customization": {
+    "no-unused-vars": {
+      "severity": "warning",
+      "autofix": false
+    }
+  }
+}
+```
 
 <!-- END_GENERATED_CONFIGURATION -->

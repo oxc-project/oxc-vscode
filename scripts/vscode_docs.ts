@@ -15,6 +15,11 @@ interface PackageJson {
   };
 }
 
+interface AdditionalProperties {
+  type: string;
+  properties?: Record<string, { type: string; enum?: string[]; markdownDescription?: string }>;
+}
+
 interface ConfigProperty {
   scope?: "window" | "resource";
   deprecated?: boolean;
@@ -23,6 +28,7 @@ interface ConfigProperty {
   description?: string;
   enum?: string[];
   type?: string | string[];
+  additionalProperties?: AdditionalProperties;
 }
 
 interface ConfigRow {
@@ -159,6 +165,41 @@ function generateConfigurationDocs(): string {
     output += '- `"all"`\n';
   }
 
+  // Add RulesCustomization section if oxc.lint.customization is present
+  const customizationProp = packageJson.contributes.configuration.properties["oxc.lint.customization"];
+  if (customizationProp?.additionalProperties?.properties) {
+    const ruleProps = customizationProp.additionalProperties.properties;
+    output += "\n#### RulesCustomization\n\n";
+    output +=
+      "Each rule name maps to an object with the following optional properties:\n\n";
+    for (const [propName, propDef] of Object.entries(ruleProps)) {
+      const desc = propDef.markdownDescription ?? "";
+      if (propDef.enum) {
+        const values = propDef.enum.map((v) => `\`"${v}"\``).join(" \\| ");
+        output += `- \`${propName}\`: ${values}`;
+      } else if (propDef.type === "boolean") {
+        output += `- \`${propName}\`: \`true\` \\| \`false\``;
+      } else {
+        output += `- \`${propName}\`: \`<${propDef.type}>\``;
+      }
+      if (desc) {
+        output += ` — ${desc}`;
+      }
+      output += "\n";
+    }
+    output += "\n**Example:**\n\n";
+    output += "```json\n";
+    output += '{\n';
+    output += '  "oxc.lint.customization": {\n';
+    output += '    "no-unused-vars": {\n';
+    output += '      "severity": "warning",\n';
+    output += '      "autofix": false\n';
+    output += '    }\n';
+    output += '  }\n';
+    output += '}\n';
+    output += "```\n";
+  }
+
   return output;
 }
 
@@ -246,6 +287,13 @@ function getPossibleValues(value: ConfigProperty): string {
   }
 
   if (value.type) {
+    if (value.additionalProperties) {
+      // Object with per-key object values — show as Record<string, object>
+      const types = Array.isArray(value.type) ? value.type : [value.type];
+      return types
+        .map((t) => (t === "object" ? "`Record<string, object>`" : getTypeString(t)))
+        .join(" \\| ");
+    }
     return getTypeString(value.type);
   }
 

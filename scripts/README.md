@@ -32,5 +32,6 @@ The CI workflow verifies the README is up-to-date by:
 - Includes deprecated fields in a separate section with an empty row separator
 - Generates properly formatted markdown tables with Key, Default Value, Possible Values, and Description columns
 - Includes FixKind enum values if referenced in any configuration
+- Includes RulesCustomization section if `oxc.lint.customization` is present with per-key properties
 - Sorts configuration options alphabetically for consistent output
 - Uses Node 22.6+ native TypeScript type stripping (no transpilation required)
