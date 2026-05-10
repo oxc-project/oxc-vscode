@@ -86,9 +86,9 @@ interface WorkspaceConfigInterface {
   /**
    * Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details.
    * `oxc.lint.customization`
-   * @default {}
+   * @default null
    */
-  rulesCustomization?: Record<string, RuleCustomization>;
+  rulesCustomization?: Record<string, RuleCustomization> | null;
 
   /**
    * Additional flags to pass to the LSP binary
@@ -186,6 +186,11 @@ export class WorkspaceConfig {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fixKind`, this.workspace)) {
+      return true;
+    }
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.lint.customization`, this.workspace)
+    ) {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
