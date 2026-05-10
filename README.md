@@ -121,7 +121,7 @@ Following configurations are supported via `settings.json` and can be changed fo
 
 Each rule name maps to an object with the following optional properties:
 
-- `autofix`: `true` \| `false` — Whether autofix should be enabled for this rule.
+- `autofix`: `true` \| `false` — Whether autofix should be disabled for this rule.
 - `severity`: `"error"` \| `"warning"` \| `"info"` \| `"hint"` \| `"off"` — Diagnostic severity override for this rule.
 
 **Example:**

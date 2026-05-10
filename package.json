@@ -261,7 +261,7 @@
             "properties": {
               "autofix": {
                 "type": "boolean",
-                "markdownDescription": "Whether autofix should be enabled for this rule."
+                "markdownDescription": "Whether autofix should be disabled for this rule."
               },
               "severity": {
                 "type": "string",
