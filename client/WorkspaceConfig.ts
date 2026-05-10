@@ -188,6 +188,11 @@ export class WorkspaceConfig {
     if (event.affectsConfiguration(`${ConfigService.namespace}.fixKind`, this.workspace)) {
       return true;
     }
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.lint.customization`, this.workspace)
+    ) {
+      return true;
+    }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
       return true;
     }
