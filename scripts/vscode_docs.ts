@@ -166,12 +166,12 @@ function generateConfigurationDocs(): string {
   }
 
   // Add RulesCustomization section if oxc.lint.customization is present
-  const customizationProp = packageJson.contributes.configuration.properties["oxc.lint.customization"];
+  const customizationProp =
+    packageJson.contributes.configuration.properties["oxc.lint.customization"];
   if (customizationProp?.additionalProperties?.properties) {
     const ruleProps = customizationProp.additionalProperties.properties;
     output += "\n#### RulesCustomization\n\n";
-    output +=
-      "Each rule name maps to an object with the following optional properties:\n\n";
+    output += "Each rule name maps to an object with the following optional properties:\n\n";
     for (const [propName, propDef] of Object.entries(ruleProps)) {
       const desc = propDef.markdownDescription ?? "";
       if (propDef.enum) {
@@ -189,14 +189,14 @@ function generateConfigurationDocs(): string {
     }
     output += "\n**Example:**\n\n";
     output += "```json\n";
-    output += '{\n';
+    output += "{\n";
     output += '  "oxc.lint.customization": {\n';
     output += '    "no-unused-vars": {\n';
     output += '      "severity": "warning",\n';
     output += '      "autofix": false\n';
-    output += '    }\n';
-    output += '  }\n';
-    output += '}\n';
+    output += "    }\n";
+    output += "  }\n";
+    output += "}\n";
     output += "```\n";
   }
 
