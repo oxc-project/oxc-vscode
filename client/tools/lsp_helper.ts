@@ -4,16 +4,27 @@ import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
 
+// Cache for resolved node paths to avoid multiple expensive lookups
+const nodePathCache = new Map<string, string>();
+
 /**
  * Resolves the node command to its absolute path.
  * This is necessary when VSCode is launched from a GUI (e.g., start menu)
  * where the PATH environment is not fully inherited from the shell.
+ * The result is cached per command to avoid multiple expensive lookups.
  * @param nodeCommand - The node command to resolve (e.g., "node")
  * @returns The absolute path to node, or the original command if resolution fails
  */
 function resolveNodePath(nodeCommand: string): string {
-  // If already absolute, return as is
+  // Check cache first
+  const cached = nodePathCache.get(nodeCommand);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  // If already absolute, cache and return as is
   if (path.isAbsolute(nodeCommand)) {
+    nodePathCache.set(nodeCommand, nodeCommand);
     return nodeCommand;
   }
 
@@ -29,6 +40,7 @@ function resolveNodePath(nodeCommand: string): string {
       // Get the first line (in case multiple paths are returned)
       const resolvedPath = result.stdout.trim().split("\n")[0];
       if (resolvedPath) {
+        nodePathCache.set(nodeCommand, resolvedPath);
         return resolvedPath;
       }
     }
@@ -36,6 +48,8 @@ function resolveNodePath(nodeCommand: string): string {
     // If resolution fails, fall back to the original command
   }
 
+  // Cache the original command as fallback
+  nodePathCache.set(nodeCommand, nodeCommand);
   return nodeCommand;
 }
 
