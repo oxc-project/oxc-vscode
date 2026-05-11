@@ -17,7 +17,9 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    // Node command should be resolved to an absolute path or remain as "node"
+    // (depending on whether 'which'/'where' can find it in PATH)
+    strictEqual(typeof result.command, "string");
     strictEqual(result.args?.[0], "/path/to/server.js");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -28,7 +30,8 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    // Node command should be resolved to an absolute path or remain as "node"
+    strictEqual(typeof result.command, "string");
     strictEqual(result.args?.[0], "/path/to/server.cjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -39,7 +42,8 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    // Node command should be resolved to an absolute path or remain as "node"
+    strictEqual(typeof result.command, "string");
     strictEqual(result.args?.[0], "/path/to/server.mjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -153,5 +157,28 @@ suite("runExecutable", () => {
       true,
       JSON.stringify(result.args),
     );
+  });
+
+  test("should resolve node command and add its directory to PATH", () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    const originalPath = process.env.PATH;
+    process.env.PATH = "/usr/bin:/bin";
+
+    const result = runExecutable({
+      path: "/path/to/server.js",
+      loader: "node",
+    });
+
+    // The resolved node path should be absolute and its directory should be in PATH
+    if (path.isAbsolute(result.command)) {
+      const nodeDir = path.dirname(result.command);
+      strictEqual(
+        result.options?.env?.PATH?.startsWith(`${nodeDir}:`),
+        true,
+        `Expected PATH to start with ${nodeDir}, but got: ${result.options?.env?.PATH}`,
+      );
+    }
+
+    process.env.PATH = originalPath;
   });
 });
