@@ -1,7 +1,43 @@
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
+
+/**
+ * Resolves the node command to its absolute path.
+ * This is necessary when VSCode is launched from a GUI (e.g., start menu)
+ * where the PATH environment is not fully inherited from the shell.
+ * @param nodeCommand - The node command to resolve (e.g., "node")
+ * @returns The absolute path to node, or the original command if resolution fails
+ */
+function resolveNodePath(nodeCommand: string): string {
+  // If already absolute, return as is
+  if (path.isAbsolute(nodeCommand)) {
+    return nodeCommand;
+  }
+
+  // Try to resolve node using 'which' on Unix or 'where' on Windows
+  const whichCommand = process.platform === "win32" ? "where" : "which";
+  try {
+    const result = spawnSync(whichCommand, [nodeCommand], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+
+    if (result.status === 0 && result.stdout) {
+      // Get the first line (in case multiple paths are returned)
+      const resolvedPath = result.stdout.trim().split("\n")[0];
+      if (resolvedPath) {
+        return resolvedPath;
+      }
+    }
+  } catch {
+    // If resolution fails, fall back to the original command
+  }
+
+  return nodeCommand;
+}
 
 export function runExecutable(
   binary: BinarySearchResult,
@@ -36,6 +72,10 @@ export function runExecutable(
     nodeCommand = nodePath || "node";
     delete serverEnv.ELECTRON_RUN_AS_NODE;
   }
+
+  // Resolve node to its absolute path to ensure the node directory is in PATH
+  // This is critical when VSCode is launched from a GUI where PATH is not inherited
+  nodeCommand = resolveNodePath(nodeCommand);
 
   if (path.isAbsolute(nodeCommand)) {
     const nodeDir = path.dirname(nodeCommand);
