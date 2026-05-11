@@ -6,18 +6,12 @@ import type { BinarySearchResult } from "../findBinary";
 
 // Cache for resolved node paths to avoid multiple expensive lookups
 const nodePathCache = new Map<string, string>();
-// Use SharedArrayBuffer with Atomics for proper synchronous locking
-// to prevent duplicate resolutions when called concurrently
-const lockBuffer = new SharedArrayBuffer(4);
-const lockArray = new Int32Array(lockBuffer);
-const LOCK_INDEX = 0;
 
 /**
  * Resolves the node command to its absolute path.
  * This is necessary when VSCode is launched from a GUI (e.g., start menu)
  * where the PATH environment is not fully inherited from the shell.
  * The result is cached per command to avoid multiple expensive lookups.
- * Uses Atomics to ensure only one resolution happens even when called concurrently.
  * @param nodeCommand - The node command to resolve (e.g., "node")
  * @returns The absolute path to node, or the original command if resolution fails
  */
@@ -28,63 +22,35 @@ function resolveNodePath(nodeCommand: string): string {
     return cached;
   }
 
-  // Acquire lock using atomic compare-and-swap
-  // If another thread is resolving, wait for it to finish
-  while (Atomics.compareExchange(lockArray, LOCK_INDEX, 0, 1) !== 0) {
-    // Check cache again in case another thread just finished
-    const nowCached = nodePathCache.get(nodeCommand);
-    if (nowCached !== undefined) {
-      return nowCached;
-    }
-    // Wait briefly before retrying (Atomics.wait would block the main thread completely)
-    // Since Node.js is single-threaded for JS, this is mostly for async boundary protection
-    const start = Date.now();
-    while (Date.now() - start < 10) {
-      // Tiny busy wait
-    }
+  // If already absolute, cache and return as is
+  if (path.isAbsolute(nodeCommand)) {
+    nodePathCache.set(nodeCommand, nodeCommand);
+    return nodeCommand;
   }
 
+  // Try to resolve node using 'which' on Unix or 'where' on Windows
+  const whichCommand = process.platform === "win32" ? "where" : "which";
   try {
-    // Double-check cache after acquiring lock
-    const cached = nodePathCache.get(nodeCommand);
-    if (cached !== undefined) {
-      return cached;
-    }
+    const result = spawnSync(whichCommand, [nodeCommand], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
 
-    let resolvedPath: string;
-
-    // If already absolute, use as is
-    if (path.isAbsolute(nodeCommand)) {
-      resolvedPath = nodeCommand;
-    } else {
-      // Try to resolve node using 'which' on Unix or 'where' on Windows
-      const whichCommand = process.platform === "win32" ? "where" : "which";
-      try {
-        const result = spawnSync(whichCommand, [nodeCommand], {
-          encoding: "utf8",
-          timeout: 5000,
-        });
-
-        if (result.status === 0 && result.stdout) {
-          // Get the first line (in case multiple paths are returned)
-          const firstPath = result.stdout.trim().split("\n")[0];
-          resolvedPath = firstPath || nodeCommand;
-        } else {
-          resolvedPath = nodeCommand;
-        }
-      } catch {
-        // If resolution fails, fall back to the original command
-        resolvedPath = nodeCommand;
+    if (result.status === 0 && result.stdout) {
+      // Get the first line (in case multiple paths are returned)
+      const resolvedPath = result.stdout.trim().split("\n")[0];
+      if (resolvedPath) {
+        nodePathCache.set(nodeCommand, resolvedPath);
+        return resolvedPath;
       }
     }
-
-    // Cache the result
-    nodePathCache.set(nodeCommand, resolvedPath);
-    return resolvedPath;
-  } finally {
-    // Release lock
-    Atomics.store(lockArray, LOCK_INDEX, 0);
+  } catch {
+    // If resolution fails, fall back to the original command
   }
+
+  // Cache the original command as fallback
+  nodePathCache.set(nodeCommand, nodeCommand);
+  return nodeCommand;
 }
 
 export function runExecutable(
