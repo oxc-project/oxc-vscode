@@ -4,11 +4,13 @@ import {
   type StatusBarItem,
   window,
 } from "vscode";
+import { BiomeCommands } from "./commands";
 
 type ToolState = {
   isEnabled: boolean;
   content: string;
   version?: string;
+  isFileActive?: boolean;
 };
 
 export default class StatusBarItemHandler {
@@ -16,6 +18,7 @@ export default class StatusBarItemHandler {
     isEnabled: false,
     content: "",
     version: "unknown",
+    isFileActive: false,
   };
   private statusBarItem: StatusBarItem = window.createStatusBarItem(
     StatusBarAlignment.Right,
@@ -27,6 +30,7 @@ export default class StatusBarItemHandler {
     if (extensionVersion) {
       this.extensionVersion = extensionVersion;
     }
+    this.statusBarItem.command = BiomeCommands.OpenConfig;
   }
 
   public show(): void {
@@ -38,10 +42,12 @@ export default class StatusBarItemHandler {
     isEnabled: boolean,
     text: string,
     version?: string,
+    isFileActive?: boolean,
   ): void {
     this.biomeState.isEnabled = isEnabled;
     this.biomeState.content = text;
     this.biomeState.version = version ?? "unknown";
+    this.biomeState.isFileActive = isFileActive;
 
     this.updateFullTooltip();
     const icon = this.getIcon();
@@ -55,7 +61,12 @@ export default class StatusBarItemHandler {
     const statusText = this.biomeState.isEnabled
       ? `enabled (${version})`
       : "disabled";
-    const text = `**Biome is ${statusText}**\n\n${this.biomeState.content}`;
+
+    const fileStatusText = this.biomeState.isFileActive
+      ? "Active on this file"
+      : "Inactive on this file";
+
+    const text = `**Biome is ${statusText}**\n\n${fileStatusText}\n\n---\n\n${this.biomeState.content}`;
 
     this.statusBarItem.tooltip = new MarkdownString("", true);
     this.statusBarItem.tooltip.isTrusted = true;
@@ -63,7 +74,10 @@ export default class StatusBarItemHandler {
   }
 
   private getIcon(): string {
-    return this.biomeState.isEnabled ? "check-all" : "circle-slash";
+    if (!this.biomeState.isEnabled) {
+        return "circle-slash";
+    }
+    return this.biomeState.isFileActive ? "check-all" : "circle-outline";
   }
 
   public dispose(): void {

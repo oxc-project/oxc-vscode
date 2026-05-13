@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
-import { env, type LogOutputChannel, version, window, workspace } from "vscode";
+import { env, type LogOutputChannel, version, window, workspace, Uri } from "vscode";
 import type { BinarySearchResult } from "./findBinary";
 import type { VSCodeConfig } from "./VSCodeConfig";
 
@@ -12,6 +12,8 @@ export enum BiomeCommands {
   RestartServerLint = "biome.restartServer",
   ToggleEnableLint = "biome.toggleEnable",
   ApplyAllFixesFile = "biome.applyAllFixesFile",
+  FormatProject = "biome.formatProject",
+  OpenConfig = "biome.openConfig",
   CopyDebugInfo = "biome.copyDebugInfo",
   Rage = "biome.rage",
 }
@@ -35,13 +37,13 @@ export async function copyDebugCommand(
   const info = [
     "### Used Versions",
     "",
-    "````",
+    "",
     `VS Code extension: v${extensionVersion}`,
     `biome: v${biomeVersion}`,
     `Editor: ${env.appName} v${version} (${env.appHost})`,
     `Operating System and Version: ${osName} (${os.release()})`,
     `Node Version: ${nodeVersion} (${nodeCommand})`,
-    "````",
+    "",
   ].join("\n");
 
   await env.clipboard.writeText(info);
@@ -130,6 +132,147 @@ export async function rageCommand(
     outputChannel.info(stdout);
     outputChannel.info("--- End of Output ---");
   });
+}
+
+/**
+ * Executes 'biome format --write .' in the active workspace.
+ */
+export async function formatProjectCommand(
+  binary: BinarySearchResult | undefined,
+  vscodeConfig: VSCodeConfig,
+) {
+  if (!binary) {
+    window.showErrorMessage("Biome binary not found. Cannot format project.");
+    return;
+  }
+
+  const activeEditor = window.activeTextEditor;
+  const workspaceFolder = activeEditor
+    ? workspace.getWorkspaceFolder(activeEditor.document.uri)
+    : workspace.workspaceFolders?.[0];
+
+  if (!workspaceFolder) {
+    window.showErrorMessage("No workspace folder found to format.");
+    return;
+  }
+
+  const isWindows = os.platform() === "win32";
+  const isNode = binary.loader === "node";
+  const nodeCommand = resolveNodeCommand(
+    vscodeConfig.nodePath,
+    vscodeConfig.useExecPath,
+  );
+
+  const serverEnv: Record<string, string> = {
+    ...process.env,
+    NO_COLOR: "1",
+  };
+
+  if (vscodeConfig.useExecPath) {
+    serverEnv.ELECTRON_RUN_AS_NODE = "1";
+  } else {
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
+  }
+
+  const pnpArgs: string[] = [];
+  if (isNode && binary.yarnPnpLoaderPath) {
+    pnpArgs.push("--require", binary.yarnPnpLoaderPath);
+    const esmLoaderPath = path.join(
+      path.dirname(binary.yarnPnpLoaderPath),
+      ".pnp.loader.mjs",
+    );
+    pnpArgs.push("--loader", esmLoaderPath);
+  }
+
+  let command: string;
+  let args: string[];
+  let shell = false;
+
+  if (isNode || vscodeConfig.useExecPath) {
+    command = nodeCommand;
+    args = [...pnpArgs, binary.path, "format", "--write", "."];
+  } else {
+    command = isWindows ? `"${binary.path}"` : binary.path;
+    args = ["format", "--write", "."];
+    shell = isWindows;
+  }
+
+  const options = {
+    cwd: workspaceFolder.uri.fsPath,
+    env: serverEnv,
+    shell,
+  };
+
+  execFile(command, args, options, (error) => {
+    if (error) {
+      // It failed, so let's run it in a terminal for the user to see
+      const terminal = window.createTerminal({
+        name: "Biome Format Project",
+        cwd: workspaceFolder.uri.fsPath,
+        env: serverEnv,
+      });
+
+      let terminalCommand: string;
+      if (isNode || vscodeConfig.useExecPath) {
+        terminalCommand = `${nodeCommand} ${pnpArgs.join(" ")} "${binary.path}" format --write .`;
+      } else {
+        terminalCommand = `${isWindows ? `"${binary.path}"` : binary.path} format --write .`;
+      }
+
+      terminal.show();
+      terminal.sendText(terminalCommand);
+      return;
+    }
+    window.showInformationMessage("Project formatted successfully.");
+  });
+}
+
+/**
+ * Opens the Biome configuration file relevant to the active editor.
+ */
+export async function openConfigCommand() {
+  const activeEditor = window.activeTextEditor;
+  const workspaceFolder = activeEditor
+    ? workspace.getWorkspaceFolder(activeEditor.document.uri)
+    : workspace.workspaceFolders?.[0];
+
+  if (!workspaceFolder) {
+    window.showErrorMessage("No workspace folder found.");
+    return;
+  }
+
+  // Look for biome configuration files in the current folder or above
+  const configFiles = [
+    "biome.json",
+    "biome.jsonc",
+    ".biome.json",
+    ".biome.jsonc"
+  ];
+
+  let currentPath = activeEditor
+    ? path.dirname(activeEditor.document.uri.fsPath)
+    : workspaceFolder.uri.fsPath;
+
+  const workspaceRoot = workspaceFolder.uri.fsPath;
+
+  while (currentPath.startsWith(workspaceRoot)) {
+    for (const configFile of configFiles) {
+      const configUri = Uri.file(path.join(currentPath, configFile));
+      try {
+        await workspace.fs.stat(configUri);
+        const doc = await workspace.openTextDocument(configUri);
+        await window.showTextDocument(doc);
+        return;
+      } catch {
+        // Continue
+      }
+    }
+    const parentPath = path.dirname(currentPath);
+    if (parentPath === currentPath) break;
+    currentPath = parentPath;
+  }
+
+  window.showErrorMessage("Biome configuration file not found.");
 }
 
 function getNodeVersion(nodeCommand: string): Promise<string> {

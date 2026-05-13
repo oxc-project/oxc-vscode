@@ -24,20 +24,20 @@ suite("WorkspaceConfig", () => {
 
   test("default values on initialization", () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
-    strictEqual(config.runTrigger, "onType");
+    strictEqual(config.runTrigger, "onSave");
     strictEqual(config.configPath, null);
     strictEqual(config.disableNestedConfig, false);
   });
 
   test("refresh correctly populates properties from configuration", async () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
-    await updateConfiguration("lint.run", "onSave");
+    await updateConfiguration("lint.run", "onType");
     await updateConfiguration("configPath", "./custom-biome.json");
     await updateConfiguration("disableNestedConfig", true);
 
     config.refresh();
 
-    strictEqual(config.runTrigger, "onSave");
+    strictEqual(config.runTrigger, "onType");
     strictEqual(config.configPath, "./custom-biome.json");
     strictEqual(config.disableNestedConfig, true);
   });
@@ -45,7 +45,7 @@ suite("WorkspaceConfig", () => {
   test("toBiomeConfig method", () => {
     const config = new WorkspaceConfig(WORKSPACE_FOLDER);
     const biomeConfig = config.toBiomeConfig();
-    strictEqual(biomeConfig.run, "onType");
+    strictEqual(biomeConfig.run, "onSave");
     strictEqual(biomeConfig.configPath, null);
     strictEqual(biomeConfig.disableNestedConfig, false);
   });

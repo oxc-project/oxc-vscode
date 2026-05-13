@@ -53,7 +53,7 @@ export class WorkspaceConfig {
 
     // Explicitly pull known settings for backwards compatibility and clarity
     const run =
-      config.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
+      config.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onSave;
     const configPath = config.get<string | null>("configPath") ?? null;
     const disableNestedConfig =
       config.get<boolean>("disableNestedConfig") ?? false;
@@ -82,7 +82,7 @@ export class WorkspaceConfig {
 
   get runTrigger(): DiagnosticPullMode {
     return (
-      (this._config.run as DiagnosticPullMode) || DiagnosticPullMode.onType
+      (this._config.run as DiagnosticPullMode) || DiagnosticPullMode.onSave
     );
   }
 

@@ -8,6 +8,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   private _nodePath: string | undefined;
   private _useExecPath: boolean = false;
   private _requireConfig!: boolean;
+  private _enabledLanguages!: string[];
 
   constructor() {
     this.refresh();
@@ -26,7 +27,27 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._nodePath = this.configuration.get<string>("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig =
-      this.configuration.get<boolean>("requireConfig") ?? false;
+      this.configuration.get<boolean>("requireConfig") ?? true;
+    this._enabledLanguages = this.configuration.get<string[]>(
+      "enabledLanguages",
+    ) ?? [
+      "astro",
+      "css",
+      "graphql",
+      "html",
+      "javascript",
+      "javascriptreact",
+      "json",
+      "jsonc",
+      "less",
+      "markdown",
+      "mdx",
+      "scss",
+      "svelte",
+      "typescript",
+      "typescriptreact",
+      "vue",
+    ];
   }
 
   get enableBiome(): boolean {
@@ -83,6 +104,15 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     return this.configuration.update("requireConfig", value);
   }
 
+  get enabledLanguages(): string[] {
+    return this._enabledLanguages;
+  }
+
+  updateEnabledLanguages(value: string[]): PromiseLike<void> {
+    this._enabledLanguages = value;
+    return this.configuration.update("enabledLanguages", value);
+  }
+
   /**
    * These configuration changes need a complete restart of the language server
    */
@@ -98,6 +128,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   effectsBiomeConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.biome`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.enabledLanguages`) ||
       this.effectsGeneralLSPConnection(event)
     );
   }
@@ -144,7 +175,13 @@ interface VSCodeConfigInterface {
   /**
    * Start the language server only when a `biome.json` file exists in one of the workspaces.
    * `biome.requireConfig`
-   * @default false
+   * @default true
    */
   requireConfig: boolean;
+
+  /**
+   * The languages that Biome should be enabled for.
+   * `biome.enabledLanguages`
+   */
+  enabledLanguages: string[];
 }

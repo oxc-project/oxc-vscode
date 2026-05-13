@@ -91,6 +91,16 @@
         "category": "Biome"
       },
       {
+        "command": "biome.formatProject",
+        "title": "Format Project",
+        "category": "Biome"
+      },
+      {
+        "command": "biome.openConfig",
+        "title": "Open Biome Configuration",
+        "category": "Biome"
+      },
+      {
         "command": "biome.copyDebugInfo",
         "title": "Copy Debug Info",
         "category": "Biome"
@@ -118,13 +128,13 @@
             "onSave",
             "onType"
           ],
-          "default": "onType",
+          "default": "onSave",
           "markdownDescription": "Run the linter on save (onSave) or on type (onType)"
         },
         "biome.requireConfig": {
           "scope": "resource",
           "type": "boolean",
-          "default": false,
+          "default": true,
           "markdownDescription": "Start the language server only when a `biome.json`, `biome.jsonc`, `.biome.json` or `.biome.jsonc` file exists in one of the workspaces."
         },
         "biome.trace.server": {
@@ -157,6 +167,32 @@
           "scope": "resource",
           "default": false,
           "markdownDescription": "Disable searching for nested configuration files."
+        },
+        "biome.enabledLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "astro",
+            "css",
+            "graphql",
+            "html",
+            "javascript",
+            "javascriptreact",
+            "json",
+            "jsonc",
+            "less",
+            "markdown",
+            "mdx",
+            "scss",
+            "svelte",
+            "typescript",
+            "typescriptreact",
+            "vue"
+          ],
+          "scope": "resource",
+          "markdownDescription": "The languages that Biome should be enabled for. Changing this requires a restart of the server."
         },
         "biome.path.biome": {
           "type": "string",

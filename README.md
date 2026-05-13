@@ -15,6 +15,8 @@ Install through the VS Code extensions marketplace by searching for `Biome Forma
 - **Unified LSP**: Provides both linting and formatting through a single connection.
 - **Extended Language Support**: Supports JavaScript, TypeScript, JSON, HTML, CSS, Astro, Svelte, Vue, Markdown, and more.
 - **Auto-fixes**: Command to fix all auto-fixable issues in a file.
+- **Format Project**: Command to format the full project using the Biome CLI.
+- **Status Bar Integration**: A mini status bar item shows if Biome is active on the current file. Click it to open your Biome configuration.
 - **Monorepo & Multi-root Support**: Works seamlessly with multi-root workspaces and monorepos (supports nested `biome.json`, `biome.jsonc`, `.biome.json`, or `.biome.jsonc` files).
 
 ## Configuration
@@ -26,7 +28,7 @@ To get the most out of this extension, set it as your default formatter in your 
   "editor.defaultFormatter": "simwai.biome-vscode",
   "editor.formatOnSave": true,
   "biome.enable": true,
-  "biome.lint.run": "onType"
+  "biome.lint.run": "onSave"
 }
 ```
 
@@ -38,16 +40,19 @@ This extension provides several commands accessible via the Command Palette (`Ct
 - **Biome: Toggle whether Biome is enabled**: Quickly enable or disable the extension.
 - **Biome: Show Output Channel**: View the logs from the Biome LSP.
 - **Biome: Fix all auto-fixable problems (file)**: Applies all suggested fixes to the current file.
+- **Biome: Format Project**: Runs `biome format --write .` in the active workspace. If it fails, output is shown in a terminal.
+- **Biome: Open Biome Configuration**: Opens the relevant `biome.json` file for the current project.
 - **Biome: Copy Debug Info**: Copies environment and version information to the clipboard.
 - **Biome: Rage (Debug Info)**: Generates a detailed diagnostic report.
 
 ## Settings
 
 - `biome.enable`: Enable or disable the extension. (Default: `true`)
-- `biome.lint.run`: Run the linter `onSave` or `onType`. (Default: `onType`)
-- `biome.requireConfig`: Start the server only when a `biome.json`, `biome.jsonc`, `.biome.json` or `.biome.jsonc` file exists. (Default: `false`)
+- `biome.lint.run`: Run the linter `onSave` or `onType`. (Default: `onSave`)
+- `biome.requireConfig`: Start the server only when a `biome.json`, `biome.jsonc`, `.biome.json` or `.biome.jsonc` file exists. (Default: `true`)
 - `biome.configPath`: Custom path to the Biome configuration file.
 - `biome.disableNestedConfig`: Disable searching for nested configuration files.
+- `biome.enabledLanguages`: The languages that Biome should be enabled for. (Default: `["astro", "css", "graphql", "html", "javascript", "javascriptreact", "json", "jsonc", "less", "markdown", "mdx", "scss", "svelte", "typescript", "typescriptreact", "vue"]`)
 - `biome.path.biome`: Custom path to a Biome binary.
 - `biome.path.node`: Custom path to a Node.js binary.
 - `biome.useExecPath`: Use the extension's bundled Node.js runtime.
@@ -62,6 +67,7 @@ While the official Biome extension (`biomejs.biome`) is the recommended choice f
 | **Settings Prefix** | `biome.enable`, `biome.configPath` | `biome.enabled`, `biome.configurationPath` |
 | **Languages**       | Broad (Astro, Svelte, Vue, etc.)   | Standard JS/TS/JSON                        |
 | **Diagnostics**     | Includes `biome.rage` command      | Standard LSP diagnostics                   |
+| **Status Bar**      | File-specific activation status    | Global server status                       |
 | **Status**          | Experimental                       | Stable                                     |
 
 ## Contributing
