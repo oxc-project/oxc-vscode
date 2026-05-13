@@ -331,7 +331,7 @@ export default class FormatterTool implements ToolInterface {
 
     outputChannel.info(`Using server binary at: ${binary?.path}`);
 
-    const run: Executable = runExecutable(
+    const run: Executable = await runExecutable(
       binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,

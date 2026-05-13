@@ -119,7 +119,7 @@ export default class LinterTool implements ToolInterface {
       await this.client.sendRequest(ExecuteCommandRequest.type, params);
     });
 
-    const run: Executable = runExecutable(
+    const run: Executable = await runExecutable(
       binary,
       configService.vsCodeConfig.useExecPath,
       configService.vsCodeConfig.nodePath,
