@@ -1,7 +1,14 @@
 import { execFile } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
-import { env, type LogOutputChannel, version, window, workspace, Uri } from "vscode";
+import {
+  env,
+  type LogOutputChannel,
+  Uri,
+  version,
+  window,
+  workspace,
+} from "vscode";
 import type { BinarySearchResult } from "./findBinary";
 import type { VSCodeConfig } from "./VSCodeConfig";
 
@@ -13,6 +20,8 @@ export enum BiomeCommands {
   ToggleEnableLint = "biome.toggleEnable",
   ApplyAllFixesFile = "biome.applyAllFixesFile",
   FormatProject = "biome.formatProject",
+  FixProject = "biome.fixProject",
+  FixProjectUnsafe = "biome.fixProjectUnsafe",
   OpenConfig = "biome.openConfig",
   CopyDebugInfo = "biome.copyDebugInfo",
   Rage = "biome.rage",
@@ -135,14 +144,19 @@ export async function rageCommand(
 }
 
 /**
- * Executes 'biome format --write .' in the active workspace.
+ * Generic function to run Biome command on the whole project.
  */
-export async function formatProjectCommand(
+async function runBiomeOnProject(
   binary: BinarySearchResult | undefined,
   vscodeConfig: VSCodeConfig,
+  biomeArgs: string[],
+  commandLabel: string,
+  successMessage: string,
 ) {
   if (!binary) {
-    window.showErrorMessage("Biome binary not found. Cannot format project.");
+    window.showErrorMessage(
+      `Biome binary not found. Cannot ${commandLabel.toLowerCase()}.`,
+    );
     return;
   }
 
@@ -152,7 +166,9 @@ export async function formatProjectCommand(
     : workspace.workspaceFolders?.[0];
 
   if (!workspaceFolder) {
-    window.showErrorMessage("No workspace folder found to format.");
+    window.showErrorMessage(
+      `No workspace folder found to ${commandLabel.toLowerCase()}.`,
+    );
     return;
   }
 
@@ -190,10 +206,10 @@ export async function formatProjectCommand(
 
   if (isNode || vscodeConfig.useExecPath) {
     command = nodeCommand;
-    args = [...pnpArgs, binary.path, "format", "--write", "."];
+    args = [...pnpArgs, binary.path, ...biomeArgs];
   } else {
     command = isWindows ? `"${binary.path}"` : binary.path;
-    args = ["format", "--write", "."];
+    args = [...biomeArgs];
     shell = isWindows;
   }
 
@@ -207,24 +223,72 @@ export async function formatProjectCommand(
     if (error) {
       // It failed, so let's run it in a terminal for the user to see
       const terminal = window.createTerminal({
-        name: "Biome Format Project",
+        name: `Biome ${commandLabel}`,
         cwd: workspaceFolder.uri.fsPath,
         env: serverEnv,
       });
 
       let terminalCommand: string;
       if (isNode || vscodeConfig.useExecPath) {
-        terminalCommand = `${nodeCommand} ${pnpArgs.join(" ")} "${binary.path}" format --write .`;
+        terminalCommand = `${nodeCommand} ${pnpArgs.join(" ")} "${binary.path}" ${biomeArgs.join(" ")}`;
       } else {
-        terminalCommand = `${isWindows ? `"${binary.path}"` : binary.path} format --write .`;
+        terminalCommand = `${isWindows ? `"${binary.path}"` : binary.path} ${biomeArgs.join(" ")}`;
       }
 
       terminal.show();
       terminal.sendText(terminalCommand);
       return;
     }
-    window.showInformationMessage("Project formatted successfully.");
+    window.showInformationMessage(successMessage);
   });
+}
+
+/**
+ * Executes 'biome format --write .' in the active workspace.
+ */
+export async function formatProjectCommand(
+  binary: BinarySearchResult | undefined,
+  vscodeConfig: VSCodeConfig,
+) {
+  await runBiomeOnProject(
+    binary,
+    vscodeConfig,
+    ["format", "--write", "."],
+    "Format Project",
+    "Project formatted successfully.",
+  );
+}
+
+/**
+ * Executes 'biome check --write .' in the active workspace.
+ */
+export async function fixProjectCommand(
+  binary: BinarySearchResult | undefined,
+  vscodeConfig: VSCodeConfig,
+) {
+  await runBiomeOnProject(
+    binary,
+    vscodeConfig,
+    ["check", "--write", "."],
+    "Fix Project",
+    "Project fixed successfully.",
+  );
+}
+
+/**
+ * Executes 'biome check --write --unsafe .' in the active workspace.
+ */
+export async function fixProjectUnsafeCommand(
+  binary: BinarySearchResult | undefined,
+  vscodeConfig: VSCodeConfig,
+) {
+  await runBiomeOnProject(
+    binary,
+    vscodeConfig,
+    ["check", "--write", "--unsafe", "."],
+    "Fix Project (Unsafe)",
+    "Project fixed (with unsafe fixes) successfully.",
+  );
 }
 
 /**
@@ -246,7 +310,7 @@ export async function openConfigCommand() {
     "biome.json",
     "biome.jsonc",
     ".biome.json",
-    ".biome.jsonc"
+    ".biome.jsonc",
   ];
 
   let currentPath = activeEditor
