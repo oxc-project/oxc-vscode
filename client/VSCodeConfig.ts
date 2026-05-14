@@ -128,7 +128,9 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   effectsBiomeConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.biome`) ||
-      event.affectsConfiguration(`${ConfigService.namespace}.enabledLanguages`) ||
+      event.affectsConfiguration(
+        `${ConfigService.namespace}.enabledLanguages`,
+      ) ||
       this.effectsGeneralLSPConnection(event)
     );
   }

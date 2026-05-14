@@ -75,7 +75,7 @@ export default class StatusBarItemHandler {
 
   private getIcon(): string {
     if (!this.biomeState.isEnabled) {
-        return "circle-slash";
+      return "circle-slash";
     }
     return this.biomeState.isFileActive ? "check-all" : "circle-outline";
   }
