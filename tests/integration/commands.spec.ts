@@ -118,7 +118,7 @@ suite("commands", () => {
     }
     const edit = new WorkspaceEdit();
     edit.createFile(fileUri, {
-      contents: Buffer.from("/* 😊 */debugger;"),
+      contents: Buffer.from("/* 😊 */if (foo == NaN) {}"),
       overwrite: true,
     });
 
@@ -131,6 +131,6 @@ suite("commands", () => {
 
     const content = await workspace.fs.readFile(fileUri);
 
-    strictEqual(content.toString(), "/* 😊 */");
+    strictEqual(content.toString(), "/* 😊 */if (isNaN(foo)) {}");
   });
 });

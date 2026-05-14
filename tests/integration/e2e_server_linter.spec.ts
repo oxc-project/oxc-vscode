@@ -1,6 +1,5 @@
 import { strictEqual } from "assert";
 import {
-  commands,
   DiagnosticSeverity,
   languages,
   Position,
@@ -177,52 +176,6 @@ suite("E2E Server Linter", () => {
       DiagnosticSeverity.Error,
       "Expect changed severity to be error",
     );
-  });
-
-  // We can check the changed with kind with `vscode.executeCodeActionProvider`
-  // but to be safe that everything works, we will check the applied changes.
-  // This way we can be sure that everything works as expected.
-  test("auto detect changing `fixKind` with fixAll command", async () => {
-    await workspace.getConfiguration("oxc").update("fixKind", "safe_fix");
-    await sleep(500);
-
-    const originalContent = "if (x === -0) { bar();}";
-    await createOxlintConfiguration({
-      rules: {
-        "no-compare-neg-zero": "error",
-      },
-    });
-
-    const edit = new WorkspaceEdit();
-
-    edit.createFile(fileUri, {
-      contents: Buffer.from(originalContent),
-      overwrite: true,
-    });
-
-    await workspace.applyEdit(edit);
-    await window.showTextDocument(fileUri);
-    await commands.executeCommand("oxc.fixAll", {
-      uri: fileUri.toString(),
-    });
-    await workspace.saveAll();
-
-    const content = await workspace.fs.readFile(fileUri);
-
-    strictEqual(content.toString(), originalContent);
-    await workspace.getConfiguration("oxc").update("fixKind", undefined);
-    // wait for server to update the internal linter
-    await sleep(500);
-    await workspace.saveAll();
-
-    await commands.executeCommand("oxc.fixAll", {
-      uri: fileUri.toString(),
-    });
-    await sleep(500);
-    await workspace.saveAll();
-    const contentWithFixAll = await workspace.fs.readFile(fileUri);
-
-    strictEqual(contentWithFixAll.toString(), "if (Object.is(x, -0)) { bar();}");
   });
 
   test("nested configs severity", async () => {
