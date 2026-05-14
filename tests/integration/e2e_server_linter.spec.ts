@@ -13,6 +13,7 @@ import {
   activateExtension,
   createOxlintConfiguration,
   deleteFixtures,
+  deleteOxlintConfiguration,
   fixturesWorkspaceUri,
   getDiagnostics,
   getDiagnosticsWithoutClose,
@@ -176,6 +177,7 @@ suite("E2E Server Linter", () => {
       DiagnosticSeverity.Error,
       "Expect changed severity to be error",
     );
+    await deleteOxlintConfiguration();
   });
 
   test("nested configs severity", async () => {

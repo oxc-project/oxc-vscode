@@ -96,6 +96,10 @@ export async function createOxlintConfiguration(configuration: OxlintConfig): Pr
   await workspace.applyEdit(edit);
 }
 
+export async function deleteOxlintConfiguration(): Promise<void> {
+  await workspace.fs.delete(rootOxlintConfigUri, { useTrash: false });
+}
+
 // in multi folder setup we want to load the fixtures into the second folder.
 // the first folder should be already covered by the single folder setup.
 export function fixturesWorkspaceUri(): Uri {
