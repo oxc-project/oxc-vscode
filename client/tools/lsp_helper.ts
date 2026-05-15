@@ -7,25 +7,25 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-let cachedEnv: Promise<Record<string, string>> | undefined;
+let cachedEnv: Promise<Record<string, string | undefined>> | undefined;
 
-/***
+/**
  * Get the shell environment variables by running a login shell and executing `env -0`.
  * This is necessary because the VSCode extension host process may not have the same environment variables as the user's shell,
  * which can lead to issues when running the language server that rely on certain environment variables.
  * e.g., PATH for starting the wrapper npm/pnpm node script like ` exec node  "$basedir/../oxlint/bin/oxlint" "$@"`.
  *
- * Mac/Linux GUI shells (which does happen in VS Code context, because of Electron) do not load `.bashrc` or `.zshrc` for non-interactive shells,
- * and thus the language server fails to start with "command not found: node".
+ * On macOS/Linux, GUI-launched processes such as VS Code under Electron do not load `.bashrc` or `.zshrc`
+ * the way an interactive shell does, so the language server can fail to start with "command not found: node".
  */
-export async function getShellEnv(): Promise<Record<string, string>> {
+export async function getShellEnv(): Promise<Record<string, string | undefined>> {
   if (cachedEnv) {
     return cachedEnv;
   }
 
-  // windows electron app does not have the problem of individual shell environment, as it inherits the environment from the parent process,
+  // windows electron app does not have the problem of individual shell environment, as it inherits the environment from the parent process.
   if (process.platform === "win32") {
-    cachedEnv = Promise.resolve({ ...process.env } as Record<string, string>);
+    cachedEnv = Promise.resolve({ ...process.env });
     return cachedEnv;
   }
 
@@ -33,7 +33,7 @@ export async function getShellEnv(): Promise<Record<string, string>> {
   return cachedEnv;
 }
 
-async function getInteractiveShellEnv(): Promise<Record<string, string>> {
+async function getInteractiveShellEnv(): Promise<Record<string, string | undefined>> {
   const shell = process.env.SHELL ?? "/bin/bash";
 
   try {
@@ -47,7 +47,7 @@ async function getInteractiveShellEnv(): Promise<Record<string, string>> {
       timeout: 5000,
     });
 
-    const env: Record<string, string> = {};
+    const env: Record<string, string | undefined> = {};
     for (const entry of stdout.split("\0")) {
       if (!entry) continue;
 
@@ -61,7 +61,7 @@ async function getInteractiveShellEnv(): Promise<Record<string, string>> {
     return env;
   } catch {
     // If there is an error (e.g., timeout, shell not found, etc.), return the current process.env as a fallback.
-    return { ...process.env } as Record<string, string>;
+    return { ...process.env };
   }
 }
 
