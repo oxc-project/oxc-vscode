@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-let cachedEnv: Record<string, string> | undefined;
+let cachedEnv: Promise<Record<string, string>> | undefined;
 
 /***
  * Get the shell environment variables by running a login shell and executing `env -0`.
@@ -23,35 +23,46 @@ export async function getShellEnv(): Promise<Record<string, string>> {
     return cachedEnv;
   }
 
-  const shell = process.env.SHELL ?? "/bin/bash";
-
-  // POSIX shells
-  if (process.platform == "win32") {
-    // windows electron app does not have the problem of individual shell environment, as it inherits the environment from the parent process,
-    cachedEnv = { ...process.env } as Record<string, string>;
+  // windows electron app does not have the problem of individual shell environment, as it inherits the environment from the parent process,
+  if (process.platform === "win32") {
+    cachedEnv = Promise.resolve({ ...process.env } as Record<string, string>);
     return cachedEnv;
   }
-  // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
-  // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
-  const { stdout } = await execFileAsync(shell, ["-ilc", "env -0"], {
-    env: {
-      HOME: process.env.HOME,
-    },
-  });
 
-  cachedEnv = {};
-
-  for (const entry of stdout.split("\0")) {
-    if (!entry) continue;
-
-    const i = entry.indexOf("=");
-
-    if (i === -1) continue;
-
-    cachedEnv[entry.slice(0, i)] = entry.slice(i + 1);
-  }
-
+  cachedEnv = getInteractiveShellEnv();
   return cachedEnv;
+}
+
+async function getInteractiveShellEnv(): Promise<Record<string, string>> {
+  const shell = process.env.SHELL ?? "/bin/bash";
+
+  try {
+    // POSIX shells
+    // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
+    // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
+    const { stdout } = await execFileAsync(shell, ["-ilc", "env -0"], {
+      env: {
+        HOME: process.env.HOME,
+      },
+      timeout: 5000,
+    });
+
+    const env: Record<string, string> = {};
+    for (const entry of stdout.split("\0")) {
+      if (!entry) continue;
+
+      const i = entry.indexOf("=");
+
+      if (i === -1) continue;
+
+      env[entry.slice(0, i)] = entry.slice(i + 1);
+    }
+
+    return env;
+  } catch {
+    // If there is an error (e.g., timeout, shell not found, etc.), return the current process.env as a fallback.
+    return { ...process.env } as Record<string, string>;
+  }
 }
 
 export async function runExecutable(
@@ -61,33 +72,7 @@ export async function runExecutable(
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
 ): Promise<Executable> {
-  const processEnv = process.env;
   const shellEnv = await getShellEnv();
-
-  // only for debugging purpose
-  {
-    if (Object.keys(processEnv).length !== Object.keys(shellEnv).length) {
-      const missingInProcessEnv = Object.keys(shellEnv).filter((key) => !(key in processEnv));
-      const missingInShellEnv = Object.keys(processEnv).filter((key) => !(key in shellEnv));
-
-      console.warn("Process env and shell env have different number of keys", {
-        missingInProcessEnv,
-        missingInShellEnv,
-      });
-    }
-
-    if (processEnv.PATH !== shellEnv.PATH) {
-      const processEnvPATH = processEnv.PATH?.split(path.delimiter) ?? [];
-      const shellEnvPATH = shellEnv.PATH?.split(path.delimiter) ?? [];
-      const missingInProcessEnvPATH = shellEnvPATH.filter((p) => !processEnvPATH.includes(p));
-      const missingInShellEnvPATH = processEnvPATH.filter((p) => !shellEnvPATH.includes(p));
-
-      console.warn("Process env and shell env have different PATH values", {
-        missingInProcessEnvPATH,
-        missingInShellEnvPATH,
-      });
-    }
-  }
 
   const serverEnv: Record<string, string> = {
     ...shellEnv,
@@ -118,7 +103,7 @@ export async function runExecutable(
 
   if (path.isAbsolute(nodeCommand)) {
     const nodeDir = path.dirname(nodeCommand);
-    serverEnv.PATH = `${nodeDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`;
+    serverEnv.PATH = `${nodeDir}${path.delimiter}${serverEnv.PATH ?? ""}`;
   }
 
   const isWindows = process.platform === "win32";
