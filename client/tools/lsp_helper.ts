@@ -40,15 +40,25 @@ async function getInteractiveShellEnv(): Promise<Record<string, string | undefin
     // POSIX shells
     // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
     // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
-    const { stdout } = await execFileAsync(shell, ["-ilc", "env -0"], {
-      env: {
-        HOME: process.env.HOME,
+    const { stdout } = await execFileAsync(
+      shell,
+      ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env -0; echo -n "_ENV_DELIMITER_"; exit'],
+      {
+        env: {
+          HOME: process.env.HOME,
+        },
+        timeout: 5000,
       },
-      timeout: 5000,
-    });
+    );
+
+    const envsOutput = stdout.split("_ENV_DELIMITER_")[1] ?? "";
+    if (!envsOutput) {
+      // If the output is empty, return the current process.env as a fallback.
+      return { ...process.env };
+    }
 
     const env: Record<string, string | undefined> = {};
-    for (const entry of stdout.split("\0")) {
+    for (const entry of envsOutput.split("\0")) {
       if (!entry) continue;
 
       const i = entry.indexOf("=");
