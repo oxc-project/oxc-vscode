@@ -46,8 +46,12 @@ suite("ConfigService", () => {
   suite("getOxfmtServerBinPath", () => {
     test("falls back to node resolving when server path is not set", async () => {
       const service = new ConfigService();
-      const oxfmtPath = (await service.getOxfmtServerBinPath())!;
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
+      let oxfmtPath = (await service.getOxfmtServerBinPath())!;
+      // on windows, lowercase the driver letter for consistent path comparison
+      if (process.platform === "win32") {
+        oxfmtPath.path = oxfmtPath.path[0].toLowerCase() + oxfmtPath.path.slice(1);
+      }
 
       // it targets the oxc project's oxlint/bin/oxlint path
       strictEqual(oxfmtPath.loader, "node");
@@ -119,9 +123,12 @@ suite("ConfigService", () => {
   suite("getOxlintServerBinPath", () => {
     test("falls back to node resolving when server path is not set", async () => {
       const service = new ConfigService();
-      const oxlintPath = (await service.getOxlintServerBinPath())!;
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
-
+      let oxlintPath = (await service.getOxlintServerBinPath())!;
+      // on windows, lowercase the driver letter for consistent path comparison
+      if (process.platform === "win32") {
+        oxlintPath.path = oxlintPath.path[0].toLowerCase() + oxlintPath.path.slice(1);
+      }
       // it targets the oxc project's oxlint/bin/oxlint path
       strictEqual(oxlintPath.loader, "node");
       strictEqual(
