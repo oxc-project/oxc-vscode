@@ -48,9 +48,9 @@ suite("ConfigService", () => {
       const service = new ConfigService();
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
       let oxfmtPath = (await service.getOxfmtServerBinPath())!;
-      // on windows, lowercase the driver letter for consistent path comparison
+      // on windows, uppercase the driver letter for consistent path comparison
       if (process.platform === "win32") {
-        oxfmtPath.path = oxfmtPath.path[0].toLowerCase() + oxfmtPath.path.slice(1);
+        oxfmtPath.path = oxfmtPath.path[0].toUpperCase() + oxfmtPath.path.slice(1);
       }
 
       // it targets the oxc project's oxlint/bin/oxlint path
@@ -125,9 +125,9 @@ suite("ConfigService", () => {
       const service = new ConfigService();
       const cwd = process.env.VSCODE_CWD!.replace(`${sep}editors${sep}vscode`, "");
       let oxlintPath = (await service.getOxlintServerBinPath())!;
-      // on windows, lowercase the driver letter for consistent path comparison
+      // on windows, uppercase the driver letter for consistent path comparison
       if (process.platform === "win32") {
-        oxlintPath.path = oxlintPath.path[0].toLowerCase() + oxlintPath.path.slice(1);
+        oxlintPath.path = oxlintPath.path[0].toUpperCase() + oxlintPath.path.slice(1);
       }
       // it targets the oxc project's oxlint/bin/oxlint path
       strictEqual(oxlintPath.loader, "node");
