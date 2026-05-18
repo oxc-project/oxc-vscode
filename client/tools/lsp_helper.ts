@@ -42,7 +42,7 @@ async function getInteractiveShellEnv(): Promise<Record<string, string | undefin
     // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
     const { stdout } = await execFileAsync(
       shell,
-      ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env -0; echo -n "_ENV_DELIMITER_"; exit'],
+      ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env; echo -n "_ENV_DELIMITER_"; exit'],
       {
         env: {
           HOME: process.env.HOME,
@@ -58,7 +58,7 @@ async function getInteractiveShellEnv(): Promise<Record<string, string | undefin
     }
 
     const env: Record<string, string | undefined> = {};
-    for (const entry of envsOutput.split("\0")) {
+    for (const entry of envsOutput.split("\n")) {
       if (!entry) continue;
 
       const i = entry.indexOf("=");
