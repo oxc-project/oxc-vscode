@@ -85,7 +85,7 @@ suite("runExecutable", () => {
     );
 
     strictEqual(result.command, "/custom/node/bin/node");
-    strictEqual(result.options?.env?.PATH?.includes("/custom/node/bin:"), true);
+    strictEqual(result.options?.env?.PATH?.includes(`/custom/node/bin${path.delimiter}`), true);
   });
 
   test("should set path in quotes on Windows for binary executables", async () => {

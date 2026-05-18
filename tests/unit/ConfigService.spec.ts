@@ -51,7 +51,11 @@ suite("ConfigService", () => {
 
       // it targets the oxc project's oxlint/bin/oxlint path
       strictEqual(oxfmtPath.loader, "node");
-      strictEqual(oxfmtPath.path.startsWith(cwd), true, "path should start with cwd");
+      strictEqual(
+        oxfmtPath.path.startsWith(cwd),
+        true,
+        `path should start with cwd, cwd: ${cwd}, actual: ${oxfmtPath.path}`,
+      );
       strictEqual(
         oxfmtPath.path.endsWith(`oxfmt${sep}bin${sep}oxfmt`),
         true,
@@ -120,7 +124,11 @@ suite("ConfigService", () => {
 
       // it targets the oxc project's oxlint/bin/oxlint path
       strictEqual(oxlintPath.loader, "node");
-      strictEqual(oxlintPath.path.startsWith(cwd), true, "path should start with cwd");
+      strictEqual(
+        oxlintPath.path.startsWith(cwd),
+        true,
+        `path should start with cwd, cwd: ${cwd}, actual: ${oxlintPath.path}`,
+      );
       strictEqual(
         oxlintPath.path.endsWith(`oxlint${sep}bin${sep}oxlint`),
         true,
