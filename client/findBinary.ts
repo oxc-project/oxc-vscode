@@ -1,3 +1,4 @@
+import { access, constants } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -103,6 +104,7 @@ async function searchNodeModulesDefaultBinPath(
 
   return { path: candidates[firstExistingCandidateIndex], loader: "native" };
 }
+
 /**
  * Returns node_modules paths derived from all package.json files found in the workspace.
  * The result is cached after the first call to avoid repeated file system scans.
@@ -438,4 +440,74 @@ export async function searchExtensionNodeModulesBin(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Checks whether a file at the given path is actually executable.
+ *
+ * On Unix: uses fs.access with X_OK.
+ * On Windows: X_OK is not meaningful, so we fall back to checking existence
+ * while explicitly rejecting .cmd shims — these pass stat() but cause
+ * internalError/io (os error 5) when the Biome LSP tries to spawn them.
+ */
+export async function isExecutable(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, constants.X_OK);
+    return true;
+  } catch {
+    if (process.platform === "win32") {
+      try {
+        await access(filePath, constants.F_OK);
+        return !filePath.endsWith(".cmd");
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Tries each binary search strategy in priority order and returns the first
+ * result whose path passes the executable check.
+ *
+ * This prevents returning Windows .bin shims or other non-executable files
+ * that exist on disk but would cause the LSP server to crash on startup.
+ *
+ * Priority order:
+ *  1. User settings (explicit path always wins)
+ *  2. Project-local node_modules
+ *  3. Yarn PnP
+ *  4. Global node_modules (npm / pnpm / bun)
+ *  5. PATH
+ *  6. Bundled extension fallback
+ */
+export async function findExecutableBinary(
+  binaryName: string,
+  settingsBinary?: string,
+): Promise<BinarySearchResult | undefined> {
+  const strategies: (() => Promise<BinarySearchResult | undefined>)[] = [
+    ...(settingsBinary
+      ? [() => searchSettingsBin(binaryName, settingsBinary)]
+      : []),
+    () => searchProjectNodeModulesBin(binaryName),
+    () => searchYarnPnpBin(binaryName),
+    () => searchGlobalNodeModulesBin(binaryName),
+    () => searchEnvPath(binaryName),
+    () => searchExtensionNodeModulesBin(binaryName),
+  ];
+
+  for (const strategy of strategies) {
+    const result = await strategy();
+    if (result && (await isExecutable(result.path))) {
+      return result;
+    }
+  }
+
+  return undefined;
+}
+
+/** @internal only used for clearing test states */
+export function clearFindExecutableBinaryCache(): void {
+  clearWorkspacePackageJsonNodeModulesCache();
 }

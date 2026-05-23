@@ -7,12 +7,7 @@ import {
 import type { DiagnosticPullMode } from "vscode-languageclient";
 import {
   type BinarySearchResult,
-  searchEnvPath,
-  searchExtensionNodeModulesBin,
-  searchGlobalNodeModulesBin,
-  searchProjectNodeModulesBin,
-  searchSettingsBin,
-  searchYarnPnpBin,
+  findExecutableBinary,
 } from "./findBinary";
 import type { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";
@@ -28,6 +23,10 @@ export class ConfigService implements IDisposable {
   public vsCodeConfig: VSCodeConfig;
 
   private workspaceConfigs: Map<string, WorkspaceConfig> = new Map();
+
+  /** Single-flight cache: stores the in-flight or resolved Promise so concurrent
+   * callers share one waterfall run instead of racing each other. */
+  private _binaryPathCache: Promise<BinarySearchResult | undefined> | undefined;
 
   public onConfigChange:
     | ((this: ConfigService, config: ConfigurationChangeEvent) => Promise<void>)
@@ -87,10 +86,17 @@ export class ConfigService implements IDisposable {
     return false;
   }
 
-  public async getBiomeServerBinPath(): Promise<
-    BinarySearchResult | undefined
-  > {
-    return this.searchBinaryPath(this.vsCodeConfig.binPathBiome, "biome");
+  public getBiomeServerBinPath(): Promise<BinarySearchResult | undefined> {
+    this._binaryPathCache ??= findExecutableBinary(
+      "biome",
+      this.vsCodeConfig.binPathBiome,
+    );
+    return this._binaryPathCache;
+  }
+
+  /** Drops the cached binary resolution so the next call re-probes the filesystem. */
+  public invalidateBinaryCache(): void {
+    this._binaryPathCache = undefined;
   }
 
   public shouldRequestDiagnostics(
@@ -112,23 +118,6 @@ export class ConfigService implements IDisposable {
     );
   }
 
-  private async searchBinaryPath(
-    settingsBinary: string | undefined,
-    defaultBinaryName: string,
-  ): Promise<BinarySearchResult | undefined> {
-    if (settingsBinary) {
-      return searchSettingsBin(defaultBinaryName, settingsBinary);
-    }
-
-    return (
-      (await searchProjectNodeModulesBin(defaultBinaryName)) ??
-      (await searchYarnPnpBin(defaultBinaryName)) ??
-      (await searchGlobalNodeModulesBin(defaultBinaryName)) ??
-      (await searchEnvPath(defaultBinaryName)) ??
-      (await searchExtensionNodeModulesBin(defaultBinaryName))
-    );
-  }
-
   private async onVscodeConfigChange(
     event: ConfigurationChangeEvent,
   ): Promise<void> {
@@ -136,6 +125,7 @@ export class ConfigService implements IDisposable {
 
     if (event.affectsConfiguration(ConfigService.namespace)) {
       this.vsCodeConfig.refresh();
+      this.invalidateBinaryCache();
       isConfigChanged = true;
     }
 
