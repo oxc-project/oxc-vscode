@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { env } from "node:process";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
+import { getShellEnv } from "./utils";
 
 export type BinarySearchResult = {
   path: string;
@@ -202,7 +203,7 @@ export async function searchYarnPnpBin(
 export async function searchGlobalNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
-  const globalPaths = globalNodeModulesPaths();
+  const globalPaths = await globalNodeModulesPaths();
 
   // try to find shared binary inside `node_modules/.bin` of each workspace folder
   // This is required, because the project can use `vite-plus`,
@@ -321,9 +322,9 @@ export async function searchSettingsBin(
 }
 
 // copied from: https://github.com/biomejs/biome-vscode/blob/ae9b6df2254d0ff8ee9d626554251600eb2ca118/src/locator.ts#L28-L49
-function globalNodeModulesPaths(): string[] {
-  const npmGlobalNodeModulesPath = safeSpawnSync("npm", ["root", "-g"]);
-  const pnpmGlobalNodeModulesPath = safeSpawnSync("pnpm", ["root", "-g"]);
+async function globalNodeModulesPaths(): Promise<string[]> {
+  const npmGlobalNodeModulesPath = await safeSpawnSync("npm", ["root", "-g"]);
+  const pnpmGlobalNodeModulesPath = await safeSpawnSync("pnpm", ["root", "-g"]);
   const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");
 
   return [npmGlobalNodeModulesPath, pnpmGlobalNodeModulesPath, bunGlobalNodeModulesPath].filter(
@@ -333,13 +334,17 @@ function globalNodeModulesPaths(): string[] {
 
 // only use this function with internal code, because it executes shell commands
 // which could be a security risk if the command or args are user-controlled
-const safeSpawnSync = (command: string, args: readonly string[] = []): string | undefined => {
+const safeSpawnSync = async (
+  command: string,
+  args: readonly string[] = [],
+): Promise<string | undefined> => {
   let output: string | undefined;
 
   try {
     const result = spawnSync(command, args, {
       shell: true,
       encoding: "utf8",
+      env: await getShellEnv(),
     });
 
     if (result.error || result.status !== 0) {
