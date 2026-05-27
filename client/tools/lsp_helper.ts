@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
-import { getShellEnv } from "../utils";
+import { getShellEnv } from "../getShellEnv";
 
 export async function runExecutable(
   binary: BinarySearchResult,

@@ -6,10 +6,11 @@ const execFileAsync = promisify(execFile);
 let cachedEnv: Promise<Record<string, string | undefined>> | undefined;
 
 /**
- * Get the shell environment variables by running a login shell and executing `env -0`.
+ * Get the shell environment variables by running a login shell and executing `env`.
  * This is necessary because the VSCode extension host process may not have the same environment variables as the user's shell,
  * which can lead to issues when running the language server that rely on certain environment variables.
  * e.g., PATH for starting the wrapper npm/pnpm node script like ` exec node  "$basedir/../oxlint/bin/oxlint" "$@"`.
+ * It also helps to get the right global node_modules paths.
  *
  * On macOS/Linux, GUI-launched processes such as VS Code under Electron do not load `.bashrc` or `.zshrc`
  * the way an interactive shell does, so the language server can fail to start with "command not found: node".

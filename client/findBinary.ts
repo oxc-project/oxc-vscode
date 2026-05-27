@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { env } from "node:process";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
-import { getShellEnv } from "./utils";
+import { getShellEnv } from "./getShellEnv";
 
 export type BinarySearchResult = {
   path: string;
