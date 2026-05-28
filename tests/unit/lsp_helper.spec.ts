@@ -1,6 +1,7 @@
 import { strictEqual } from "assert";
 import { runExecutable } from "../../client/tools/lsp_helper";
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 
 suite("runExecutable", () => {
   const originalPlatform = process.platform;
@@ -147,11 +148,9 @@ suite("runExecutable", () => {
     strictEqual(result.args?.includes("--require"), true);
     strictEqual(result.args?.includes("/path/to/.pnp.cjs"), true, JSON.stringify(result.args));
     strictEqual(result.args?.includes("--loader"), true);
-    // will be converted to Windows path with backslashes
-    strictEqual(
-      result.args?.includes(`${path.sep}path${path.sep}to${path.sep}.pnp.loader.mjs`),
-      true,
-      JSON.stringify(result.args),
-    );
+    const expectedEsmLoaderPath = pathToFileURL(
+      `${path.sep}path${path.sep}to${path.sep}.pnp.loader.mjs`,
+    ).href;
+    strictEqual(result.args?.includes(expectedEsmLoaderPath), true, JSON.stringify(result.args));
   });
 });

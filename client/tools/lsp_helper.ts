@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
@@ -55,7 +56,7 @@ export async function runExecutable(
   if (isNode && binary.yarnPnpLoaderPath) {
     pnpArgs.push("--require", binary.yarnPnpLoaderPath);
     const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
-    pnpArgs.push("--loader", esmLoaderPath);
+    pnpArgs.push("--loader", pathToFileURL(esmLoaderPath).href);
   }
 
   return isNode || useExecPath
