@@ -293,7 +293,8 @@ suite("E2E Server Linter", () => {
     strictEqual(firstDiagnostics.length, 1);
 
     await workspace.getConfiguration("oxc").update("enable", false);
-    await Promise.all([workspace.saveAll(), waitForDiagnosticChange()]);
+    await workspace.saveAll();
+    await sleep(1000); //  waitForDiagnosticChange() is flaky
 
     const secondDiagnostics = await getDiagnostics("debugger.js");
     strictEqual(secondDiagnostics.length, 0);
