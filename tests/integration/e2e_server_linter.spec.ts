@@ -41,7 +41,6 @@ teardown(async () => {
   await workspace.getConfiguration("oxc").update("fmt.experimental", undefined);
   await workspace.getConfiguration("oxc").update("fmt.configPath", undefined);
   await workspace.getConfiguration("oxc").update("enable", undefined);
-  await workspace.getConfiguration("oxc").update("enable", undefined);
   await workspace.getConfiguration("editor").update("defaultFormatter", undefined);
   await workspace.saveAll();
   await deleteFixtures();
