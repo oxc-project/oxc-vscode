@@ -1,3 +1,4 @@
+import path from "node:path";
 import { strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
@@ -145,5 +146,29 @@ suite("WorkspaceConfig", () => {
     // @ts-expect-error -- deprecated setting, kept for backward compatibility
     strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
+  });
+
+  test("workspace-level relative paths resolve from code-workspace location", async function () {
+    if (!workspace.workspaceFile) {
+      this.skip();
+      return;
+    }
+
+    const relativePath = "fixtures/deep/tsconfig.json";
+    await workspace
+      .getConfiguration("oxc")
+      .update("tsConfigPath", relativePath, ConfigurationTarget.Workspace);
+
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+    const oxlintConfig = config.toOxlintConfig();
+
+    strictEqual(
+      oxlintConfig.tsConfigPath,
+      path.resolve(path.dirname(workspace.workspaceFile.fsPath), relativePath),
+    );
+
+    await workspace
+      .getConfiguration("oxc")
+      .update("tsConfigPath", undefined, ConfigurationTarget.Workspace);
   });
 });

@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import { ConfigurationChangeEvent, ConfigurationTarget, workspace, WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "./ConfigService";
@@ -109,6 +110,8 @@ export type OxlintWorkspaceConfigInterface = Omit<WorkspaceConfigInterface, "fmt
 
 export type OxfmtWorkspaceConfigInterface = Pick<WorkspaceConfigInterface, "fmt.configPath">;
 
+type PathSettingKey = "configPath" | "tsConfigPath" | "fmt.configPath";
+
 export class WorkspaceConfig {
   private _configPath: string | null = null;
   private _tsConfigPath: string | null = null;
@@ -147,16 +150,47 @@ export class WorkspaceConfig {
 
     this._runTrigger =
       this.configuration.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
-    this._configPath = this.configuration.get<string | null>("configPath") ?? null;
-    this._tsConfigPath = this.configuration.get<string | null>("tsConfigPath") ?? null;
+    this._configPath = this.getResolvedPathSetting("configPath");
+    this._tsConfigPath = this.getResolvedPathSetting("tsConfigPath");
     this._unusedDisableDirectives =
       this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
     this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? null;
-    this._formattingConfigPath = this.configuration.get<string | null>("fmt.configPath") ?? null;
+    this._formattingConfigPath = this.getResolvedPathSetting("fmt.configPath");
     this._rulesCustomization =
       this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
+  }
+
+  private getResolvedPathSetting(section: PathSettingKey): string | null {
+    const value = this.configuration.get<string | null>(section);
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (path.isAbsolute(value) || !this.shouldResolveFromWorkspaceFile(section)) {
+      return value;
+    }
+
+    return path.resolve(path.dirname(workspace.workspaceFile!.fsPath), value);
+  }
+
+  private shouldResolveFromWorkspaceFile(section: PathSettingKey): boolean {
+    if (!workspace.workspaceFile) {
+      return false;
+    }
+
+    const inspected = this.configuration.inspect<string | null>(section);
+    if (!inspected) {
+      return false;
+    }
+
+    // Folder-scoped settings should stay relative to each workspace folder.
+    if (inspected.workspaceFolderValue !== undefined) {
+      return false;
+    }
+
+    return inspected.workspaceValue !== undefined;
   }
 
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
