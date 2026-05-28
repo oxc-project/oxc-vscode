@@ -40,7 +40,7 @@ teardown(async () => {
   await workspace.getConfiguration("oxc").update("typeAware", undefined);
   await workspace.getConfiguration("oxc").update("fmt.experimental", undefined);
   await workspace.getConfiguration("oxc").update("fmt.configPath", undefined);
-  await workspace.getConfiguration("oxc").update("enable.oxlint", undefined);
+  await workspace.getConfiguration("oxc").update("enable", undefined);
   await workspace.getConfiguration("oxc").update("enable", undefined);
   await workspace.getConfiguration("editor").update("defaultFormatter", undefined);
   await workspace.saveAll();
@@ -286,14 +286,14 @@ suite("E2E Server Linter", () => {
     strictEqual(secondDiagnostics.length, 1);
   });
 
-  testSingleFolderMode("changing oxc.enable.oxlint will update the client status", async () => {
+  testSingleFolderMode("changing oxc.enable will update the client status", async () => {
     await loadFixture("changing_enable");
     await sleep(500);
 
     const firstDiagnostics = await getDiagnostics("debugger.js");
     strictEqual(firstDiagnostics.length, 1);
 
-    await workspace.getConfiguration("oxc").update("enable.oxlint", false);
+    await workspace.getConfiguration("oxc").update("enable", false);
     await Promise.all([workspace.saveAll(), waitForDiagnosticChange()]);
 
     const secondDiagnostics = await getDiagnostics("debugger.js");
