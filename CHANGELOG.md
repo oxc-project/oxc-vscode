@@ -1,3 +1,16 @@
+# [1.53.0](https://github.com/simwai/biome-formatter-vscode/compare/v1.52.0...v1.53.0) (2026-05-29)
+
+
+### Bug Fixes
+
+* waterfall binary resolution with executable probing and single-flight cache ([#16](https://github.com/simwai/biome-formatter-vscode/issues/16)) ([5e5786e](https://github.com/simwai/biome-formatter-vscode/commit/5e5786eaaf29db5012298ec2d9f343ec1e08db58))
+
+
+### Features
+
+* add "Fix Project" command ([#14](https://github.com/simwai/biome-formatter-vscode/issues/14)) ([c6702bf](https://github.com/simwai/biome-formatter-vscode/commit/c6702bf80ace7c92f9e0e3021813d416c31552c0))
+* add format project command and update configuration defaults ([#13](https://github.com/simwai/biome-formatter-vscode/issues/13)) ([a117244](https://github.com/simwai/biome-formatter-vscode/commit/a1172449584fe2da6bb7b95ea50dff60a469b0b1))
+
 # [1.52.0](https://github.com/simwai/biome-formatter-vscode/compare/v1.51.1...v1.52.0) (2026-05-07)
 
 
