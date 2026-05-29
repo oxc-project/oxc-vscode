@@ -1,4 +1,4 @@
-import path from "node:path";
+import * as path from "node:path";
 import { strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
@@ -148,9 +148,8 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
   });
 
-  test("workspace-level relative paths resolve from code-workspace location", async function () {
+  test("workspace-level relative paths resolve from code-workspace location", async () => {
     if (!workspace.workspaceFile) {
-      this.skip();
       return;
     }
 
