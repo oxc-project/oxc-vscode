@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { env } from "vscode";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +32,7 @@ export async function getShellEnv(): Promise<Record<string, string | undefined>>
 }
 
 async function getInteractiveShellEnv(): Promise<Record<string, string | undefined>> {
-  const shell = process.env.SHELL ?? "/bin/bash";
+  const shell = process.env.SHELL ?? env.shell ?? "/bin/bash";
 
   try {
     // POSIX shells
