@@ -261,7 +261,17 @@
     "onLanguage:svelte",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
-    "onLanguage:vue"
+    "onLanguage:vue",
+    "onCommand:biome.restartServer",
+    "onCommand:biome.toggleEnable",
+    "onCommand:biome.showOutputChannel",
+    "onCommand:biome.applyAllFixesFile",
+    "onCommand:biome.formatProject",
+    "onCommand:biome.fixProject",
+    "onCommand:biome.fixProjectUnsafe",
+    "onCommand:biome.openConfig",
+    "onCommand:biome.copyDebugInfo",
+    "onCommand:biome.rage"
   ],
   "icon": "icon.png",
   "engines": {
