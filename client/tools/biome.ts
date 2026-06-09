@@ -1,6 +1,5 @@
 import {
   type ConfigurationChangeEvent,
-  commands,
   type LogOutputChannel,
   Uri,
   window,
@@ -16,15 +15,7 @@ import {
   ShowMessageNotification,
 } from "vscode-languageclient/node";
 import { ConfigService } from "../ConfigService";
-import {
-  BiomeCommands,
-  fixProjectCommand,
-  fixProjectUnsafeCommand,
-  formatProjectCommand,
-  LspCommands,
-  openConfigCommand,
-  rageCommand,
-} from "../commands";
+import { BiomeCommands, LspCommands } from "../commands";
 import type { BinarySearchResult } from "../findBinary";
 import type StatusBarItemHandler from "../StatusBarItemHandler";
 import { biomeConfigDefaultFilePattern } from "../WorkspaceConfig";
@@ -82,90 +73,6 @@ export default class BiomeTool implements ToolInterface {
         ).length > 0
       : true;
 
-    const restartCommand = commands.registerCommand(
-      BiomeCommands.RestartServerLint,
-      async () => {
-        await this.restartClient();
-        this.updateStatusBar(statusBarItemHandler, configService);
-      },
-    );
-
-    const toggleEnable = commands.registerCommand(
-      BiomeCommands.ToggleEnableLint,
-      async () => {
-        await configService.vsCodeConfig.updateEnableBiome(
-          !configService.vsCodeConfig.enableBiome,
-        );
-      },
-    );
-
-    const applyAllFixesFile = commands.registerCommand(
-      BiomeCommands.ApplyAllFixesFile,
-      async () => {
-        if (!this.client) {
-          window.showErrorMessage("biome client not found");
-          return;
-        }
-        const textEditor = window.activeTextEditor;
-        if (!textEditor) {
-          window.showErrorMessage("active text editor not found");
-          return;
-        }
-
-        const params = {
-          command: LspCommands.FixAll,
-          arguments: [{ uri: textEditor.document.uri.toString() }],
-        };
-
-        await this.client.sendRequest(ExecuteCommandRequest.type, params);
-      },
-    );
-
-    const formatProject = commands.registerCommand(
-      BiomeCommands.FormatProject,
-      async () => {
-        await formatProjectCommand(
-          await this.getBinary(outputChannel, configService),
-          configService.vsCodeConfig,
-        );
-      },
-    );
-
-    const fixProject = commands.registerCommand(
-      BiomeCommands.FixProject,
-      async () => {
-        await fixProjectCommand(
-          await this.getBinary(outputChannel, configService),
-          configService.vsCodeConfig,
-        );
-      },
-    );
-
-    const fixProjectUnsafe = commands.registerCommand(
-      BiomeCommands.FixProjectUnsafe,
-      async () => {
-        await fixProjectUnsafeCommand(
-          await this.getBinary(outputChannel, configService),
-          configService.vsCodeConfig,
-        );
-      },
-    );
-
-    const openConfig = commands.registerCommand(
-      BiomeCommands.OpenConfig,
-      async () => {
-        await openConfigCommand();
-      },
-    );
-
-    const rage = commands.registerCommand(BiomeCommands.Rage, async () => {
-      await rageCommand(
-        await this.getBinary(outputChannel, configService),
-        outputChannel,
-        configService.vsCodeConfig,
-      );
-    });
-
     const run: Executable = runExecutable(
       binary,
       configService.vsCodeConfig.useExecPath,
@@ -219,24 +126,9 @@ export default class BiomeTool implements ToolInterface {
       },
     );
 
-    const onActiveEditorChangeDispose = window.onDidChangeActiveTextEditor(
-      () => {
-        this.updateStatusBar(statusBarItemHandler, configService);
-      },
-    );
-
     this.disposeResources = async () => {
       await this.client?.dispose();
-      restartCommand.dispose();
-      toggleEnable.dispose();
-      applyAllFixesFile.dispose();
-      formatProject.dispose();
-      fixProject.dispose();
-      fixProjectUnsafe.dispose();
-      openConfig.dispose();
-      rage.dispose();
       onNotificationDispose.dispose();
-      onActiveEditorChangeDispose.dispose();
     };
 
     if (this.allowedToStartServer && configService.vsCodeConfig.enableBiome) {
@@ -273,6 +165,25 @@ export default class BiomeTool implements ToolInterface {
     }
   }
 
+  async applyAllFixesFile(): Promise<void> {
+    if (!this.client) {
+      window.showErrorMessage("biome client not found");
+      return;
+    }
+    const textEditor = window.activeTextEditor;
+    if (!textEditor) {
+      window.showErrorMessage("active text editor not found");
+      return;
+    }
+
+    const params = {
+      command: LspCommands.FixAll,
+      arguments: [{ uri: textEditor.document.uri.toString() }],
+    };
+
+    await this.client.sendRequest(ExecuteCommandRequest.type, params);
+  }
+
   async onConfigChange(
     event: ConfigurationChangeEvent,
     configService: ConfigService,
@@ -305,7 +216,7 @@ export default class BiomeTool implements ToolInterface {
     }
   }
 
-  private updateStatusBar(
+  public updateStatusBar(
     statusBarItemHandler: StatusBarItemHandler,
     configService: ConfigService,
   ) {

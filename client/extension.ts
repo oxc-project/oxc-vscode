@@ -6,7 +6,15 @@ import {
   workspace,
 } from "vscode";
 import { ConfigService } from "./ConfigService";
-import { BiomeCommands, copyDebugCommand } from "./commands";
+import {
+  BiomeCommands,
+  copyDebugCommand,
+  fixProjectCommand,
+  fixProjectUnsafeCommand,
+  formatProjectCommand,
+  openConfigCommand,
+  rageCommand,
+} from "./commands";
 import StatusBarItemHandler from "./StatusBarItemHandler";
 import BiomeTool from "./tools/biome";
 import type ToolInterface from "./tools/ToolInterface";
@@ -27,6 +35,8 @@ export async function activate(context: ExtensionContext) {
     context.extension.packageJSON?.version,
   );
 
+  const biomeTool = tools[0] as BiomeTool;
+
   const showOutputCommand = commands.registerCommand(
     BiomeCommands.ShowOutputChannelLint,
     () => {
@@ -34,13 +44,83 @@ export async function activate(context: ExtensionContext) {
     },
   );
 
+  const restartServerCommand = commands.registerCommand(
+    BiomeCommands.RestartServerLint,
+    async () => {
+      await restartTool(biomeTool, outputChannel);
+    },
+  );
+
+  const toggleEnableCommand = commands.registerCommand(
+    BiomeCommands.ToggleEnableLint,
+    async () => {
+      await configService.vsCodeConfig.updateEnableBiome(
+        !configService.vsCodeConfig.enableBiome,
+      );
+    },
+  );
+
+  const applyAllFixesFileCommand = commands.registerCommand(
+    BiomeCommands.ApplyAllFixesFile,
+    async () => {
+      await biomeTool.applyAllFixesFile();
+    },
+  );
+
+  const formatProjectCommandRegistration = commands.registerCommand(
+    BiomeCommands.FormatProject,
+    async () => {
+      await formatProjectCommand(
+        await biomeTool.getBinary(outputChannel, configService),
+        configService.vsCodeConfig,
+      );
+    },
+  );
+
+  const fixProjectCommandRegistration = commands.registerCommand(
+    BiomeCommands.FixProject,
+    async () => {
+      await fixProjectCommand(
+        await biomeTool.getBinary(outputChannel, configService),
+        configService.vsCodeConfig,
+      );
+    },
+  );
+
+  const fixProjectUnsafeCommandRegistration = commands.registerCommand(
+    BiomeCommands.FixProjectUnsafe,
+    async () => {
+      await fixProjectUnsafeCommand(
+        await biomeTool.getBinary(outputChannel, configService),
+        configService.vsCodeConfig,
+      );
+    },
+  );
+
+  const openConfigCommandRegistration = commands.registerCommand(
+    BiomeCommands.OpenConfig,
+    async () => {
+      await openConfigCommand();
+    },
+  );
+
   const copyDebugInfoCommand = commands.registerCommand(
     BiomeCommands.CopyDebugInfo,
     async () => {
-      const biomeTool = tools[0] as BiomeTool;
       await copyDebugCommand(
         context.extension.packageJSON?.version ?? "unknown",
         biomeTool.getLspVersion() ?? "unknown",
+        configService.vsCodeConfig,
+      );
+    },
+  );
+
+  const rageCommandRegistration = commands.registerCommand(
+    BiomeCommands.Rage,
+    async () => {
+      await rageCommand(
+        await biomeTool.getBinary(outputChannel, configService),
+        outputChannel,
         configService.vsCodeConfig,
       );
     },
@@ -56,12 +136,25 @@ export async function activate(context: ExtensionContext) {
       }
     });
 
+  const onActiveEditorChangeDispose = window.onDidChangeActiveTextEditor(() => {
+    biomeTool.updateStatusBar(statusBarItemHandler, configService);
+  });
+
   context.subscriptions.push(
     showOutputCommand,
+    restartServerCommand,
+    toggleEnableCommand,
+    applyAllFixesFileCommand,
+    formatProjectCommandRegistration,
+    fixProjectCommandRegistration,
+    fixProjectUnsafeCommandRegistration,
+    openConfigCommandRegistration,
     copyDebugInfoCommand,
+    rageCommandRegistration,
     configService,
     outputChannel,
     onDidChangeWorkspaceFoldersDispose,
+    onActiveEditorChangeDispose,
     statusBarItemHandler,
   );
 
