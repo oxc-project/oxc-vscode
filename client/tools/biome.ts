@@ -224,13 +224,13 @@ export default class BiomeTool implements ToolInterface {
     const isEnabled = this.allowedToStartServer && enable;
 
     let text =
-      `[$(terminal) Open Output](command:${BiomeCommands.ShowOutputChannelLint})\n\n` +
-      `[$(refresh) Restart Server](command:${BiomeCommands.RestartServerLint})\n\n`;
+      `[$(terminal) Open Output](command:${BiomeCommands.ShowOutput})\n\n` +
+      `[$(refresh) Restart Server](command:${BiomeCommands.Restart})\n\n`;
 
     if (enable) {
-      text += `[$(stop) Stop Server](command:${BiomeCommands.ToggleEnableLint})\n\n`;
+      text += `[$(stop) Stop Server](command:${BiomeCommands.ToggleEnabled})\n\n`;
     } else {
-      text += `[$(play) Start Server](command:${BiomeCommands.ToggleEnableLint})\n\n`;
+      text += `[$(play) Start Server](command:${BiomeCommands.ToggleEnabled})\n\n`;
     }
 
     const activeEditor = window.activeTextEditor;

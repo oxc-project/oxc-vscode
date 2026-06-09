@@ -15,10 +15,10 @@ import type { VSCodeConfig } from "./VSCodeConfig";
 const _commandPrefix = "biome";
 
 export enum BiomeCommands {
-  ShowOutputChannelLint = "biome.showOutputChannel",
-  RestartServerLint = "biome.restartServer",
-  ToggleEnableLint = "biome.toggleEnable",
-  ApplyAllFixesFile = "biome.applyAllFixesFile",
+  ShowOutput = "biome.showOutput",
+  Restart = "biome.restart",
+  ToggleEnabled = "biome.toggleEnabled",
+  ApplyAllFixes = "biome.applyAllFixes",
   FormatProject = "biome.formatProject",
   FixProject = "biome.fixProject",
   FixProjectUnsafe = "biome.fixProjectUnsafe",

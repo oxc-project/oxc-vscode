@@ -38,21 +38,21 @@ export async function activate(context: ExtensionContext) {
   const biomeTool = tools[0] as BiomeTool;
 
   const showOutputCommand = commands.registerCommand(
-    BiomeCommands.ShowOutputChannelLint,
+    BiomeCommands.ShowOutput,
     () => {
       outputChannel.show();
     },
   );
 
   const restartServerCommand = commands.registerCommand(
-    BiomeCommands.RestartServerLint,
+    BiomeCommands.Restart,
     async () => {
       await restartTool(biomeTool, outputChannel);
     },
   );
 
   const toggleEnableCommand = commands.registerCommand(
-    BiomeCommands.ToggleEnableLint,
+    BiomeCommands.ToggleEnabled,
     async () => {
       await configService.vsCodeConfig.updateEnableBiome(
         !configService.vsCodeConfig.enableBiome,
@@ -61,7 +61,7 @@ export async function activate(context: ExtensionContext) {
   );
 
   const applyAllFixesFileCommand = commands.registerCommand(
-    BiomeCommands.ApplyAllFixesFile,
+    BiomeCommands.ApplyAllFixes,
     async () => {
       await biomeTool.applyAllFixesFile();
     },

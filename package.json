@@ -71,22 +71,22 @@
   "contributes": {
     "commands": [
       {
-        "command": "biome.restartServer",
+        "command": "biome.restart",
         "title": "Restart Biome Server",
         "category": "Biome"
       },
       {
-        "command": "biome.toggleEnable",
+        "command": "biome.toggleEnabled",
         "title": "Toggle whether Biome is enabled",
         "category": "Biome"
       },
       {
-        "command": "biome.showOutputChannel",
+        "command": "biome.showOutput",
         "title": "Show Output Channel",
         "category": "Biome"
       },
       {
-        "command": "biome.applyAllFixesFile",
+        "command": "biome.applyAllFixes",
         "title": "Fix all auto-fixable problems (file)",
         "category": "Biome"
       },
@@ -262,10 +262,10 @@
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
     "onLanguage:vue",
-    "onCommand:biome.restartServer",
-    "onCommand:biome.toggleEnable",
-    "onCommand:biome.showOutputChannel",
-    "onCommand:biome.applyAllFixesFile",
+    "onCommand:biome.restart",
+    "onCommand:biome.toggleEnabled",
+    "onCommand:biome.showOutput",
+    "onCommand:biome.applyAllFixes",
     "onCommand:biome.formatProject",
     "onCommand:biome.fixProject",
     "onCommand:biome.fixProjectUnsafe",
