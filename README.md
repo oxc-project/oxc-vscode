@@ -30,7 +30,7 @@ This is the formatter for Oxc. The currently supported features are listed below
 
 To enable it as your default formatter, use a VS Code `settings.json` like:
 
-```json
+```jsonc
 {
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": true,
@@ -44,7 +44,7 @@ To enable it as your default formatter, use a VS Code `settings.json` like:
 
 To run Oxc formatting through VS Code code actions on save, configure `editor.codeActionsOnSave`:
 
-```json
+```jsonc
 {
   "editor.codeActionsOnSave": {
     "source.format.oxc": "always"
@@ -54,7 +54,7 @@ To run Oxc formatting through VS Code code actions on save, configure `editor.co
 
 Running formatting as a code action on save, allows to define the order of changes when both formatting and lint fixes are applied on save. For example, the below configuration will run the formatter first, and then apply lint fixes:
 
-```json
+```jsonc
 {
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.formatOnSave": false, // disable default behavior
