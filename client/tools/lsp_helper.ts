@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { LogOutputChannel, window } from "vscode";
@@ -59,6 +60,26 @@ export async function runExecutable(
     pnpArgs.push("--loader", pathToFileURL(esmLoaderPath).href);
   }
 
+  // On Windows, .cmd files (npm/pnpm/yarn bin wrappers) are shell scripts that
+  // invoke `node <actual-script>`. When VS Code is launched from the GUI, node
+  // managers like fnm/nvm/Volta are not in PATH, so the shell execution fails.
+  // Instead, we parse the .cmd file to extract the actual target script, then
+  // use VS Code's own embedded Node.js (process.execPath) to run it directly.
+  // This approach works on every Windows machine regardless of node manager.
+  if (isWindows && binary.path.toLowerCase().endsWith(".cmd")) {
+    const target = resolveCmdTarget(binary.path);
+    if (target) {
+      return {
+        command: process.execPath,
+        args: [target, "--lsp"],
+        options: {
+          env: { ...serverEnv, ELECTRON_RUN_AS_NODE: "1" },
+        },
+      };
+    }
+    // If parsing fails, fall through to shell execution below
+  }
+
   return isNode || useExecPath
     ? {
         command: nodeCommand,
@@ -81,6 +102,33 @@ export async function runExecutable(
           env: serverEnv,
         },
       };
+}
+
+/**
+ * Parse a Windows .cmd wrapper script (from node_modules/.bin/) to extract
+ * the actual target script path. .cmd files follow a standard format generated
+ * by npm/pnpm/yarn:
+ *
+ *   node  "%~dp0\..\<pkg>\bin\<script>" %*
+ *
+ * "%~dp0" resolves to the directory of the .cmd file itself.
+ */
+function resolveCmdTarget(cmdPath: string): string | undefined {
+  try {
+    const content = readFileSync(cmdPath, "utf8");
+    const cmdDir = path.dirname(cmdPath);
+
+    // Find the execution line: node followed by a quoted path
+    // Handles both: node  "%~dp0\..\foo" %*  and  node  "..\foo" %*
+    const match = content.match(/node\s+"([^"]+)"/);
+    if (!match) return undefined;
+
+    // Replace %~dp0 with the actual directory of the .cmd file
+    const resolved = match[1].replace(/%~dp0/g, cmdDir);
+    return path.resolve(resolved);
+  } catch {
+    return undefined;
+  }
 }
 
 export function onClientNotification(params: ShowMessageParams, outputChannel: LogOutputChannel) {

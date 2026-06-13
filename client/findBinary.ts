@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import{ spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
@@ -44,7 +44,11 @@ async function searchNodeModulesDefaultBinPath(
 ): Promise<BinarySearchResult | undefined> {
   const candidates = folders.flatMap((folder) => {
     const basePath = path.join(folder, ".bin", binaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    // On Windows, prioritize .cmd (npm/pnpm/yarn bin scripts), then .exe (bun/global installs),
+    // then the bare name as fallback.
+    return process.platform === "win32"
+      ? [`${basePath}.cmd`, `${basePath}.exe`, basePath]
+      : [basePath];
   });
 
   const exists = await Promise.all(
@@ -237,14 +241,16 @@ export async function searchEnvPath(
   }
 
   // generate candidate paths by joining each PATH entry with the binary name
-  // on Windows, also consider the .exe extension
+  // on Windows, also consider .cmd and .exe extensions
   const candidates = envPath.split(path.delimiter).flatMap((folder) => {
     // filter out empty entries which can occur if PATH starts or ends with a delimiter
     if (!folder) {
       return [];
     }
     const basePath = path.join(folder, defaultBinaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    return process.platform === "win32"
+      ? [`${basePath}.cmd`, `${basePath}.exe`, basePath]
+      : [basePath];
   });
 
   const binary = await Promise.all(
