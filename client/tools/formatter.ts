@@ -12,8 +12,8 @@ import {
 } from "vscode";
 
 import {
+  DocumentFilter,
   ConfigurationParams,
-  DocumentSelector,
   ShowMessageNotification,
 } from "vscode-languageclient";
 
@@ -252,7 +252,7 @@ export default class FormatterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
-  private documentSelectors: DocumentSelector = [
+  private documentSelectors: DocumentFilter[] = [
     {
       pattern: `**/*.{${supportedExtensions.join(",")}}`,
       scheme: "file",
@@ -312,6 +312,7 @@ export default class FormatterTool implements ToolInterface {
     });
 
     const formatAction = languages.registerCodeActionsProvider(
+      // @ts-expect-error DocumentFilter/DocumentSelector is not correctly typed, here it expects a readonly array, which we provide.
       this.documentSelectors,
       {
         provideCodeActions: (doc) => {
