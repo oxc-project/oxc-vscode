@@ -10,6 +10,7 @@ import {
   Uri,
   workspace,
 } from "vscode";
+import type { CodeActionContext } from "vscode";
 
 import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
@@ -37,6 +38,20 @@ formatCodeAction.command = {
   title: "Format Document",
   tooltip: "Format the document using the default formatter",
 };
+
+export function shouldProvideOxfmtCodeAction(context: CodeActionContext): boolean {
+  const requestedKind = context.only;
+  if (requestedKind === undefined) {
+    return true;
+  }
+
+  // Avoid participating in broad source-action scans. Oxfmt only owns the
+  // explicit format source action; format-on-save uses the formatter provider.
+  return (
+    requestedKind.value !== CodeActionKind.Source.value &&
+    formatCodeActionKind.intersects(requestedKind)
+  );
+}
 
 // This list is not used as-is for implementation to determine whether formatting processing is possible.
 const supportedExtensions = [
@@ -293,12 +308,13 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider = languages.registerCodeActionsProvider(
       this.documentSelectors,
       {
-        provideCodeActions: (doc) => {
+        provideCodeActions: (doc, _range, context) => {
           if (
             !this.configService ||
             !this.client ||
             !this.client.isRunning() ||
             this.configService.vsCodeConfig.enableOxfmt === false ||
+            !shouldProvideOxfmtCodeAction(context) ||
             workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
           ) {
             return [];
@@ -317,8 +333,9 @@ export default class FormatterTool implements ToolInterface {
   }
 
   async getBinary(): Promise<BinarySearchResult | undefined> {
-    if (process.env.SERVER_PATH_DEV) {
-      return { path: process.env.SERVER_PATH_DEV, loader: "native" };
+    if (process.env.SERVER_PATH_DEV_OXFMT) {
+      const path = process.env.SERVER_PATH_DEV_OXFMT;
+      return { path, loader: path.endsWith(".js") ? "node" : "native" };
     }
     const bin = await this.configService.getOxfmtServerBinPath();
     if (bin) {
@@ -402,7 +419,6 @@ export default class FormatterTool implements ToolInterface {
     if (this.configService.vsCodeConfig.enableOxfmt) {
       await this.client.start();
     }
-
     this.updateStatusBar();
   }
 

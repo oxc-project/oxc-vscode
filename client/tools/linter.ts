@@ -1,6 +1,8 @@
 import { promises as fsPromises } from "node:fs";
 
 import {
+  CodeActionKind,
+  CodeActionTriggerKind,
   commands,
   ConfigurationChangeEvent,
   LogOutputChannel,
@@ -8,6 +10,7 @@ import {
   window,
   workspace,
 } from "vscode";
+import type { CodeActionContext, TextDocument } from "vscode";
 
 import {
   ConfigurationParams,
@@ -37,6 +40,72 @@ const enum LspCommands {
 }
 
 const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlint.config.ts,oxlint.config.mts}`;
+
+const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
+
+const oxlintCodeActionKinds = [CodeActionKind.QuickFix, oxlintFixAllCodeActionKind];
+
+
+
+type CodeActionsOnSaveSetting = boolean | "always" | "explicit" | "never";
+
+type CodeActionsOnSave = Record<string, CodeActionsOnSaveSetting | undefined>;
+
+type CodeActionsOnSaveConfiguration = CodeActionsOnSave | string[];
+
+function isEnabledCodeActionsOnSaveSetting(setting: CodeActionsOnSaveSetting | undefined): boolean {
+  // VS Code accepts legacy boolean values and current string values here.
+  return setting === true || setting === "always" || setting === "explicit";
+}
+
+function shouldRunOxlintCodeActionsOnSave(document: TextDocument): boolean {
+  const codeActionsOnSave = workspace
+    .getConfiguration("editor", document)
+    .get<CodeActionsOnSaveConfiguration>("codeActionsOnSave");
+
+  if (Array.isArray(codeActionsOnSave)) {
+    return (
+      codeActionsOnSave.includes(CodeActionKind.SourceFixAll.value) ||
+      codeActionsOnSave.includes(oxlintFixAllCodeActionKind.value)
+    );
+  }
+
+  return (
+    isEnabledCodeActionsOnSaveSetting(codeActionsOnSave?.[CodeActionKind.SourceFixAll.value]) ||
+    isEnabledCodeActionsOnSaveSetting(codeActionsOnSave?.[oxlintFixAllCodeActionKind.value])
+  );
+}
+
+export function shouldRequestOxlintCodeActions(
+  context: CodeActionContext,
+  codeActionsOnSaveRequestsOxlint: boolean = false,
+): boolean {
+  const requestedKind = context.only;
+  if (requestedKind === undefined) {
+    return true;
+  }
+
+  const requestsOxlintKind = oxlintCodeActionKinds.some((providedKind) =>
+    providedKind.intersects(requestedKind),
+  );
+
+  if (!requestsOxlintKind) {
+    return false;
+  }
+
+  // Format-only saves may ask every source-action provider for broad source
+  // actions. Oxlint should only participate in automatic source requests when
+  // save settings explicitly enable its fix-all action.
+  if (
+    context.triggerKind === CodeActionTriggerKind.Automatic &&
+    requestedKind.value === CodeActionKind.Source.value &&
+    !codeActionsOnSaveRequestsOxlint
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 export default class LinterTool implements ToolInterface {
   // Global flag to check if the user allows us to start the server.
@@ -106,8 +175,9 @@ export default class LinterTool implements ToolInterface {
   }
 
   async getBinary(): Promise<BinarySearchResult | undefined> {
-    if (process.env.SERVER_PATH_DEV) {
-      return { path: process.env.SERVER_PATH_DEV, loader: "native" };
+    if (process.env.SERVER_PATH_DEV_OXLINT) {
+      const path = process.env.SERVER_PATH_DEV_OXLINT;
+      return { path, loader: path.endsWith(".js") ? "node" : "native" };
     }
     const bin = await this.configService.getOxlintServerBinPath();
     if (bin) {
@@ -183,6 +253,22 @@ export default class LinterTool implements ToolInterface {
           !this.configService.shouldRequestDiagnostics(document.uri, mode),
       },
       middleware: {
+        provideCodeActions: (document, range, context, token, next) => {
+          const needsCodeActionsOnSaveConfig =
+            context.triggerKind === CodeActionTriggerKind.Automatic &&
+            context.only?.value === CodeActionKind.Source.value;
+
+          if (
+            !shouldRequestOxlintCodeActions(
+              context,
+              needsCodeActionsOnSaveConfig && shouldRunOxlintCodeActionsOnSave(document),
+            )
+          ) {
+            return [];
+          }
+
+          return next(document, range, context, token);
+        },
         handleDiagnostics: (uri, diagnostics, next) => {
           for (const diag of diagnostics) {
             // https://github.com/oxc-project/oxc/issues/12404
