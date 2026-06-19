@@ -10,7 +10,7 @@ import {
   Uri,
   workspace,
 } from "vscode";
-import type { CodeActionContext, TextDocument, TextEdit } from "vscode";
+import type { CodeActionContext } from "vscode";
 
 import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
@@ -27,7 +27,6 @@ import StatusBarItemHandler from "../StatusBarItemHandler";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
-import { rememberOxfmtFormattingEdit } from "./formatting_state";
 
 const languageClientName = "oxc";
 
@@ -52,15 +51,6 @@ export function shouldProvideOxfmtCodeAction(context: CodeActionContext): boolea
     requestedKind.value !== CodeActionKind.Source.value &&
     formatCodeActionKind.intersects(requestedKind)
   );
-}
-
-function rememberDocumentWhenFormatterReturnedEdits(
-  document: TextDocument,
-  edits: readonly TextEdit[] | null | undefined,
-): void {
-  if (edits?.length) {
-    rememberOxfmtFormattingEdit(document.uri);
-  }
 }
 
 // This list is not used as-is for implementation to determine whether formatting processing is possible.
@@ -391,21 +381,6 @@ export default class FormatterTool implements ToolInterface {
       outputChannel: this.outputChannel,
       traceOutputChannel: this.outputChannel,
       middleware: {
-        provideDocumentFormattingEdits: async (document, options, token, next) => {
-          const edits = await next(document, options, token);
-          rememberDocumentWhenFormatterReturnedEdits(document, edits);
-          return edits;
-        },
-        provideDocumentRangeFormattingEdits: async (document, range, options, token, next) => {
-          const edits = await next(document, range, options, token);
-          rememberDocumentWhenFormatterReturnedEdits(document, edits);
-          return edits;
-        },
-        provideDocumentRangesFormattingEdits: async (document, ranges, options, token, next) => {
-          const edits = await next(document, ranges, options, token);
-          rememberDocumentWhenFormatterReturnedEdits(document, edits);
-          return edits;
-        },
         workspace: {
           configuration: (params: ConfigurationParams) => {
             return params.items.map((item) => {

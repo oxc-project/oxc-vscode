@@ -14,7 +14,6 @@ import type { CodeActionContext, TextDocument } from "vscode";
 
 import {
   ConfigurationParams,
-  DiagnosticPullMode,
   ExecuteCommandRequest,
   ShowMessageNotification,
 } from "vscode-languageclient";
@@ -30,7 +29,6 @@ import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
-import { consumeNextOxfmtOnTypeDiagnostic, hasRecentOxfmtFormattingEdit } from "./formatting_state";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
@@ -95,9 +93,9 @@ export function shouldRequestOxlintCodeActions(
     return false;
   }
 
-  // Format-only saves may ask every source-action provider for broad source
-  // actions. Oxlint should only participate in automatic source requests when
-  // save settings explicitly enable its fix-all action.
+  // Automatic source-action requests are sometimes broad `source` scans. Oxlint
+  // should only participate in those when save settings explicitly enable its
+  // fix-all action; otherwise the extension would start avoidable LSP work.
   if (
     context.triggerKind === CodeActionTriggerKind.Automatic &&
     requestedKind.value === CodeActionKind.Source.value &&
@@ -256,22 +254,11 @@ export default class LinterTool implements ToolInterface {
             return true;
           }
 
-          // Oxfmt edits can trigger oxlint's on-type pull during format-on-save.
-          // Formatting should not start type-aware lint work before the file write.
-          return (
-            mode === DiagnosticPullMode.onType && consumeNextOxfmtOnTypeDiagnostic(document.uri)
-          );
+          return false;
         },
       },
       middleware: {
         provideCodeActions: (document, range, context, token, next) => {
-          if (
-            context.triggerKind === CodeActionTriggerKind.Automatic &&
-            hasRecentOxfmtFormattingEdit(document.uri)
-          ) {
-            return [];
-          }
-
           const needsCodeActionsOnSaveConfig =
             context.triggerKind === CodeActionTriggerKind.Automatic &&
             context.only?.value === CodeActionKind.Source.value;
