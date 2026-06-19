@@ -80,6 +80,7 @@ suite("format on save without lint code actions", () => {
     const startedAt = Date.now();
     await workspace.saveAll();
     const elapsedMs = Date.now() - startedAt;
+    await sleep(500);
 
     const content = await workspace.fs.readFile(fileUri);
     strictEqual(
