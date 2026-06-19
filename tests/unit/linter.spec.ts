@@ -19,6 +19,13 @@ suite("linter code action routing", () => {
     strictEqual(shouldRequestOxlintCodeActions(codeActionContext(undefined)), true);
   });
 
+  test("skips unscoped automatic code action requests", () => {
+    strictEqual(
+      shouldRequestOxlintCodeActions(codeActionContext(undefined, CodeActionTriggerKind.Automatic)),
+      false,
+    );
+  });
+
   test("allows quick fixes and fix-all requests", () => {
     strictEqual(shouldRequestOxlintCodeActions(codeActionContext(CodeActionKind.QuickFix)), true);
     strictEqual(
@@ -38,6 +45,12 @@ suite("linter code action routing", () => {
     );
     strictEqual(
       shouldRequestOxlintCodeActions(codeActionContext(CodeActionKind.Source.append("format.oxc"))),
+      false,
+    );
+    strictEqual(
+      shouldRequestOxlintCodeActions(
+        codeActionContext(CodeActionKind.SourceFixAll.append("biome")),
+      ),
       false,
     );
   });

@@ -106,6 +106,8 @@ const allTestSuites = new Map([
         SINGLE_FOLDER_WORKSPACE: "true",
         SERVER_PATH_DEV_OXLINT: fakeOxlintBin,
         SERVER_PATH_DEV_OXFMT: fakeOxfmtBin,
+        FAKE_OXLINT_CODE_ACTION_MS: "5000",
+        FAKE_OXLINT_DIAGNOSTIC_MS: "5000",
       },
     },
   ],

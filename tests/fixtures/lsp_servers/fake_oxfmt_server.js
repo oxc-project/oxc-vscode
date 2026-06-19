@@ -23,7 +23,7 @@ createLspServer({
   },
   onRequest: {
     "textDocument/formatting": (params) => {
-      appendLog(logPath, "textDocument/formatting");
+      appendLog(logPath, `textDocument/formatting uri=${params.textDocument.uri}`);
       const text = documents.get(params.textDocument.uri) ?? "";
 
       return [

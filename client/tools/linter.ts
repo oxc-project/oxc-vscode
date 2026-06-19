@@ -43,9 +43,6 @@ const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlin
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
 
-const oxlintCodeActionKinds = [CodeActionKind.QuickFix, oxlintFixAllCodeActionKind];
-
-
 
 type CodeActionsOnSaveSetting = boolean | "always" | "explicit" | "never";
 
@@ -82,12 +79,22 @@ export function shouldRequestOxlintCodeActions(
 ): boolean {
   const requestedKind = context.only;
   if (requestedKind === undefined) {
-    return true;
+    // Automatic unscoped probes are used for editor UI discovery, not an
+    // explicit user command or configured fix-all action. The oxlint server
+    // returns no automatic code actions, so avoid the LSP roundtrip entirely.
+    return context.triggerKind !== CodeActionTriggerKind.Automatic;
   }
 
-  const requestsOxlintKind = oxlintCodeActionKinds.some((providedKind) =>
-    providedKind.intersects(requestedKind),
-  );
+  const requestedKindValue = requestedKind.value;
+  // `CodeActionKind.intersects` treats `source.fixAll` as intersecting with
+  // provider-owned subkinds such as `source.fixAll.biome`. Save participants
+  // wait for those requests, so only route exact oxlint-owned source actions.
+  const requestsOxlintKind =
+    requestedKindValue === CodeActionKind.Source.value ||
+    requestedKindValue === CodeActionKind.QuickFix.value ||
+    requestedKindValue.startsWith(`${CodeActionKind.QuickFix.value}.`) ||
+    requestedKindValue === CodeActionKind.SourceFixAll.value ||
+    requestedKindValue === oxlintFixAllCodeActionKind.value;
 
   if (!requestsOxlintKind) {
     return false;
@@ -98,7 +105,7 @@ export function shouldRequestOxlintCodeActions(
   // fix-all action; otherwise the extension would start avoidable LSP work.
   if (
     context.triggerKind === CodeActionTriggerKind.Automatic &&
-    requestedKind.value === CodeActionKind.Source.value &&
+    requestedKindValue === CodeActionKind.Source.value &&
     !codeActionsOnSaveRequestsOxlint
   ) {
     return false;
