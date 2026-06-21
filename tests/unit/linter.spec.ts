@@ -142,12 +142,18 @@ suite("linter code action routing", () => {
     );
   });
 
-  test("allows precise automatic fix-all requests", () => {
+  test("skips automatic fix-all requests when oxlint is opted out on save", () => {
     strictEqual(
       shouldRequestOxlintCodeActions(
         codeActionContext(CodeActionKind.SourceFixAll, CodeActionTriggerKind.Automatic),
       ),
-      true,
+      false,
+    );
+    strictEqual(
+      shouldRequestOxlintCodeActions(
+        codeActionContext(oxlintFixAllCodeActionKind, CodeActionTriggerKind.Automatic),
+      ),
+      false,
     );
   });
 
@@ -162,6 +168,13 @@ suite("linter code action routing", () => {
     strictEqual(
       shouldRequestOxlintCodeActions(
         codeActionContext(CodeActionKind.SourceFixAll, CodeActionTriggerKind.Automatic),
+        true,
+      ),
+      true,
+    );
+    strictEqual(
+      shouldRequestOxlintCodeActions(
+        codeActionContext(oxlintFixAllCodeActionKind, CodeActionTriggerKind.Automatic),
         true,
       ),
       true,

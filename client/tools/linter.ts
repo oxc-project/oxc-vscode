@@ -123,14 +123,16 @@ export function shouldRequestOxlintCodeActions(
     return false;
   }
 
-  // Automatic source-action requests are sometimes broad `source` scans. Oxlint
-  // should only participate in those when save settings explicitly enable its
-  // fix-all action; otherwise the extension would start avoidable LSP work.
-  if (
+  const isAutomaticSaveRunnableSourceAction =
     context.triggerKind === CodeActionTriggerKind.Automatic &&
-    requestedKindValue === CodeActionKind.Source.value &&
-    !codeActionsOnSaveRequestsOxlint
-  ) {
+    (requestedKindValue === CodeActionKind.Source.value ||
+      requestedKindValue === CodeActionKind.SourceFixAll.value ||
+      requestedKindValue === oxlintFixAllCodeActionKind.value);
+
+  // Automatic source-action requests are save-runnable. Oxlint should only
+  // participate in those when save settings enable its fix-all action;
+  // otherwise the extension would ignore explicit provider opt-outs.
+  if (isAutomaticSaveRunnableSourceAction && !codeActionsOnSaveRequestsOxlint) {
     return false;
   }
 
@@ -291,7 +293,9 @@ export default class LinterTool implements ToolInterface {
         provideCodeActions: (document, range, context, token, next) => {
           const needsCodeActionsOnSaveConfig =
             context.triggerKind === CodeActionTriggerKind.Automatic &&
-            context.only?.value === CodeActionKind.Source.value;
+            (context.only?.value === CodeActionKind.Source.value ||
+              context.only?.value === CodeActionKind.SourceFixAll.value ||
+              context.only?.value === oxlintFixAllCodeActionKind.value);
 
           if (
             !shouldRequestOxlintCodeActions(

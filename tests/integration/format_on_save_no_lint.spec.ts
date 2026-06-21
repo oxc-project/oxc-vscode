@@ -227,4 +227,78 @@ suite("format on save without lint code actions", () => {
       disposable.dispose();
     }
   });
+
+  test("generic fix-all on save respects oxlint opt-out", async () => {
+    let fakeFixAllRequests = 0;
+    const disposable = languages.registerCodeActionsProvider(
+      { language: "typescript", scheme: "file" },
+      {
+        provideCodeActions: (_document, _range, context) => {
+          if (context.only?.value !== CodeActionKind.SourceFixAll.value) {
+            return [];
+          }
+
+          fakeFixAllRequests += 1;
+          return [];
+        },
+      },
+      {
+        providedCodeActionKinds: [CodeActionKind.SourceFixAll],
+      },
+    );
+
+    try {
+      await writeWorkspaceSettings({
+        "editor.codeActionsOnSave": {
+          "source.fixAll": "explicit",
+          "source.fixAll.oxc": "never",
+        },
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+      });
+
+      const fileUri = await createFormattingFile("format_generic_fix_all.ts");
+      const document = await workspace.openTextDocument(fileUri);
+      await window.showTextDocument(document);
+
+      const edit = new WorkspaceEdit();
+      const fullRange = new Range(
+        new Position(0, 0),
+        document.lineAt(document.lineCount - 1).range.end,
+      );
+      edit.replace(fileUri, fullRange, "class X{foo(){return 42;}}\n");
+      await workspace.applyEdit(edit);
+
+      await resetLog(oxlintLogPath);
+      await resetLog(oxfmtLogPath);
+
+      const startedAt = Date.now();
+      const saved = await document.save();
+      const elapsedMs = Date.now() - startedAt;
+      strictEqual(saved, true, "expected target document to be saved");
+
+      const oxfmtLog = await readLog(oxfmtLogPath);
+      strictEqual(
+        oxfmtLog.includes("textDocument/formatting"),
+        true,
+        `expected oxfmt formatting request, log:\n${oxfmtLog}`,
+      );
+      strictEqual(fakeFixAllRequests, 1);
+
+      const oxlintLog = await readLog(oxlintLogPath);
+      strictEqual(
+        oxlintLog.includes("textDocument/codeAction"),
+        false,
+        `unexpected oxlint code action request, log:\n${oxlintLog}`,
+      );
+      strictEqual(
+        elapsedMs < slowLintResponseMs,
+        true,
+        `save waited for slow oxlint code actions, elapsed ${elapsedMs}ms, log:\n${oxlintLog}`,
+      );
+    } finally {
+      disposable.dispose();
+    }
+  });
 });
