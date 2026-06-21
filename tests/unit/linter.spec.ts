@@ -1,17 +1,22 @@
 import { strictEqual } from "assert";
-import { CodeActionKind, CodeActionTriggerKind } from "vscode";
+import { CodeActionKind, CodeActionTriggerKind, Diagnostic, Position, Range } from "vscode";
 import type { CodeActionContext } from "vscode";
 import { shouldRequestOxlintCodeActions } from "../../client/tools/linter.js";
 
 function codeActionContext(
   only: CodeActionKind | undefined,
   triggerKind: CodeActionTriggerKind = CodeActionTriggerKind.Invoke,
+  diagnostics: Diagnostic[] = [],
 ): CodeActionContext {
   return {
-    diagnostics: [],
+    diagnostics,
     only,
     triggerKind,
   };
+}
+
+function diagnostic(): Diagnostic {
+  return new Diagnostic(new Range(new Position(0, 0), new Position(0, 1)), "test");
 }
 
 suite("linter code action routing", () => {
@@ -23,6 +28,15 @@ suite("linter code action routing", () => {
     strictEqual(
       shouldRequestOxlintCodeActions(codeActionContext(undefined, CodeActionTriggerKind.Automatic)),
       false,
+    );
+  });
+
+  test("allows unscoped automatic code action requests with diagnostics", () => {
+    strictEqual(
+      shouldRequestOxlintCodeActions(
+        codeActionContext(undefined, CodeActionTriggerKind.Automatic, [diagnostic()]),
+      ),
+      true,
     );
   });
 

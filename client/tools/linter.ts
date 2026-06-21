@@ -79,10 +79,12 @@ export function shouldRequestOxlintCodeActions(
 ): boolean {
   const requestedKind = context.only;
   if (requestedKind === undefined) {
-    // Automatic unscoped probes are used for editor UI discovery, not an
-    // explicit user command or configured fix-all action. The oxlint server
-    // returns no automatic code actions, so avoid the LSP roundtrip entirely.
-    return context.triggerKind !== CodeActionTriggerKind.Automatic;
+    // Empty automatic probes are used for editor UI discovery, not an explicit
+    // user command or configured fix-all action. Keep diagnostic-bearing
+    // automatic requests so VS Code can discover oxlint quick fixes.
+    return (
+      context.triggerKind !== CodeActionTriggerKind.Automatic || context.diagnostics.length > 0
+    );
   }
 
   const requestedKindValue = requestedKind.value;
