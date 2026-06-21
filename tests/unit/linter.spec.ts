@@ -1,7 +1,12 @@
 import { strictEqual } from "assert";
 import { CodeActionKind, CodeActionTriggerKind, Diagnostic, Position, Range } from "vscode";
 import type { CodeActionContext } from "vscode";
-import { shouldRequestOxlintCodeActions } from "../../client/tools/linter.js";
+import {
+  shouldCodeActionsOnSaveRequestOxlint,
+  shouldRequestOxlintCodeActions,
+} from "../../client/tools/linter.js";
+
+const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
 
 function codeActionContext(
   only: CodeActionKind | undefined,
@@ -18,6 +23,65 @@ function codeActionContext(
 function diagnostic(): Diagnostic {
   return new Diagnostic(new Range(new Position(0, 0), new Position(0, 1)), "test");
 }
+
+suite("linter code actions on save settings", () => {
+  test("allows broad source actions on save", () => {
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [CodeActionKind.Source.value]: "always",
+      }),
+      true,
+    );
+  });
+
+  test("allows generic and oxlint fix-all actions on save", () => {
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [CodeActionKind.SourceFixAll.value]: "explicit",
+      }),
+      true,
+    );
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [oxlintFixAllCodeActionKind.value]: true,
+      }),
+      true,
+    );
+  });
+
+  test("honors source.fixAll.oxc opt-out over broader source settings", () => {
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [CodeActionKind.Source.value]: "always",
+        [oxlintFixAllCodeActionKind.value]: "never",
+      }),
+      false,
+    );
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [CodeActionKind.SourceFixAll.value]: "always",
+        [oxlintFixAllCodeActionKind.value]: false,
+      }),
+      false,
+    );
+  });
+
+  test("honors source.fixAll opt-out over broad source settings", () => {
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint({
+        [CodeActionKind.Source.value]: "always",
+        [CodeActionKind.SourceFixAll.value]: "never",
+      }),
+      false,
+    );
+  });
+
+  test("allows legacy array source action settings", () => {
+    strictEqual(shouldCodeActionsOnSaveRequestOxlint([CodeActionKind.Source.value]), true);
+    strictEqual(shouldCodeActionsOnSaveRequestOxlint([CodeActionKind.SourceFixAll.value]), true);
+    strictEqual(shouldCodeActionsOnSaveRequestOxlint([oxlintFixAllCodeActionKind.value]), true);
+  });
+});
 
 suite("linter code action routing", () => {
   test("allows unscoped code action requests", () => {

@@ -55,22 +55,43 @@ function isEnabledCodeActionsOnSaveSetting(setting: CodeActionsOnSaveSetting | u
   return setting === true || setting === "always" || setting === "explicit";
 }
 
-function shouldRunOxlintCodeActionsOnSave(document: TextDocument): boolean {
-  const codeActionsOnSave = workspace
-    .getConfiguration("editor", document)
-    .get<CodeActionsOnSaveConfiguration>("codeActionsOnSave");
-
+export function shouldCodeActionsOnSaveRequestOxlint(
+  codeActionsOnSave: CodeActionsOnSaveConfiguration | undefined,
+): boolean {
   if (Array.isArray(codeActionsOnSave)) {
     return (
+      codeActionsOnSave.includes(CodeActionKind.Source.value) ||
       codeActionsOnSave.includes(CodeActionKind.SourceFixAll.value) ||
       codeActionsOnSave.includes(oxlintFixAllCodeActionKind.value)
     );
   }
 
-  return (
-    isEnabledCodeActionsOnSaveSetting(codeActionsOnSave?.[CodeActionKind.SourceFixAll.value]) ||
-    isEnabledCodeActionsOnSaveSetting(codeActionsOnSave?.[oxlintFixAllCodeActionKind.value])
-  );
+  if (codeActionsOnSave === undefined) {
+    return false;
+  }
+
+  const oxlintFixAllSetting = codeActionsOnSave[oxlintFixAllCodeActionKind.value];
+  if (oxlintFixAllSetting !== undefined) {
+    // A provider-specific setting is the user's most precise opt-in or opt-out.
+    return isEnabledCodeActionsOnSaveSetting(oxlintFixAllSetting);
+  }
+
+  const fixAllSetting = codeActionsOnSave[CodeActionKind.SourceFixAll.value];
+  if (fixAllSetting !== undefined) {
+    // Generic fix-all is more specific than broad `source`, so it controls
+    // whether source.fixAll.oxc participates unless the oxc key overrides it.
+    return isEnabledCodeActionsOnSaveSetting(fixAllSetting);
+  }
+
+  return isEnabledCodeActionsOnSaveSetting(codeActionsOnSave[CodeActionKind.Source.value]);
+}
+
+function shouldRunOxlintCodeActionsOnSave(document: TextDocument): boolean {
+  const codeActionsOnSave = workspace
+    .getConfiguration("editor", document)
+    .get<CodeActionsOnSaveConfiguration>("codeActionsOnSave");
+
+  return shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave);
 }
 
 export function shouldRequestOxlintCodeActions(
