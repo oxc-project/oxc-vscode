@@ -53,7 +53,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "24.1.0",
     "@types/vscode": "1.93.0",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "^3.7.1",
     "cross-env": "^10.1.0",
