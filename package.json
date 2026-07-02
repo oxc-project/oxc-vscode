@@ -276,7 +276,7 @@
               }
             }
           },
-          "markdownDescription": "Customizes linting rules behavior. See https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization for details."
+          "markdownDescription": "Customizes linting rules behavior. See <https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization> for details."
         },
         "oxc.fmt.experimental": {
           "type": "boolean",
