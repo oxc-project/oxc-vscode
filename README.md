@@ -138,3 +138,11 @@ Each rule name maps to an object with the following optional properties:
 ```
 
 <!-- END_GENERATED_CONFIGURATION -->
+
+## ❤ Who's [Sponsoring Oxc](https://github.com/sponsors/Boshen)?
+
+<p align="center">
+  <a href="https://github.com/sponsors/Boshen">
+    <img src="https://raw.githubusercontent.com/Boshen/sponsors/main/sponsors.svg" alt="Our sponsors" />
+  </a>
+</p>
