@@ -43,6 +43,10 @@ async function getInteractiveShellEnv(): Promise<Record<string, string | undefin
       {
         env: {
           HOME: process.env.HOME,
+          // indicates that this shell is only launched to read the environment - tools like inshellisense
+          // check for this to prevent re-executing the shell 
+          // https://code.visualstudio.com/docs/configure/command-line#_how-do-i-detect-when-a-shell-was-launched-by-vs-code
+          VSCODE_RESOLVING_ENVIRONMENT: "1",
         },
         timeout: 5000,
       },
