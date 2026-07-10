@@ -143,6 +143,6 @@ Each rule name maps to an object with the following optional properties:
 
 <p align="center">
   <a href="https://github.com/sponsors/Boshen">
-    <!-- <img src="https://raw.githubusercontent.com/Boshen/sponsors/main/sponsors.svg" alt="Our sponsors" /> -->
+    <img src="https://raw.githubusercontent.com/Boshen/sponsors/main/sponsors.svg" alt="Our sponsors" />
   </a>
 </p>
