@@ -15,11 +15,7 @@ async function loadFreshGetShellEnvModule(): Promise<GetShellEnvModule> {
   return module;
 }
 
-function createMockShellScript(
-  dir: string,
-  name: string,
-  scriptBody: string,
-): string {
+function createMockShellScript(dir: string, name: string, scriptBody: string): string {
   const filePath = path.join(dir, name);
   writeFileSync(filePath, `#!/bin/sh\n${scriptBody}\n`, { mode: 0o755 });
   return filePath;
@@ -77,11 +73,7 @@ suite("getShellEnv", () => {
     }
 
     process.env.GET_SHELL_ENV_TEST_KEY = "fallback-works";
-    const shellPath = createMockShellScript(
-      tempDir,
-      "mock-shell-empty.sh",
-      "# no output",
-    );
+    const shellPath = createMockShellScript(tempDir, "mock-shell-empty.sh", "# no output");
 
     process.env.SHELL = shellPath;
 
