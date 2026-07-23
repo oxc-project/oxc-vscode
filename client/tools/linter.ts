@@ -36,7 +36,7 @@ const enum LspCommands {
   FixAll = "oxc.fixAll",
 }
 
-const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlint.config.ts}`;
+const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlint.config.ts,oxlint.config.mts}`;
 
 export default class LinterTool implements ToolInterface {
   // Global flag to check if the user allows us to start the server.
