@@ -15,7 +15,6 @@ import {
   activateExtension,
   deleteFixtures,
   fixturesWorkspaceUri,
-  getDiagnostics,
   loadFixture,
   sleep,
   testSingleFolderMode,
