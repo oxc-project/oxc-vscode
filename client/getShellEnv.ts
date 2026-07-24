@@ -34,19 +34,57 @@ async function getInteractiveShellEnv(): Promise<Record<string, string | undefin
   const shell = process.env.SHELL ?? "/bin/bash";
 
   try {
+    const TIMEOUT_MS = 5000;
+
     // POSIX shells
     // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
     // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
-    const { stdout } = await execFileAsync(
+    const execPromise = execFileAsync(
       shell,
       ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env; echo -n "_ENV_DELIMITER_"; exit'],
       {
         env: {
           HOME: process.env.HOME,
+          // indicates that this shell is only launched to read the environment - tools like inshellisense
+          // check for this to prevent breaking interactive shell output
+          // https://code.visualstudio.com/docs/configure/command-line#_how-do-i-detect-when-a-shell-was-launched-by-vs-code
+          VSCODE_RESOLVING_ENVIRONMENT: "1",
         },
-        timeout: 5000,
+        timeout: TIMEOUT_MS,
       },
     );
+
+    const child = execPromise.child;
+    let exited = false;
+
+    child.once("exit", () => {
+      exited = true;
+    });
+
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        if (!exited && child.pid) {
+          try {
+            // Kill the whole process group so grandchildren cannot keep stdio open.
+            process.kill(-child.pid, "SIGKILL");
+          } catch {}
+        }
+        reject(`Failed to get shell environment variables within ${TIMEOUT_MS}ms.`);
+      }, TIMEOUT_MS);
+    });
+
+    // Avoid an unhandled rejection if execPromise settles after the timeout wins.
+    execPromise.catch(() => {});
+
+    // In some cases the execFile promise may not resolve or reject, e.g if the shell is misconfigured or requires user input.
+    // To avoid waiting indefinitely, we use Promise.race with the same timeout as the shell command.
+    const { stdout } = await Promise.race([execPromise, timeoutPromise]);
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     const envsOutput = stdout.split("_ENV_DELIMITER_")[1] ?? "";
     if (!envsOutput) {
