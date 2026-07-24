@@ -15,6 +15,7 @@ import {
   activateExtension,
   deleteFixtures,
   fixturesWorkspaceUri,
+  getDiagnostics,
   loadFixture,
   sleep,
   testSingleFolderMode,
@@ -49,7 +50,7 @@ suite("code actions linter", () => {
     await loadFixture("debugger_empty_config");
     await sleep(500);
     const fileUri = Uri.joinPath(fixturesWorkspaceUri(), "fixtures", "debugger.js");
-    // await window.showTextDocument(fileUri); -- should also work without opening the file
+    await window.showTextDocument(fileUri);
 
     const codeActions: ProviderResult<Array<CodeAction>> = await commands.executeCommand(
       "vscode.executeCodeActionProvider",
