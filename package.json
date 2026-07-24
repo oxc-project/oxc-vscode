@@ -47,7 +47,7 @@
     "docs:update": "node scripts/vscode_docs.ts update && pnpm run fmt"
   },
   "dependencies": {
-    "vscode-languageclient": "^10.0.0"
+    "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -55,14 +55,14 @@
     "@types/vscode": "1.93.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
-    "@vscode/vsce": "^3.7.1",
+    "@vscode/vsce": "^3.9.2",
     "cross-env": "^10.1.0",
-    "ovsx": "^1.0.0",
+    "ovsx": "^1.0.2",
     "oxfmt": "latest",
     "oxlint": "latest",
     "oxlint-tsgolint": "^0.25.0",
     "rolldown": "1.2.0",
-    "tinyglobby": "^0.2.15"
+    "tinyglobby": "^0.2.17"
   },
   "contributes": {
     "commands": [
