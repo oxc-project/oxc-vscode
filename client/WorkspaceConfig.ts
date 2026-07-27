@@ -104,11 +104,24 @@ interface WorkspaceConfigInterface {
    * `oxc.fmt.configPath`
    */
   ["fmt.configPath"]?: string | null;
+
+  /**
+   * Disable nested config files detection for oxfmt
+   * `oxc.fmt.disableNestedConfig`
+   * @default false
+   */
+  ["fmt.disableNestedConfig"]?: boolean;
 }
 
-export type OxlintWorkspaceConfigInterface = Omit<WorkspaceConfigInterface, "fmt.configPath">;
+export type OxlintWorkspaceConfigInterface = Omit<
+  WorkspaceConfigInterface,
+  "fmt.configPath" | "fmt.disableNestedConfig"
+>;
 
-export type OxfmtWorkspaceConfigInterface = Pick<WorkspaceConfigInterface, "fmt.configPath">;
+export type OxfmtWorkspaceConfigInterface = Pick<
+  WorkspaceConfigInterface,
+  "fmt.configPath" | "fmt.disableNestedConfig"
+>;
 
 type PathSettingKey = "configPath" | "tsConfigPath" | "fmt.configPath";
 
@@ -123,6 +136,7 @@ export class WorkspaceConfig {
   private _rulesCustomization: Record<string, RuleCustomization> | null = null;
 
   private _formattingConfigPath: string | null = null;
+  private _formattingDisableNestedConfig: boolean = false;
 
   constructor(private readonly workspace: WorkspaceFolder) {
     this.refresh();
@@ -158,6 +172,8 @@ export class WorkspaceConfig {
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.getResolvedPathSetting("fmt.configPath");
+    this._formattingDisableNestedConfig =
+      this.configuration.get<boolean>("fmt.disableNestedConfig") ?? false;
     this._rulesCustomization =
       this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
   }
@@ -228,6 +244,14 @@ export class WorkspaceConfig {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
+      return true;
+    }
+    if (
+      event.affectsConfiguration(
+        `${ConfigService.namespace}.fmt.disableNestedConfig`,
+        this.workspace,
+      )
+    ) {
       return true;
     }
     // deprecated settings in flags
@@ -334,6 +358,19 @@ export class WorkspaceConfig {
     return this.configuration.update("fmt.configPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 
+  get formattingDisableNestedConfig(): boolean {
+    return this._formattingDisableNestedConfig;
+  }
+
+  updateFormattingDisableNestedConfig(value: boolean): PromiseLike<void> {
+    this._formattingDisableNestedConfig = value;
+    return this.configuration.update(
+      "fmt.disableNestedConfig",
+      value,
+      ConfigurationTarget.WorkspaceFolder,
+    );
+  }
+
   public shouldRequestDiagnostics(diagnosticPullMode: DiagnosticPullMode): boolean {
     return diagnosticPullMode === this.runTrigger;
   }
@@ -362,6 +399,7 @@ export class WorkspaceConfig {
       // @ts-expect-error -- deprecated setting, kept for backward compatibility
       ["fmt.experimental"]: true,
       ["fmt.configPath"]: this.formattingConfigPath ?? undefined,
+      ["fmt.disableNestedConfig"]: this.formattingDisableNestedConfig,
     };
   }
 }

@@ -15,6 +15,7 @@ const keys = [
   "fixKind",
   "lint.customization",
   "fmt.configPath",
+  "fmt.disableNestedConfig",
   // deprecated
   "flags",
 ];
@@ -50,6 +51,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.fixKind, null);
     strictEqual(config.rulesCustomization, null);
     strictEqual(config.formattingConfigPath, null);
+    strictEqual(config.formattingDisableNestedConfig, false);
   });
 
   test("deprecated values are respected", async () => {
@@ -76,6 +78,7 @@ suite("WorkspaceConfig", () => {
       config.updateFixKind(FixKind.DangerousFix),
       config.updateRulesCustomization({ "some.rule": { autofix: false } }),
       config.updateFormattingConfigPath("./oxfmt.json"),
+      config.updateFormattingDisableNestedConfig(true),
     ]);
 
     const wsConfig = workspace.getConfiguration("oxc", WORKSPACE_FOLDER);
@@ -94,6 +97,7 @@ suite("WorkspaceConfig", () => {
       false,
     );
     strictEqual(wsConfig.get("fmt.configPath"), "./oxfmt.json");
+    strictEqual(wsConfig.get("fmt.disableNestedConfig"), true);
   });
 
   test("toOxlintConfig method", async () => {
@@ -138,14 +142,19 @@ suite("WorkspaceConfig", () => {
 
     const oxfmtConfig = config.toOxfmtConfig();
     strictEqual(oxfmtConfig["fmt.configPath"], undefined);
+    strictEqual(oxfmtConfig["fmt.disableNestedConfig"], false);
 
-    await config.updateFormattingConfigPath("./oxfmt.json");
+    await Promise.all([
+      config.updateFormattingConfigPath("./oxfmt.json"),
+      config.updateFormattingDisableNestedConfig(true),
+    ]);
 
     const oxfmtConfigUpdated = config.toOxfmtConfig();
 
     // @ts-expect-error -- deprecated setting, kept for backward compatibility
     strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
+    strictEqual(oxfmtConfigUpdated["fmt.disableNestedConfig"], true);
   });
 
   test("workspace-level relative paths resolve from code-workspace location", async () => {
