@@ -295,6 +295,12 @@
           "default": null,
           "markdownDescription": "Path to an oxfmt configuration file"
         },
+        "oxc.fmt.disableNestedConfig": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": false,
+          "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.fmt.configPath` (if any) will be used."
+        },
         "oxc.suppressProgramErrors": {
           "type": "boolean",
           "scope": "window",
