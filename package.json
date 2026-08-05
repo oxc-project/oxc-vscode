@@ -267,7 +267,7 @@
                 "type": "string",
                 "enum": [
                   "error",
-                  "warning",
+                  "warn",
                   "info",
                   "hint",
                   "off"
