@@ -26,7 +26,7 @@ teardown(async () => {
 
 suite("commands", () => {
   testSingleFolderMode("listed commands", async () => {
-    const oxcCommands = (await commands.getCommands(true)).filter((x) => x.startsWith("oxc."));
+    const oxcCommands = (await commands.getCommands(true)).filter((x) => x.startsWith("oxc.")).sort();
 
     const expectedCommands = [
       "oxc.showOutputChannel",
@@ -50,7 +50,7 @@ suite("commands", () => {
       expectedCommands.push("oxc.restartServerFormatter", "oxc.toggleEnableFormatter");
     }
 
-    deepStrictEqual(expectedCommands, oxcCommands);
+    deepStrictEqual(expectedCommands.sort(), oxcCommands);
   });
 
   testSingleFolderMode("oxc.showOutputChannel", async () => {

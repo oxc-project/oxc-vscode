@@ -12,7 +12,6 @@ import {
 } from "vscode";
 
 import {
-  DocumentFilter,
   ConfigurationParams,
   ShowMessageNotification,
 } from "vscode-languageclient";
@@ -252,7 +251,7 @@ export default class FormatterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
 
-  private documentSelectors: DocumentFilter[] = [
+  private documentSelectors = [
     {
       pattern: `**/*.{${supportedExtensions.join(",")}}`,
       scheme: "file",
@@ -267,6 +266,50 @@ export default class FormatterTool implements ToolInterface {
   ];
 
   private disposeResources: (() => Promise<void>) | undefined;
+
+  // Dependencies needed by commands
+  private outputChannel: LogOutputChannel | undefined;
+  private configService: ConfigService | undefined;
+  private statusBarItemHandler: StatusBarItemHandler | undefined;
+
+  // Command and provider disposables (registered once at construction)
+  private readonly restartCommand: { dispose: () => void };
+  private readonly toggleEnableCommand: { dispose: () => void };
+  private readonly formatActionProvider: { dispose: () => void };
+
+  constructor() {
+    // Register commands once at construction
+    this.restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
+      if (this.outputChannel && this.configService && this.statusBarItemHandler) {
+        await this.restart(this.outputChannel, this.configService, this.statusBarItemHandler);
+      }
+    });
+
+    this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
+      if (this.configService) {
+        await this.configService.vsCodeConfig.updateEnableOxfmt(!this.configService.vsCodeConfig.enableOxfmt);
+      }
+    });
+
+    // Register code action provider once at construction
+    this.formatActionProvider = languages.registerCodeActionsProvider(
+      this.documentSelectors,
+      {
+        provideCodeActions: (doc) => {
+          if (
+            this.configService?.vsCodeConfig.enableOxfmt === false ||
+            workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
+          ) {
+            return [];
+          }
+          return [formatCodeAction];
+        },
+      },
+      {
+        providedCodeActionKinds: [formatCodeActionKind],
+      },
+    );
+  }
 
   getLspVersion(): string | undefined {
     return this.client?.initializeResult?.serverInfo?.version;
@@ -296,39 +339,17 @@ export default class FormatterTool implements ToolInterface {
     statusBarItemHandler: StatusBarItemHandler,
     binary?: BinarySearchResult,
   ) {
+    // Store dependencies for command handlers
+    this.outputChannel = outputChannel;
+    this.configService = configService;
+    this.statusBarItemHandler = statusBarItemHandler;
+
     // No valid binary found for the formatter.
     if (!binary) {
       statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
       outputChannel.appendLine("No valid oxfmt binary found. Formatter will not be activated.");
       return Promise.resolve();
     }
-
-    const restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
-      await this.restart(outputChannel, configService, statusBarItemHandler);
-    });
-
-    const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
-      await configService.vsCodeConfig.updateEnableOxfmt(!configService.vsCodeConfig.enableOxfmt);
-    });
-
-    const formatAction = languages.registerCodeActionsProvider(
-      // @ts-expect-error DocumentFilter/DocumentSelector is not correctly typed, here it expects a readonly array, which we provide.
-      this.documentSelectors,
-      {
-        provideCodeActions: (doc) => {
-          if (
-            configService.vsCodeConfig.enableOxfmt === false ||
-            workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
-          ) {
-            return [];
-          }
-          return [formatCodeAction];
-        },
-      },
-      {
-        providedCodeActionKinds: [formatCodeActionKind],
-      },
-    );
 
     outputChannel.info(`Using server binary at: ${binary?.path}`);
 
@@ -384,9 +405,6 @@ export default class FormatterTool implements ToolInterface {
 
     this.disposeResources = async () => {
       await this.client?.dispose();
-      restartCommand.dispose();
-      toggleEnable.dispose();
-      formatAction.dispose();
       onNotificationDispose.dispose();
     };
 
@@ -459,6 +477,12 @@ export default class FormatterTool implements ToolInterface {
         settings: configService.formatterServerConfig,
       });
     }
+  }
+
+  dispose(): void {
+    this.restartCommand.dispose();
+    this.toggleEnableCommand.dispose();
+    this.formatActionProvider.dispose();
   }
 
   private updateStatusBar(

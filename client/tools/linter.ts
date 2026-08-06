@@ -48,6 +48,55 @@ export default class LinterTool implements ToolInterface {
 
   private disposeResources: (() => Promise<void>) | undefined;
 
+  // Dependencies needed by commands
+  private outputChannel: LogOutputChannel | undefined;
+  private configService: ConfigService | undefined;
+  private statusBarItemHandler: StatusBarItemHandler | undefined;
+
+  // Command disposables (registered once at construction)
+  private readonly restartCommand: { dispose: () => void };
+  private readonly toggleEnableCommand: { dispose: () => void };
+  private readonly applyAllFixesCommand: { dispose: () => void };
+
+  constructor() {
+    // Register commands once at construction
+    this.restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
+      if (this.outputChannel && this.configService && this.statusBarItemHandler) {
+        await this.restart(this.outputChannel, this.configService, this.statusBarItemHandler);
+      }
+    });
+
+    this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
+      if (this.configService) {
+        await this.configService.vsCodeConfig.updateEnableOxlint(!this.configService.vsCodeConfig.enableOxlint);
+        // all future changes are handled by the onConfigChange listener, so we don't need to do it here
+      }
+    });
+
+    this.applyAllFixesCommand = commands.registerCommand(OxcCommands.ApplyAllFixesFile, async () => {
+      if (!this.client) {
+        window.showErrorMessage("oxc client not found");
+        return;
+      }
+      const textEditor = window.activeTextEditor;
+      if (!textEditor) {
+        window.showErrorMessage("active text editor not found");
+        return;
+      }
+
+      const params = {
+        command: LspCommands.FixAll,
+        arguments: [
+          {
+            uri: textEditor.document.uri.toString(),
+          },
+        ],
+      };
+
+      await this.client.sendRequest(ExecuteCommandRequest.type, params);
+    });
+  }
+
   getLspVersion(): string | undefined {
     return this.client?.initializeResult?.serverInfo?.version;
   }
@@ -76,6 +125,11 @@ export default class LinterTool implements ToolInterface {
     statusBarItemHandler: StatusBarItemHandler,
     binary?: BinarySearchResult,
   ): Promise<void> {
+    // Store dependencies for command handlers
+    this.outputChannel = outputChannel;
+    this.configService = configService;
+    this.statusBarItemHandler = statusBarItemHandler;
+
     if (!binary) {
       statusBarItemHandler.updateTool("linter", false, "No valid oxlint binary found.");
       outputChannel.appendLine("No valid oxlint binary found. Linter will not be activated.");
@@ -84,40 +138,8 @@ export default class LinterTool implements ToolInterface {
 
     this.allowedToStartServer = configService.vsCodeConfig.requireConfig
       ? (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
-          .length > 0
+        .length > 0
       : true;
-
-    const restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
-      await this.restart(outputChannel, configService, statusBarItemHandler);
-    });
-
-    const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
-      await configService.vsCodeConfig.updateEnableOxlint(!configService.vsCodeConfig.enableOxlint);
-      // all future changes are handled by the onConfigChange listener, so we don't need to do it here
-    });
-
-    const applyAllFixesFile = commands.registerCommand(OxcCommands.ApplyAllFixesFile, async () => {
-      if (!this.client) {
-        window.showErrorMessage("oxc client not found");
-        return;
-      }
-      const textEditor = window.activeTextEditor;
-      if (!textEditor) {
-        window.showErrorMessage("active text editor not found");
-        return;
-      }
-
-      const params = {
-        command: LspCommands.FixAll,
-        arguments: [
-          {
-            uri: textEditor.document.uri.toString(),
-          },
-        ],
-      };
-
-      await this.client.sendRequest(ExecuteCommandRequest.type, params);
-    });
 
     const run: Executable = await runExecutable(
       binary,
@@ -233,9 +255,6 @@ export default class LinterTool implements ToolInterface {
 
     this.disposeResources = async () => {
       await this.client?.dispose();
-      restartCommand.dispose();
-      toggleEnable.dispose();
-      applyAllFixesFile.dispose();
       onNotificationDispose.dispose();
       onDeleteFilesDispose.dispose();
       activatorDispatcher?.dispose();
@@ -253,6 +272,12 @@ export default class LinterTool implements ToolInterface {
     await this.disposeResources?.();
     this.disposeResources = undefined;
     this.client = undefined;
+  }
+
+  dispose(): void {
+    this.restartCommand.dispose();
+    this.toggleEnableCommand.dispose();
+    this.applyAllFixesCommand.dispose();
   }
 
   async toggleClient(configService: ConfigService): Promise<void> {

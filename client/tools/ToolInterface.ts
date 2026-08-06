@@ -31,6 +31,12 @@ export default interface ToolInterface {
   deactivate(): Promise<void>;
 
   /**
+   * Dispose of commands registered at construction.
+   * Should be called when the tool is permanently disposed (e.g., extension deactivation).
+   */
+  dispose(): void;
+
+  /**
    * Restarts the tool, cleaning up resources and reinitializing with the current configuration.
    */
   restart(

@@ -10,13 +10,6 @@ import ToolInterface from "./tools/ToolInterface";
 const outputChannelName = "Oxc";
 const tools: ToolInterface[] = [];
 
-if (process.env.SKIP_LINTER_TEST !== "true") {
-  tools.push(new Linter());
-}
-if (process.env.SKIP_FORMATTER_TEST !== "true") {
-  tools.push(new Formatter());
-}
-
 export async function activate(context: ExtensionContext) {
   const configService = new ConfigService();
 
@@ -69,6 +62,14 @@ export async function activate(context: ExtensionContext) {
     statusBarItemHandler,
   );
 
+  // Instantiate tools after base commands are registered to maintain command registration order
+  if (process.env.SKIP_LINTER_TEST !== "true") {
+    tools.push(new Linter());
+  }
+  if (process.env.SKIP_FORMATTER_TEST !== "true") {
+    tools.push(new Formatter());
+  }
+
   const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
     try {
       await tool.restart(outputChannel, configService, statusBarItemHandler);
@@ -119,6 +120,8 @@ export async function activate(context: ExtensionContext) {
     tools.map((tool): Promise<void> => {
       const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
       const binaryPath = binaryPaths[tools.indexOf(tool)];
+
+      context.subscriptions.push(tool)
 
       return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
     }),
