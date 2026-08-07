@@ -11,10 +11,7 @@ import {
   workspace,
 } from "vscode";
 
-import {
-  ConfigurationParams,
-  ShowMessageNotification,
-} from "vscode-languageclient";
+import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
 import {
   Executable,
@@ -287,7 +284,9 @@ export default class FormatterTool implements ToolInterface {
 
     this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
       if (this.configService) {
-        await this.configService.vsCodeConfig.updateEnableOxfmt(!this.configService.vsCodeConfig.enableOxfmt);
+        await this.configService.vsCodeConfig.updateEnableOxfmt(
+          !this.configService.vsCodeConfig.enableOxfmt,
+        );
       }
     });
 

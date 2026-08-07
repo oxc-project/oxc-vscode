@@ -121,7 +121,7 @@ export async function activate(context: ExtensionContext) {
       const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
       const binaryPath = binaryPaths[tools.indexOf(tool)];
 
-      context.subscriptions.push(tool)
+      context.subscriptions.push(tool);
 
       return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
     }),

@@ -68,33 +68,38 @@ export default class LinterTool implements ToolInterface {
 
     this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
       if (this.configService) {
-        await this.configService.vsCodeConfig.updateEnableOxlint(!this.configService.vsCodeConfig.enableOxlint);
+        await this.configService.vsCodeConfig.updateEnableOxlint(
+          !this.configService.vsCodeConfig.enableOxlint,
+        );
         // all future changes are handled by the onConfigChange listener, so we don't need to do it here
       }
     });
 
-    this.applyAllFixesCommand = commands.registerCommand(OxcCommands.ApplyAllFixesFile, async () => {
-      if (!this.client) {
-        window.showErrorMessage("oxc client not found");
-        return;
-      }
-      const textEditor = window.activeTextEditor;
-      if (!textEditor) {
-        window.showErrorMessage("active text editor not found");
-        return;
-      }
+    this.applyAllFixesCommand = commands.registerCommand(
+      OxcCommands.ApplyAllFixesFile,
+      async () => {
+        if (!this.client) {
+          window.showErrorMessage("oxc client not found");
+          return;
+        }
+        const textEditor = window.activeTextEditor;
+        if (!textEditor) {
+          window.showErrorMessage("active text editor not found");
+          return;
+        }
 
-      const params = {
-        command: LspCommands.FixAll,
-        arguments: [
-          {
-            uri: textEditor.document.uri.toString(),
-          },
-        ],
-      };
+        const params = {
+          command: LspCommands.FixAll,
+          arguments: [
+            {
+              uri: textEditor.document.uri.toString(),
+            },
+          ],
+        };
 
-      await this.client.sendRequest(ExecuteCommandRequest.type, params);
-    });
+        await this.client.sendRequest(ExecuteCommandRequest.type, params);
+      },
+    );
   }
 
   getLspVersion(): string | undefined {
@@ -138,7 +143,7 @@ export default class LinterTool implements ToolInterface {
 
     this.allowedToStartServer = configService.vsCodeConfig.requireConfig
       ? (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
-        .length > 0
+          .length > 0
       : true;
 
     const run: Executable = await runExecutable(
