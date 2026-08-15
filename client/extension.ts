@@ -133,4 +133,5 @@ export async function activate(context: ExtensionContext) {
 
 export async function deactivate(): Promise<void> {
   await Promise.all(tools.map((tool) => tool.deactivate()));
+  tools.length = 0
 }
