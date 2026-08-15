@@ -10,13 +10,6 @@ import ToolInterface from "./tools/ToolInterface";
 const outputChannelName = "Oxc";
 const tools: ToolInterface[] = [];
 
-if (process.env.SKIP_LINTER_TEST !== "true") {
-  tools.push(new Linter());
-}
-if (process.env.SKIP_FORMATTER_TEST !== "true") {
-  tools.push(new Formatter());
-}
-
 export async function activate(context: ExtensionContext) {
   const configService = new ConfigService();
 
@@ -69,9 +62,21 @@ export async function activate(context: ExtensionContext) {
     statusBarItemHandler,
   );
 
+  // Instantiate tools after base commands are registered to maintain command registration order
+  if (process.env.SKIP_LINTER_TEST !== "true") {
+    const linter = new Linter(outputChannelLint, configService, statusBarItemHandler);
+    tools.push(linter);
+    context.subscriptions.push(linter);
+  }
+  if (process.env.SKIP_FORMATTER_TEST !== "true") {
+    const formatter = new Formatter(outputChannelFormat, configService, statusBarItemHandler);
+    tools.push(formatter);
+    context.subscriptions.push(formatter);
+  }
+
   const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
     try {
-      await tool.restart(outputChannel, configService, statusBarItemHandler);
+      await tool.restart();
     } catch (e) {
       outputChannel.error(`Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
       Try to restart the editor manually.
@@ -80,9 +85,7 @@ export async function activate(context: ExtensionContext) {
   };
 
   configService.onConfigChange = async function onConfigChange(event) {
-    await Promise.all(
-      tools.map((tool) => tool.onConfigChange(event, configService, statusBarItemHandler)),
-    );
+    await Promise.all(tools.map((tool) => tool.onConfigChange(event)));
 
     if (configService.vsCodeConfig.effectsOxlintConnection(event)) {
       outputChannelLint.info("oxlint connection changed, restarting oxlint tool.");
@@ -106,21 +109,12 @@ export async function activate(context: ExtensionContext) {
   outputChannelFormat.info("Searching for oxfmt binary.");
   outputChannelLint.info("Searching for oxlint binary.");
 
-  const binaryPaths = await Promise.all(
-    tools.map((tool) =>
-      tool.getBinary(
-        tool instanceof Linter ? outputChannelLint : outputChannelFormat,
-        configService,
-      ),
-    ),
-  );
+  const binaryPaths = await Promise.all(tools.map((tool) => tool.getBinary()));
 
   await Promise.all(
     tools.map((tool): Promise<void> => {
-      const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
       const binaryPath = binaryPaths[tools.indexOf(tool)];
-
-      return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
+      return tool.activate(binaryPath);
     }),
   );
 
@@ -130,4 +124,5 @@ export async function activate(context: ExtensionContext) {
 
 export async function deactivate(): Promise<void> {
   await Promise.all(tools.map((tool) => tool.deactivate()));
+  tools.length = 0;
 }

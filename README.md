@@ -9,7 +9,7 @@ Any of the below options can be used to install the extension.
 - Install through the VS Code extensions marketplace by searching for `Oxc`. Verify the identifier is `oxc.oxc-vscode`.
 - From within VS Code, open the Quick Open (Ctrl+P or Cmd+P on macOS) and execute `ext install oxc.oxc-vscode`.
 
-The extension does not bundle the Oxc tools. For the recommended setup, install the tool you want to use locally in your project: `oxlint` for linting and `oxfmt` for formatting. If you install a tool while VS Code is already open and it is not detected, run **Developer: Reload Window**, then hover over the `oxc` status item or check the corresponding `Oxc (Lint)` or `Oxc (Fmt)` output channel.
+The extension does not bundle the Oxc tools. For the recommended setup, install the tool you want to use locally in your project: `oxlint` for linting and `oxfmt` for formatting. If you install a tool while VS Code is already open and it is not detected, run the **Oxc: Restart oxlint Server** and/or **Oxc: Restart oxfmt Server** commands, then hover over the `oxc` status item or check the corresponding `Oxc (Lint)` or `Oxc (Fmt)` output channel.
 
 See the official [Oxlint editor setup](https://oxc.rs/docs/guide/usage/linter/editors.html) and [Oxfmt editor setup](https://oxc.rs/docs/guide/usage/formatter/editors.html) guides for installation details.
 

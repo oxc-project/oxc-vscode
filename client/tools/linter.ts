@@ -48,90 +48,103 @@ export default class LinterTool implements ToolInterface {
 
   private disposeResources: (() => Promise<void>) | undefined;
 
+  // Command disposables (registered once at construction)
+  private readonly restartCommand: { dispose: () => void };
+  private readonly toggleEnableCommand: { dispose: () => void };
+  private readonly applyAllFixesCommand: { dispose: () => void };
+
+  constructor(
+    private readonly outputChannel: LogOutputChannel,
+    private readonly configService: ConfigService,
+    private readonly statusBarItemHandler: StatusBarItemHandler,
+  ) {
+    // Register commands once at construction
+    this.restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
+      if (this.outputChannel && this.configService && this.statusBarItemHandler) {
+        await this.restart();
+      }
+    });
+
+    this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
+      if (this.configService) {
+        await this.configService.vsCodeConfig.updateEnableOxlint(
+          !this.configService.vsCodeConfig.enableOxlint,
+        );
+        // all future changes are handled by the onConfigChange listener, so we don't need to do it here
+      }
+    });
+
+    this.applyAllFixesCommand = commands.registerCommand(
+      OxcCommands.ApplyAllFixesFile,
+      async () => {
+        if (!this.client) {
+          window.showErrorMessage("oxc client not found");
+          return;
+        }
+        const textEditor = window.activeTextEditor;
+        if (!textEditor) {
+          window.showErrorMessage("active text editor not found");
+          return;
+        }
+
+        const params = {
+          command: LspCommands.FixAll,
+          arguments: [
+            {
+              uri: textEditor.document.uri.toString(),
+            },
+          ],
+        };
+
+        await this.client.sendRequest(ExecuteCommandRequest.type, params);
+      },
+    );
+  }
+
   getLspVersion(): string | undefined {
     return this.client?.initializeResult?.serverInfo?.version;
   }
 
-  async getBinary(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-  ): Promise<BinarySearchResult | undefined> {
+  async getBinary(): Promise<BinarySearchResult | undefined> {
     if (process.env.SERVER_PATH_DEV) {
       return { path: process.env.SERVER_PATH_DEV, loader: "native" };
     }
-    const bin = await configService.getOxlintServerBinPath();
+    const bin = await this.configService.getOxlintServerBinPath();
     if (bin) {
       try {
         await fsPromises.access(bin.path);
         return bin;
       } catch (e) {
-        outputChannel.error(`Invalid bin path: ${bin.path}`, e);
+        this.outputChannel.error(`Invalid bin path: ${bin.path}`, e);
       }
     }
   }
 
-  async activate(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-    binary?: BinarySearchResult,
-  ): Promise<void> {
+  async activate(binary?: BinarySearchResult): Promise<void> {
     if (!binary) {
-      statusBarItemHandler.updateTool("linter", false, "No valid oxlint binary found.");
-      outputChannel.appendLine("No valid oxlint binary found. Linter will not be activated.");
+      this.statusBarItemHandler.updateTool("linter", false, "No valid oxlint binary found.");
+      this.outputChannel.appendLine("No valid oxlint binary found. Linter will not be activated.");
       return Promise.resolve();
     }
 
-    this.allowedToStartServer = configService.vsCodeConfig.requireConfig
+    this.allowedToStartServer = this.configService.vsCodeConfig.requireConfig
       ? (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
           .length > 0
       : true;
 
-    const restartCommand = commands.registerCommand(OxcCommands.RestartServerLint, async () => {
-      await this.restart(outputChannel, configService, statusBarItemHandler);
-    });
-
-    const toggleEnable = commands.registerCommand(OxcCommands.ToggleEnableLint, async () => {
-      await configService.vsCodeConfig.updateEnableOxlint(!configService.vsCodeConfig.enableOxlint);
-      // all future changes are handled by the onConfigChange listener, so we don't need to do it here
-    });
-
-    const applyAllFixesFile = commands.registerCommand(OxcCommands.ApplyAllFixesFile, async () => {
-      if (!this.client) {
-        window.showErrorMessage("oxc client not found");
-        return;
-      }
-      const textEditor = window.activeTextEditor;
-      if (!textEditor) {
-        window.showErrorMessage("active text editor not found");
-        return;
-      }
-
-      const params = {
-        command: LspCommands.FixAll,
-        arguments: [
-          {
-            uri: textEditor.document.uri.toString(),
-          },
-        ],
-      };
-
-      await this.client.sendRequest(ExecuteCommandRequest.type, params);
-    });
-
     const run: Executable = await runExecutable(
       binary,
-      configService.vsCodeConfig.useExecPath,
-      configService.vsCodeConfig.nodePath,
-      configService.vsCodeConfig.binPathTsGoLint,
-      configService.vsCodeConfig.suppressProgramErrors,
+      this.configService.vsCodeConfig.useExecPath,
+      this.configService.vsCodeConfig.nodePath,
+      this.configService.vsCodeConfig.binPathTsGoLint,
+      this.configService.vsCodeConfig.suppressProgramErrors,
     );
     const serverOptions: ServerOptions = {
       run,
       debug: run,
     };
 
-    outputChannel.info(`Using server binary at: ${binary?.path}`);
+    this.outputChannel.info(`Using server binary at: ${binary?.path}`);
 
     // see https://github.com/oxc-project/oxc/blob/9b475ad05b750f99762d63094174be6f6fc3c0eb/crates/oxc_linter/src/loader/partial_loader/mod.rs#L17-L20
     const supportedExtensions = [
@@ -159,14 +172,15 @@ export default class LinterTool implements ToolInterface {
           scheme: "file",
         },
       ],
-      initializationOptions: configService.oxlintServerConfig,
-      outputChannel,
-      traceOutputChannel: outputChannel,
+      initializationOptions: this.configService.oxlintServerConfig,
+      outputChannel: this.outputChannel,
+      traceOutputChannel: this.outputChannel,
       diagnosticPullOptions: {
         onChange: true,
         onSave: true,
         onTabs: false,
-        filter: (document, mode) => !configService.shouldRequestDiagnostics(document.uri, mode),
+        filter: (document, mode) =>
+          !this.configService.shouldRequestDiagnostics(document.uri, mode),
       },
       middleware: {
         handleDiagnostics: (uri, diagnostics, next) => {
@@ -196,7 +210,8 @@ export default class LinterTool implements ToolInterface {
               }
 
               return (
-                configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toOxlintConfig() ?? null
+                this.configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toOxlintConfig() ??
+                null
               );
             });
           },
@@ -209,7 +224,7 @@ export default class LinterTool implements ToolInterface {
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
       (params) => {
-        onClientNotification(params, outputChannel);
+        onClientNotification(params, this.outputChannel);
       },
     );
 
@@ -221,27 +236,21 @@ export default class LinterTool implements ToolInterface {
 
     let activatorDispatcher: { dispose: () => void } | undefined;
     if (this.allowedToStartServer) {
-      if (configService.vsCodeConfig.enableOxlint) {
+      if (this.configService.vsCodeConfig.enableOxlint) {
         await this.client.start();
       }
     } else {
-      activatorDispatcher = this.generateActivatorByConfig(
-        configService.vsCodeConfig,
-        statusBarItemHandler,
-      );
+      activatorDispatcher = this.generateActivatorByConfig(this.configService.vsCodeConfig);
     }
 
     this.disposeResources = async () => {
       await this.client?.dispose();
-      restartCommand.dispose();
-      toggleEnable.dispose();
-      applyAllFixesFile.dispose();
       onNotificationDispose.dispose();
       onDeleteFilesDispose.dispose();
       activatorDispatcher?.dispose();
     };
 
-    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
+    this.updateStatusBar(this.configService.vsCodeConfig.enableOxlint);
   }
 
   async deactivate(): Promise<void> {
@@ -253,6 +262,12 @@ export default class LinterTool implements ToolInterface {
     await this.disposeResources?.();
     this.disposeResources = undefined;
     this.client = undefined;
+  }
+
+  dispose(): void {
+    this.restartCommand.dispose();
+    this.toggleEnableCommand.dispose();
+    this.applyAllFixesCommand.dispose();
   }
 
   async toggleClient(configService: ConfigService): Promise<void> {
@@ -271,39 +286,31 @@ export default class LinterTool implements ToolInterface {
     }
   }
 
-  async restart(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void> {
+  async restart(): Promise<void> {
     await this.deactivate();
-    const newBinaryPath = await this.getBinary(outputChannel, configService);
-    await this.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+    const newBinaryPath = await this.getBinary();
+    await this.activate(newBinaryPath);
   }
 
-  async onConfigChange(
-    event: ConfigurationChangeEvent,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void> {
+  async onConfigChange(event: ConfigurationChangeEvent): Promise<void> {
     if (
       event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.enable.oxlint`)
     ) {
-      await this.toggleClient(configService); // update the client state
+      await this.toggleClient(this.configService); // update the client state
     }
-    this.updateStatusBar(statusBarItemHandler, configService.vsCodeConfig.enableOxlint);
+    this.updateStatusBar(this.configService.vsCodeConfig.enableOxlint);
 
     if (this.client === undefined) {
       return;
     }
 
     // update the initializationOptions for a possible restart
-    this.client.clientOptions.initializationOptions = configService.oxlintServerConfig;
+    this.client.clientOptions.initializationOptions = this.configService.oxlintServerConfig;
 
-    if (configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
+    if (this.configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
       await this.client.sendNotification("workspace/didChangeConfiguration", {
-        settings: configService.oxlintServerConfig,
+        settings: this.configService.oxlintServerConfig,
       });
     }
   }
@@ -336,7 +343,7 @@ export default class LinterTool implements ToolInterface {
     };
   }
 
-  updateStatusBar(statusBarItemHandler: StatusBarItemHandler, enable: boolean) {
+  updateStatusBar(enable: boolean) {
     const { isEnabled, tooltipText } = this.getStatusBarState(enable);
 
     let text =
@@ -353,7 +360,7 @@ export default class LinterTool implements ToolInterface {
       text = `${tooltipText}\n\n` + text;
     }
 
-    statusBarItemHandler.updateTool(
+    this.statusBarItemHandler.updateTool(
       "linter",
       isEnabled,
       text,
@@ -361,10 +368,7 @@ export default class LinterTool implements ToolInterface {
     );
   }
 
-  generateActivatorByConfig(
-    config: VSCodeConfig,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): { dispose: () => void } {
+  generateActivatorByConfig(config: VSCodeConfig): { dispose: () => void } {
     const watcher = workspace.createFileSystemWatcher(
       oxlintConfigDefaultFilePattern,
       false,
@@ -373,7 +377,7 @@ export default class LinterTool implements ToolInterface {
     );
     watcher.onDidCreate(async () => {
       this.allowedToStartServer = true;
-      this.updateStatusBar(statusBarItemHandler, config.enableOxlint);
+      this.updateStatusBar(config.enableOxlint);
       if (this.client && !this.client.isRunning() && config.enableOxlint) {
         await this.client.start();
       }
@@ -385,7 +389,7 @@ export default class LinterTool implements ToolInterface {
         (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
           .length > 0;
       if (!this.allowedToStartServer) {
-        this.updateStatusBar(statusBarItemHandler, false);
+        this.updateStatusBar(false);
         if (this.client && this.client.isRunning()) {
           await this.client.stop();
         }

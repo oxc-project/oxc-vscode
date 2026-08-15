@@ -1,6 +1,4 @@
-import { ConfigurationChangeEvent, LogOutputChannel } from "vscode";
-import { ConfigService } from "../ConfigService";
-import StatusBarItemHandler from "../StatusBarItemHandler";
+import { ConfigurationChangeEvent } from "vscode";
 import type { BinarySearchResult } from "../findBinary";
 
 export default interface ToolInterface {
@@ -11,19 +9,11 @@ export default interface ToolInterface {
   /**
    * Gets the path to the tool's language server binary (if applicable).
    */
-  getBinary(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-  ): Promise<BinarySearchResult | undefined>;
+  getBinary(): Promise<BinarySearchResult | undefined>;
   /**
    * Activates the tool and initializes any necessary resources.
    */
-  activate(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-    binary?: BinarySearchResult,
-  ): Promise<void>;
+  activate(binary?: BinarySearchResult): Promise<void>;
 
   /**
    * Deactivates the tool and cleans up any resources.
@@ -31,20 +21,18 @@ export default interface ToolInterface {
   deactivate(): Promise<void>;
 
   /**
+   * Dispose of commands registered at construction.
+   * Should be called when the tool is permanently disposed (e.g., extension deactivation).
+   */
+  dispose(): void;
+
+  /**
    * Restarts the tool, cleaning up resources and reinitializing with the current configuration.
    */
-  restart(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void>;
+  restart(): Promise<void>;
 
   /**
    * Handles configuration changes.
    */
-  onConfigChange(
-    event: ConfigurationChangeEvent,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void>;
+  onConfigChange(event: ConfigurationChangeEvent): Promise<void>;
 }
