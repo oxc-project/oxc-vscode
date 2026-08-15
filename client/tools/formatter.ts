@@ -264,21 +264,20 @@ export default class FormatterTool implements ToolInterface {
 
   private disposeResources: (() => Promise<void>) | undefined;
 
-  // Dependencies needed by commands
-  private outputChannel: LogOutputChannel | undefined;
-  private configService: ConfigService | undefined;
-  private statusBarItemHandler: StatusBarItemHandler | undefined;
-
   // Command and provider disposables (registered once at construction)
   private readonly restartCommand: { dispose: () => void };
   private readonly toggleEnableCommand: { dispose: () => void };
   private readonly formatActionProvider: { dispose: () => void };
 
-  constructor() {
+  constructor(
+    private readonly outputChannel: LogOutputChannel,
+    private readonly configService: ConfigService,
+    private readonly statusBarItemHandler: StatusBarItemHandler,
+  ) {
     // Register commands once at construction
     this.restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
       if (this.outputChannel && this.configService && this.statusBarItemHandler) {
-        await this.restart(this.outputChannel, this.configService, this.statusBarItemHandler);
+        await this.restart();
       }
     });
 
@@ -317,48 +316,37 @@ export default class FormatterTool implements ToolInterface {
     return this.client?.initializeResult?.serverInfo?.version;
   }
 
-  async getBinary(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-  ): Promise<BinarySearchResult | undefined> {
+  async getBinary(): Promise<BinarySearchResult | undefined> {
     if (process.env.SERVER_PATH_DEV) {
       return { path: process.env.SERVER_PATH_DEV, loader: "native" };
     }
-    const bin = await configService.getOxfmtServerBinPath();
+    const bin = await this.configService.getOxfmtServerBinPath();
     if (bin) {
       try {
         await fsPromises.access(bin.path);
         return bin;
       } catch (e) {
-        outputChannel.error(`Invalid bin path: ${bin.path}`, e);
+        this.outputChannel.error(`Invalid bin path: ${bin.path}`, e);
       }
     }
   }
 
-  async activate(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-    binary?: BinarySearchResult,
-  ) {
-    // Store dependencies for command handlers
-    this.outputChannel = outputChannel;
-    this.configService = configService;
-    this.statusBarItemHandler = statusBarItemHandler;
-
+  async activate(binary?: BinarySearchResult) {
     // No valid binary found for the formatter.
     if (!binary) {
-      statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
-      outputChannel.appendLine("No valid oxfmt binary found. Formatter will not be activated.");
+      this.statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
+      this.outputChannel.appendLine(
+        "No valid oxfmt binary found. Formatter will not be activated.",
+      );
       return Promise.resolve();
     }
 
-    outputChannel.info(`Using server binary at: ${binary?.path}`);
+    this.outputChannel.info(`Using server binary at: ${binary?.path}`);
 
     const run: Executable = await runExecutable(
       binary,
-      configService.vsCodeConfig.useExecPath,
-      configService.vsCodeConfig.nodePath,
+      this.configService.vsCodeConfig.useExecPath,
+      this.configService.vsCodeConfig.nodePath,
     );
 
     const serverOptions: ServerOptions = {
@@ -372,9 +360,9 @@ export default class FormatterTool implements ToolInterface {
     const clientOptions: LanguageClientOptions = {
       // Register the server for plain text documents
       documentSelector: this.documentSelectors,
-      initializationOptions: configService.formatterServerConfig,
-      outputChannel,
-      traceOutputChannel: outputChannel,
+      initializationOptions: this.configService.formatterServerConfig,
+      outputChannel: this.outputChannel,
+      traceOutputChannel: this.outputChannel,
       middleware: {
         workspace: {
           configuration: (params: ConfigurationParams) => {
@@ -387,7 +375,8 @@ export default class FormatterTool implements ToolInterface {
               }
 
               return (
-                configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toOxfmtConfig() ?? null
+                this.configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toOxfmtConfig() ??
+                null
               );
             });
           },
@@ -401,7 +390,7 @@ export default class FormatterTool implements ToolInterface {
     const onNotificationDispose = this.client.onNotification(
       ShowMessageNotification.type,
       (params) => {
-        onClientNotification(params, outputChannel);
+        onClientNotification(params, this.outputChannel);
       },
     );
 
@@ -410,11 +399,11 @@ export default class FormatterTool implements ToolInterface {
       onNotificationDispose.dispose();
     };
 
-    if (configService.vsCodeConfig.enableOxfmt) {
+    if (this.configService.vsCodeConfig.enableOxfmt) {
       await this.client.start();
     }
 
-    this.updateStatusBar(statusBarItemHandler, configService);
+    this.updateStatusBar();
   }
 
   async deactivate(): Promise<void> {
@@ -428,55 +417,47 @@ export default class FormatterTool implements ToolInterface {
     this.client = undefined;
   }
 
-  async restart(
-    outputChannel: LogOutputChannel,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void> {
+  async restart(): Promise<void> {
     await this.deactivate();
-    const newBinaryPath = await this.getBinary(outputChannel, configService);
-    await this.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+    const newBinaryPath = await this.getBinary();
+    await this.activate(newBinaryPath);
   }
 
-  async toggleClient(configService: ConfigService): Promise<void> {
+  async toggleClient(): Promise<void> {
     if (this.client === undefined) {
       return;
     }
 
     if (this.client.isRunning()) {
-      if (!configService.vsCodeConfig.enableOxfmt) {
+      if (!this.configService.vsCodeConfig.enableOxfmt) {
         await this.client.stop();
       }
     } else {
-      if (configService.vsCodeConfig.enableOxfmt) {
+      if (this.configService.vsCodeConfig.enableOxfmt) {
         await this.client.start();
       }
     }
   }
 
-  async onConfigChange(
-    event: ConfigurationChangeEvent,
-    configService: ConfigService,
-    statusBarItemHandler: StatusBarItemHandler,
-  ): Promise<void> {
+  async onConfigChange(event: ConfigurationChangeEvent): Promise<void> {
     if (
       event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)
     ) {
-      await this.toggleClient(configService); // update the client state
+      await this.toggleClient(); // update the client state
     }
-    this.updateStatusBar(statusBarItemHandler, configService);
+    this.updateStatusBar();
 
     if (this.client === undefined) {
       return;
     }
 
     // update the initializationOptions for a possible restart
-    this.client.clientOptions.initializationOptions = configService.formatterServerConfig;
+    this.client.clientOptions.initializationOptions = this.configService.formatterServerConfig;
 
-    if (configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
+    if (this.configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
       await this.client.sendNotification("workspace/didChangeConfiguration", {
-        settings: configService.formatterServerConfig,
+        settings: this.configService.formatterServerConfig,
       });
     }
   }
@@ -487,11 +468,8 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider.dispose();
   }
 
-  private updateStatusBar(
-    statusBarItemHandler: StatusBarItemHandler,
-    configService: ConfigService,
-  ) {
-    const enable = configService.vsCodeConfig.enableOxfmt;
+  private updateStatusBar() {
+    const enable = this.configService.vsCodeConfig.enableOxfmt;
 
     let text =
       `[$(terminal) Open Output](command:${OxcCommands.ShowOutputChannelFmt})\n\n` +
@@ -508,7 +486,7 @@ export default class FormatterTool implements ToolInterface {
       text = `${tooltipText}\n\n` + text;
     }
 
-    statusBarItemHandler.updateTool(
+    this.statusBarItemHandler.updateTool(
       "formatter",
       enable,
       text,

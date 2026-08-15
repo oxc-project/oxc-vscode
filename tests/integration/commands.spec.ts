@@ -26,8 +26,7 @@ teardown(async () => {
 
 suite("commands", () => {
   testSingleFolderMode("listed commands", async () => {
-    const oxcCommands = (await commands.getCommands(true))
-      .filter((x) => x.startsWith("oxc."));
+    const oxcCommands = (await commands.getCommands(true)).filter((x) => x.startsWith("oxc."));
 
     const expectedCommands = [
       "oxc.showOutputChannel",
