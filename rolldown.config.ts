@@ -8,7 +8,7 @@ const output: RolldownOptions["output"] = {
   sourcemap: true,
   format: "cjs",
   banner: `"use strict";\n`,
-  minify: true,
+  minify: process.env.DEV !== "true",
   cleanDir: true,
 };
 
