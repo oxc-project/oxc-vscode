@@ -62,7 +62,7 @@
     "oxfmt": "latest",
     "oxlint": "latest",
     "oxlint-tsgolint": "^7.0.0",
-    "rolldown": "1.2.5",
+    "rolldown": "1.2.6",
     "tinyglobby": "^0.2.17",
     "vscode-languageserver": "^10.1.0"
   },
