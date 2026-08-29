@@ -101,7 +101,7 @@ const allTestSuites = new Map([
     "format-save-path",
     {
       ...baseTest,
-      files: "out_test/integration/format_on_save_no_lint.spec.js",
+      files: "out_test/format-save/**/*.spec.js",
       env: {
         SINGLE_FOLDER_WORKSPACE: "true",
         SERVER_PATH_DEV_OXLINT: fakeOxlintBin,

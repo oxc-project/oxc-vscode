@@ -7,6 +7,7 @@ import {
 } from "../../client/tools/linter.js";
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
+const oxlintFixAllDangerousCodeActionKind = CodeActionKind.Source.append("fixAllDangerous.oxc");
 
 function codeActionContext(
   only: CodeActionKind | undefined,
@@ -114,11 +115,15 @@ suite("linter code action routing", () => {
       shouldRequestOxlintCodeActions(codeActionContext(CodeActionKind.SourceFixAll.append("oxc"))),
       true,
     );
+    strictEqual(
+      shouldRequestOxlintCodeActions(codeActionContext(oxlintFixAllDangerousCodeActionKind)),
+      true,
+    );
   });
 
-  test("skips unrelated source action requests", () => {
+  test("skips kinds oxlint does not handle", () => {
     strictEqual(
-      shouldRequestOxlintCodeActions(codeActionContext(CodeActionKind.SourceOrganizeImports)),
+      shouldRequestOxlintCodeActions(codeActionContext(CodeActionKind.QuickFix.append("example"))),
       false,
     );
     strictEqual(

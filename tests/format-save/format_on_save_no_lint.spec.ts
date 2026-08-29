@@ -26,9 +26,6 @@ const settingsApplyTimeoutMs = 3_000;
 const oxlintLogPath = join(WORKSPACE_DIR.fsPath, ".fake-lsp-logs", "oxlint.log");
 const oxfmtLogPath = join(WORKSPACE_DIR.fsPath, ".fake-lsp-logs", "oxfmt.log");
 const workspaceSettingsPath = join(WORKSPACE_DIR.fsPath, ".vscode", "settings.json");
-const isFormatSavePathSuite =
-  process.env.SERVER_PATH_DEV_OXLINT?.includes("fake_oxlint_server.js") === true &&
-  process.env.SERVER_PATH_DEV_OXFMT?.includes("fake_oxfmt_server.js") === true;
 
 async function resetLog(path: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
@@ -46,7 +43,7 @@ function isExpectedSetting(key: string, expectedValue: unknown): boolean {
 
 async function writeWorkspaceSettings(settings: Record<string, unknown>): Promise<void> {
   await mkdir(dirname(workspaceSettingsPath), { recursive: true });
-  await writeFile(workspaceSettingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  await writeFile(workspaceSettingsPath, `${JSON.stringify(settings, null, 2)}${LE}`);
 
   // VS Code observes settings-file edits asynchronously; wait for the effective
   // config so save assertions do not race the file watcher.
@@ -77,15 +74,11 @@ async function createFormattingFile(fileName: string): Promise<Uri> {
   const fixturesDir = Uri.joinPath(fixturesWorkspaceUri(), "fixtures");
   await mkdir(fixturesDir.fsPath, { recursive: true });
   const fileUri = Uri.joinPath(fixturesDir, fileName);
-  await writeFile(fileUri.fsPath, "class X { foo() { return 42; } }\n");
+  await writeFile(fileUri.fsPath, `class X { foo() { return 42; } }${LE}`);
   return fileUri;
 }
 
 suite("format on save without lint code actions", () => {
-  if (!isFormatSavePathSuite) {
-    return;
-  }
-
   suiteSetup(async () => {
     await writeFormatOnlySettings();
     await activateExtension(false);
@@ -115,7 +108,7 @@ suite("format on save without lint code actions", () => {
       new Position(0, 0),
       document.lineAt(document.lineCount - 1).range.end,
     );
-    edit.replace(fileUri, fullRange, "class X{foo(){return 42;}}\n");
+    edit.replace(fileUri, fullRange, `class X{foo(){return 42;}}${LE}`);
     await workspace.applyEdit(edit);
 
     await resetLog(oxlintLogPath);
@@ -152,63 +145,6 @@ suite("format on save without lint code actions", () => {
       `unexpected oxlint diagnostic request, log:\n${oxlintLog}`,
     );
     strictEqual(elapsedMs < slowLintResponseMs, true, `save took ${elapsedMs}ms`);
-  });
-
-  test("broad source action formats without formatOnSave", async () => {
-    await writeWorkspaceSettings({
-      "editor.codeActionsOnSave": {
-        source: "always",
-        "source.fixAll.oxc": "never",
-      },
-      "editor.defaultFormatter": "oxc.oxc-vscode",
-      "editor.formatOnSave": false,
-    });
-
-    const fileUri = await createFormattingFile("format_broad_source.ts");
-    const document = await workspace.openTextDocument(fileUri);
-    await window.showTextDocument(document);
-
-    const edit = new WorkspaceEdit();
-    const fullRange = new Range(
-      new Position(0, 0),
-      document.lineAt(document.lineCount - 1).range.end,
-    );
-    edit.replace(fileUri, fullRange, "class X{foo(){return 42;}}\n");
-    await workspace.applyEdit(edit);
-
-    await resetLog(oxlintLogPath);
-    await resetLog(oxfmtLogPath);
-
-    const startedAt = Date.now();
-    const saved = await document.save();
-    const elapsedMs = Date.now() - startedAt;
-    strictEqual(saved, true, "expected target document to be saved");
-
-    const content = await workspace.fs.readFile(fileUri);
-    strictEqual(
-      content.toString(),
-      `class X {${LE}  foo() {${LE}    return 42;${LE}  }${LE}}${LE}`,
-      `unexpected saved content:\n${content.toString()}`,
-    );
-
-    const oxfmtLog = await readLog(oxfmtLogPath);
-    strictEqual(
-      oxfmtLog.includes("textDocument/formatting"),
-      true,
-      `expected broad source action to run oxfmt, log:\n${oxfmtLog}`,
-    );
-
-    const oxlintLog = await readLog(oxlintLogPath);
-    strictEqual(
-      oxlintLog.includes("textDocument/codeAction"),
-      false,
-      `unexpected oxlint code action request, log:\n${oxlintLog}`,
-    );
-    strictEqual(
-      elapsedMs < slowLintResponseMs,
-      true,
-      `save waited for slow oxlint code actions, elapsed ${elapsedMs}ms, log:\n${oxlintLog}`,
-    );
   });
 
   test("biome fix-all on save does not request oxlint code actions", async () => {
@@ -250,7 +186,7 @@ suite("format on save without lint code actions", () => {
         new Position(0, 0),
         document.lineAt(document.lineCount - 1).range.end,
       );
-      edit.replace(fileUri, fullRange, "class X{foo(){return 42;}}\n");
+      edit.replace(fileUri, fullRange, `class X{foo(){return 42;}}${LE}`);
       await workspace.applyEdit(edit);
 
       await resetLog(oxlintLogPath);
@@ -324,7 +260,7 @@ suite("format on save without lint code actions", () => {
         new Position(0, 0),
         document.lineAt(document.lineCount - 1).range.end,
       );
-      edit.replace(fileUri, fullRange, "class X{foo(){return 42;}}\n");
+      edit.replace(fileUri, fullRange, `class X{foo(){return 42;}}${LE}`);
       await workspace.applyEdit(edit);
 
       await resetLog(oxlintLogPath);

@@ -10,7 +10,6 @@ import {
   Uri,
   workspace,
 } from "vscode";
-import type { CodeActionContext } from "vscode";
 
 import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
 
@@ -38,17 +37,6 @@ formatCodeAction.command = {
   title: "Format Document",
   tooltip: "Format the document using the default formatter",
 };
-
-/** Checks whether a VS Code code-action request includes the Oxfmt format source action. */
-export function shouldProvideOxfmtCodeAction(context: CodeActionContext): boolean {
-  const requestedKind = context.only;
-  if (requestedKind === undefined) {
-    return true;
-  }
-
-  // A parent `source` request includes each child source action.
-  return formatCodeActionKind.intersects(requestedKind);
-}
 
 // This list is not used as-is for implementation to determine whether formatting processing is possible.
 const supportedExtensions = [
@@ -305,13 +293,12 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider = languages.registerCodeActionsProvider(
       this.documentSelectors,
       {
-        provideCodeActions: (doc, _range, context) => {
+        provideCodeActions: (doc, _range, _context, _token) => {
           if (
             !this.configService ||
             !this.client ||
             !this.client.isRunning() ||
             this.configService.vsCodeConfig.enableOxfmt === false ||
-            !shouldProvideOxfmtCodeAction(context) ||
             workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
           ) {
             return [];

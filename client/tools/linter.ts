@@ -42,6 +42,12 @@ const enum LspCommands {
 const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlint.config.ts,oxlint.config.mts}`;
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
+const oxlintFixAllDangerousCodeActionKind = CodeActionKind.Source.append("fixAllDangerous.oxc");
+const oxlintCodeActionKinds = [
+  CodeActionKind.QuickFix,
+  oxlintFixAllCodeActionKind,
+  oxlintFixAllDangerousCodeActionKind,
+];
 
 type CodeActionsOnSaveSetting = boolean | "always" | "explicit" | "never";
 type CodeActionsOnSave = Record<string, CodeActionsOnSaveSetting | undefined>;
@@ -53,7 +59,7 @@ function isEnabledCodeActionsOnSaveSetting(setting: CodeActionsOnSaveSetting | u
 }
 
 export function shouldCodeActionsOnSaveRequestOxlint(
-  codeActionsOnSave: CodeActionsOnSaveConfiguration | undefined,
+  codeActionsOnSave: CodeActionsOnSaveConfiguration,
 ): boolean {
   if (Array.isArray(codeActionsOnSave)) {
     return (
@@ -61,10 +67,6 @@ export function shouldCodeActionsOnSaveRequestOxlint(
       codeActionsOnSave.includes(CodeActionKind.SourceFixAll.value) ||
       codeActionsOnSave.includes(oxlintFixAllCodeActionKind.value)
     );
-  }
-
-  if (codeActionsOnSave === undefined) {
-    return false;
   }
 
   const oxlintFixAllSetting = codeActionsOnSave[oxlintFixAllCodeActionKind.value];
@@ -88,7 +90,7 @@ function shouldRunOxlintCodeActionsOnSave(document: TextDocument): boolean {
     .getConfiguration("editor", document)
     .get<CodeActionsOnSaveConfiguration>("codeActionsOnSave");
 
-  return shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave);
+  return codeActionsOnSave !== undefined && shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave);
 }
 
 export function shouldRequestOxlintCodeActions(
@@ -105,26 +107,18 @@ export function shouldRequestOxlintCodeActions(
     );
   }
 
-  const requestedKindValue = requestedKind.value;
-  // `CodeActionKind.intersects` treats `source.fixAll` as intersecting with
-  // provider-owned subkinds such as `source.fixAll.biome`. Save participants
-  // wait for those requests, so only route exact oxlint-owned source actions.
-  const requestsOxlintKind =
-    requestedKindValue === CodeActionKind.Source.value ||
-    requestedKindValue === CodeActionKind.QuickFix.value ||
-    requestedKindValue.startsWith(`${CodeActionKind.QuickFix.value}.`) ||
-    requestedKindValue === CodeActionKind.SourceFixAll.value ||
-    requestedKindValue === oxlintFixAllCodeActionKind.value;
-
+  // Oxlint advertises generic `source.fixAll`, so VS Code also routes sibling
+  // requests such as `source.fixAll.biome` to this provider. The server only
+  // handles its exact kinds and their parent requests, so filter those siblings
+  // before they can wait behind diagnostics in the LSP queue.
+  const requestsOxlintKind = oxlintCodeActionKinds.some((kind) => requestedKind.contains(kind));
   if (!requestsOxlintKind) {
     return false;
   }
 
   const isAutomaticSaveRunnableSourceAction =
     context.triggerKind === CodeActionTriggerKind.Automatic &&
-    (requestedKindValue === CodeActionKind.Source.value ||
-      requestedKindValue === CodeActionKind.SourceFixAll.value ||
-      requestedKindValue === oxlintFixAllCodeActionKind.value);
+    requestedKind.contains(oxlintFixAllCodeActionKind);
 
   // Automatic source-action requests are save-runnable. Oxlint should only
   // participate in those when save settings enable its fix-all action;
@@ -278,21 +272,14 @@ export default class LinterTool implements ToolInterface {
         onChange: true,
         onSave: true,
         onTabs: false,
-        filter: (document, mode) => {
-          if (!this.configService.shouldRequestDiagnostics(document.uri, mode)) {
-            return true;
-          }
-
-          return false;
-        },
+        filter: (document, mode) =>
+          !this.configService.shouldRequestDiagnostics(document.uri, mode),
       },
       middleware: {
         provideCodeActions: (document, range, context, token, next) => {
           const needsCodeActionsOnSaveConfig =
             context.triggerKind === CodeActionTriggerKind.Automatic &&
-            (context.only?.value === CodeActionKind.Source.value ||
-              context.only?.value === CodeActionKind.SourceFixAll.value ||
-              context.only?.value === oxlintFixAllCodeActionKind.value);
+            context.only?.contains(oxlintFixAllCodeActionKind) === true;
 
           if (
             !shouldRequestOxlintCodeActions(
