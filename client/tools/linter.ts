@@ -43,11 +43,8 @@ const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlin
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
 
-
 type CodeActionsOnSaveSetting = boolean | "always" | "explicit" | "never";
-
 type CodeActionsOnSave = Record<string, CodeActionsOnSaveSetting | undefined>;
-
 type CodeActionsOnSaveConfiguration = CodeActionsOnSave | string[];
 
 function isEnabledCodeActionsOnSaveSetting(setting: CodeActionsOnSaveSetting | undefined): boolean {

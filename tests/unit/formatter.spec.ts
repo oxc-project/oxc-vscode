@@ -16,7 +16,8 @@ suite("formatter code action routing", () => {
     strictEqual(shouldProvideOxfmtCodeAction(codeActionContext(undefined)), true);
   });
 
-  test("allows format source action requests", () => {
+  test("allows parent and format source action requests", () => {
+    strictEqual(shouldProvideOxfmtCodeAction(codeActionContext(CodeActionKind.Source)), true);
     strictEqual(
       shouldProvideOxfmtCodeAction(codeActionContext(CodeActionKind.Source.append("format"))),
       true,
@@ -27,8 +28,7 @@ suite("formatter code action routing", () => {
     );
   });
 
-  test("skips broad or unrelated code action requests", () => {
-    strictEqual(shouldProvideOxfmtCodeAction(codeActionContext(CodeActionKind.Source)), false);
+  test("skips unrelated code action requests", () => {
     strictEqual(
       shouldProvideOxfmtCodeAction(codeActionContext(CodeActionKind.SourceFixAll)),
       false,

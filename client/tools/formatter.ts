@@ -39,18 +39,15 @@ formatCodeAction.command = {
   tooltip: "Format the document using the default formatter",
 };
 
+/** Checks whether a VS Code code-action request includes the Oxfmt format source action. */
 export function shouldProvideOxfmtCodeAction(context: CodeActionContext): boolean {
   const requestedKind = context.only;
   if (requestedKind === undefined) {
     return true;
   }
 
-  // Avoid participating in broad source-action scans. Oxfmt only owns the
-  // explicit format source action; format-on-save uses the formatter provider.
-  return (
-    requestedKind.value !== CodeActionKind.Source.value &&
-    formatCodeActionKind.intersects(requestedKind)
-  );
+  // A parent `source` request includes each child source action.
+  return formatCodeActionKind.intersects(requestedKind);
 }
 
 // This list is not used as-is for implementation to determine whether formatting processing is possible.
