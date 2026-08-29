@@ -29,6 +29,7 @@ import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
+import { FixKind } from "../WorkspaceConfig";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
@@ -43,11 +44,16 @@ const oxlintConfigDefaultFilePattern = `**/{.oxlintrc.json,.oxlintrc.jsonc,oxlin
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
 const oxlintFixAllDangerousCodeActionKind = CodeActionKind.Source.append("fixAllDangerous.oxc");
-const oxlintCodeActionKinds = [
-  CodeActionKind.QuickFix,
+const oxlintSourceCodeActionKinds = [
   oxlintFixAllCodeActionKind,
   oxlintFixAllDangerousCodeActionKind,
 ];
+const oxlintCodeActionKinds = [CodeActionKind.QuickFix, ...oxlintSourceCodeActionKinds];
+const dangerousOxlintFixKinds = new Set([
+  FixKind.DangerousFix,
+  FixKind.DangerousFixOrSuggestion,
+  FixKind.All,
+]);
 
 type CodeActionsOnSaveSetting = boolean | "always" | "explicit" | "never";
 type CodeActionsOnSave = Record<string, CodeActionsOnSaveSetting | undefined>;
@@ -58,44 +64,50 @@ function isEnabledCodeActionsOnSaveSetting(setting: CodeActionsOnSaveSetting | u
   return setting === true || setting === "always" || setting === "explicit";
 }
 
+/** Checks whether save settings enable one concrete oxlint code action kind. */
 export function shouldCodeActionsOnSaveRequestOxlint(
   codeActionsOnSave: CodeActionsOnSaveConfiguration,
+  requestedKind: CodeActionKind,
 ): boolean {
   if (Array.isArray(codeActionsOnSave)) {
-    return (
-      codeActionsOnSave.includes(CodeActionKind.Source.value) ||
-      codeActionsOnSave.includes(CodeActionKind.SourceFixAll.value) ||
-      codeActionsOnSave.includes(oxlintFixAllCodeActionKind.value)
+    return codeActionsOnSave.some((configuredKind) =>
+      new CodeActionKind(configuredKind).contains(requestedKind),
     );
   }
 
-  const oxlintFixAllSetting = codeActionsOnSave[oxlintFixAllCodeActionKind.value];
-  if (oxlintFixAllSetting !== undefined) {
-    // A provider-specific setting is the user's most precise opt-in or opt-out.
-    return isEnabledCodeActionsOnSaveSetting(oxlintFixAllSetting);
+  let matchedKind: CodeActionKind | undefined;
+  let matchedSetting: CodeActionsOnSaveSetting | undefined;
+  for (const [configuredKindValue, configuredSetting] of Object.entries(codeActionsOnSave)) {
+    if (configuredSetting === undefined) {
+      continue;
+    }
+    const configuredKind = new CodeActionKind(configuredKindValue);
+    if (
+      configuredKind.contains(requestedKind) &&
+      (matchedKind === undefined || matchedKind.contains(configuredKind))
+    ) {
+      // The most specific setting overrides broader parents such as `source`.
+      matchedKind = configuredKind;
+      matchedSetting = configuredSetting;
+    }
   }
 
-  const fixAllSetting = codeActionsOnSave[CodeActionKind.SourceFixAll.value];
-  if (fixAllSetting !== undefined) {
-    // Generic fix-all is more specific than broad `source`, so it controls
-    // whether source.fixAll.oxc participates unless the oxc key overrides it.
-    return isEnabledCodeActionsOnSaveSetting(fixAllSetting);
-  }
-
-  return isEnabledCodeActionsOnSaveSetting(codeActionsOnSave[CodeActionKind.Source.value]);
+  return isEnabledCodeActionsOnSaveSetting(matchedSetting);
 }
 
-function shouldRunOxlintCodeActionsOnSave(document: TextDocument): boolean {
-  const codeActionsOnSave = workspace
+function getCodeActionsOnSaveConfiguration(
+  document: TextDocument,
+): CodeActionsOnSaveConfiguration | undefined {
+  return workspace
     .getConfiguration("editor", document)
     .get<CodeActionsOnSaveConfiguration>("codeActionsOnSave");
-
-  return codeActionsOnSave !== undefined && shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave);
 }
 
+/** Filters code action requests before they reach the oxlint language server. */
 export function shouldRequestOxlintCodeActions(
   context: CodeActionContext,
-  codeActionsOnSaveRequestsOxlint: boolean = false,
+  codeActionsOnSave?: CodeActionsOnSaveConfiguration,
+  dangerousFixesEnabled: boolean = false,
 ): boolean {
   const requestedKind = context.only;
   if (requestedKind === undefined) {
@@ -108,23 +120,28 @@ export function shouldRequestOxlintCodeActions(
   }
 
   // Oxlint advertises generic `source.fixAll`, so VS Code also routes sibling
-  // requests such as `source.fixAll.biome` to this provider. The server only
-  // handles its exact kinds and their parent requests, so filter those siblings
-  // before they can wait behind diagnostics in the LSP queue.
-  const requestsOxlintKind = oxlintCodeActionKinds.some((kind) => requestedKind.contains(kind));
-  if (!requestsOxlintKind) {
+  // requests such as `source.fixAll.biome` to this provider. Keep only oxlint's
+  // concrete kinds and their valid parents so siblings do not wait in its LSP queue.
+  const requestedOxlintKinds = oxlintCodeActionKinds.filter((kind) => requestedKind.contains(kind));
+  if (requestedOxlintKinds.length === 0) {
     return false;
   }
 
-  const isAutomaticSaveRunnableSourceAction =
-    context.triggerKind === CodeActionTriggerKind.Automatic &&
-    requestedKind.contains(oxlintFixAllCodeActionKind);
-
-  // Automatic source-action requests are save-runnable. Oxlint should only
-  // participate in those when save settings enable its fix-all action;
-  // otherwise the extension would ignore explicit provider opt-outs.
-  if (isAutomaticSaveRunnableSourceAction && !codeActionsOnSaveRequestsOxlint) {
-    return false;
+  if (context.triggerKind === CodeActionTriggerKind.Automatic) {
+    const requestedSourceKinds = requestedOxlintKinds.filter((kind) =>
+      CodeActionKind.Source.contains(kind),
+    );
+    if (requestedSourceKinds.length > 0) {
+      // A broad `source` request can include safe and dangerous fix-all actions.
+      // Keep it when any requested concrete action is enabled instead of letting
+      // an opt-out for one action suppress the other action as well.
+      return requestedSourceKinds.some(
+        (kind) =>
+          codeActionsOnSave !== undefined &&
+          (kind.value !== oxlintFixAllDangerousCodeActionKind.value || dangerousFixesEnabled) &&
+          shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave, kind),
+      );
+    }
   }
 
   return true;
@@ -279,12 +296,28 @@ export default class LinterTool implements ToolInterface {
         provideCodeActions: (document, range, context, token, next) => {
           const needsCodeActionsOnSaveConfig =
             context.triggerKind === CodeActionTriggerKind.Automatic &&
-            context.only?.contains(oxlintFixAllCodeActionKind) === true;
+            context.only !== undefined &&
+            oxlintSourceCodeActionKinds.some((kind) => context.only?.contains(kind));
+
+          const requestsDangerousFixes =
+            needsCodeActionsOnSaveConfig &&
+            context.only?.contains(oxlintFixAllDangerousCodeActionKind) === true;
+          const workspaceFolder = requestsDangerousFixes
+            ? workspace.getWorkspaceFolder(document.uri)
+            : undefined;
+          const fixKind = workspaceFolder
+            ? this.configService.getWorkspaceConfig(workspaceFolder.uri)?.fixKind
+            : undefined;
 
           if (
             !shouldRequestOxlintCodeActions(
               context,
-              needsCodeActionsOnSaveConfig && shouldRunOxlintCodeActionsOnSave(document),
+              needsCodeActionsOnSaveConfig
+                ? getCodeActionsOnSaveConfiguration(document)
+                : undefined,
+              // Do not keep a broad source request solely for an action the
+              // configured oxlint server cannot return.
+              fixKind !== null && fixKind !== undefined && dangerousOxlintFixKinds.has(fixKind),
             )
           ) {
             return [];

@@ -8,6 +8,7 @@ import {
 
 const oxlintFixAllCodeActionKind = CodeActionKind.SourceFixAll.append("oxc");
 const oxlintFixAllDangerousCodeActionKind = CodeActionKind.Source.append("fixAllDangerous.oxc");
+type CodeActionsOnSave = Record<string, boolean | "always" | "explicit" | "never">;
 
 function codeActionContext(
   only: CodeActionKind | undefined,
@@ -28,59 +29,105 @@ function diagnostic(): Diagnostic {
 suite("linter code actions on save settings", () => {
   test("allows broad source actions on save", () => {
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [CodeActionKind.Source.value]: "always",
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        { [CodeActionKind.Source.value]: "always" },
+        oxlintFixAllCodeActionKind,
+      ),
       true,
     );
   });
 
   test("allows generic and oxlint fix-all actions on save", () => {
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [CodeActionKind.SourceFixAll.value]: "explicit",
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        { [CodeActionKind.SourceFixAll.value]: "explicit" },
+        oxlintFixAllCodeActionKind,
+      ),
       true,
     );
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [oxlintFixAllCodeActionKind.value]: true,
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        { [oxlintFixAllCodeActionKind.value]: true },
+        oxlintFixAllCodeActionKind,
+      ),
       true,
     );
   });
 
   test("honors source.fixAll.oxc opt-out over broader source settings", () => {
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [CodeActionKind.Source.value]: "always",
-        [oxlintFixAllCodeActionKind.value]: "never",
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        {
+          [CodeActionKind.Source.value]: "always",
+          [oxlintFixAllCodeActionKind.value]: "never",
+        },
+        oxlintFixAllCodeActionKind,
+      ),
       false,
     );
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [CodeActionKind.SourceFixAll.value]: "always",
-        [oxlintFixAllCodeActionKind.value]: false,
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        {
+          [CodeActionKind.SourceFixAll.value]: "always",
+          [oxlintFixAllCodeActionKind.value]: false,
+        },
+        oxlintFixAllCodeActionKind,
+      ),
       false,
     );
   });
 
   test("honors source.fixAll opt-out over broad source settings", () => {
     strictEqual(
-      shouldCodeActionsOnSaveRequestOxlint({
-        [CodeActionKind.Source.value]: "always",
-        [CodeActionKind.SourceFixAll.value]: "never",
-      }),
+      shouldCodeActionsOnSaveRequestOxlint(
+        {
+          [CodeActionKind.Source.value]: "always",
+          [CodeActionKind.SourceFixAll.value]: "never",
+        },
+        oxlintFixAllCodeActionKind,
+      ),
       false,
     );
   });
 
+  test("keeps dangerous fixes enabled when normal fix-all is opted out", () => {
+    const codeActionsOnSave: CodeActionsOnSave = {
+      [CodeActionKind.Source.value]: "always",
+      [oxlintFixAllCodeActionKind.value]: "never",
+    };
+
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave, oxlintFixAllCodeActionKind),
+      false,
+    );
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint(codeActionsOnSave, oxlintFixAllDangerousCodeActionKind),
+      true,
+    );
+  });
+
   test("allows legacy array source action settings", () => {
-    strictEqual(shouldCodeActionsOnSaveRequestOxlint([CodeActionKind.Source.value]), true);
-    strictEqual(shouldCodeActionsOnSaveRequestOxlint([CodeActionKind.SourceFixAll.value]), true);
-    strictEqual(shouldCodeActionsOnSaveRequestOxlint([oxlintFixAllCodeActionKind.value]), true);
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint(
+        [CodeActionKind.Source.value],
+        oxlintFixAllDangerousCodeActionKind,
+      ),
+      true,
+    );
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint(
+        [CodeActionKind.SourceFixAll.value],
+        oxlintFixAllCodeActionKind,
+      ),
+      true,
+    );
+    strictEqual(
+      shouldCodeActionsOnSaveRequestOxlint(
+        [oxlintFixAllCodeActionKind.value],
+        oxlintFixAllCodeActionKind,
+      ),
+      true,
+    );
   });
 });
 
@@ -163,26 +210,55 @@ suite("linter code action routing", () => {
   });
 
   test("allows automatic source requests when fix-all runs on save", () => {
+    const codeActionsOnSave: CodeActionsOnSave = {
+      [oxlintFixAllCodeActionKind.value]: "explicit",
+    };
+
     strictEqual(
       shouldRequestOxlintCodeActions(
         codeActionContext(CodeActionKind.Source, CodeActionTriggerKind.Automatic),
-        true,
+        codeActionsOnSave,
       ),
       true,
     );
     strictEqual(
       shouldRequestOxlintCodeActions(
         codeActionContext(CodeActionKind.SourceFixAll, CodeActionTriggerKind.Automatic),
-        true,
+        codeActionsOnSave,
       ),
       true,
     );
     strictEqual(
       shouldRequestOxlintCodeActions(
         codeActionContext(oxlintFixAllCodeActionKind, CodeActionTriggerKind.Automatic),
-        true,
+        codeActionsOnSave,
       ),
       true,
+    );
+  });
+
+  test("allows dangerous fixes under broad source when normal fix-all is opted out", () => {
+    const codeActionsOnSave: CodeActionsOnSave = {
+      [CodeActionKind.Source.value]: "always",
+      [oxlintFixAllCodeActionKind.value]: "never",
+    };
+    const broadSourceContext = codeActionContext(
+      CodeActionKind.Source,
+      CodeActionTriggerKind.Automatic,
+    );
+
+    strictEqual(shouldRequestOxlintCodeActions(broadSourceContext, codeActionsOnSave, true), true);
+    strictEqual(
+      shouldRequestOxlintCodeActions(broadSourceContext, codeActionsOnSave, false),
+      false,
+    );
+    strictEqual(
+      shouldRequestOxlintCodeActions(
+        codeActionContext(CodeActionKind.SourceFixAll, CodeActionTriggerKind.Automatic),
+        codeActionsOnSave,
+        true,
+      ),
+      false,
     );
   });
 });
