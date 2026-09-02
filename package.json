@@ -210,6 +210,12 @@
           "default": null,
           "markdownDescription": "Forces type-aware linting. Requires the `oxlint-tsgolint` package. It is preferred to use `options.typeAware` in your configuration file"
         },
+        "oxc.runExternalCode": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": false,
+          "markdownDescription": "Allow type-aware linting to run TypeScript `contentMappers`, needed for files that are not TypeScript, like Ember's `.gts`. Requires type-aware linting. This executes code from your project, so it is ignored in untrusted workspaces and cannot be enabled from a configuration file."
+        },
         "oxc.disableNestedConfig": {
           "type": "boolean",
           "scope": "resource",
@@ -401,14 +407,15 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "The Extension will always use the Language Server shipped with the Extension.",
+      "description": "The Extension will always use the Language Server shipped with the Extension and will not run code from the project.",
       "restrictedConfigurations": [
         "oxc.path.server",
         "oxc.path.oxlint",
         "oxc.path.oxfmt",
         "oxc.path.tsgolint",
         "oxc.path.node",
-        "oxc.useExecPath"
+        "oxc.useExecPath",
+        "oxc.runExternalCode"
       ]
     }
   },

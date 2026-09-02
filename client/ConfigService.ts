@@ -68,6 +68,17 @@ export class ConfigService implements IDisposable {
     }));
   }
 
+  /**
+   * Re-read every configuration, for changes which do not emit a configuration change event,
+   * like granting workspace trust.
+   */
+  public refresh(): void {
+    this.vsCodeConfig.refresh();
+    for (const workspaceConfig of this.workspaceConfigs.values()) {
+      workspaceConfig.refresh();
+    }
+  }
+
   public addWorkspaceConfig(workspace: WorkspaceFolder): void {
     this.workspaceConfigs.set(workspace.uri.fsPath, new WorkspaceConfig(workspace));
   }
