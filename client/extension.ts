@@ -84,6 +84,20 @@ export async function activate(context: ExtensionContext) {
     }
   };
 
+  // Trust unlocks binaries from the project and `oxc.runExternalCode`, both only read when a
+  // server starts. It emits no configuration change event, so restart the tools here.
+  const onDidGrantWorkspaceTrustDispose = workspace.onDidGrantWorkspaceTrust(async () => {
+    configService.refresh();
+    outputChannelLint.info("workspace trust granted, restarting tools.");
+    outputChannelFormat.info("workspace trust granted, restarting tools.");
+    await Promise.all(
+      tools.map((tool) =>
+        restartTool(tool, tool instanceof Formatter ? outputChannelFormat : outputChannelLint),
+      ),
+    );
+  });
+  context.subscriptions.push(onDidGrantWorkspaceTrustDispose);
+
   configService.onConfigChange = async function onConfigChange(event) {
     await Promise.all(tools.map((tool) => tool.onConfigChange(event)));
 
