@@ -45,7 +45,7 @@ suite("commands", () => {
 
     if (
       process.env.SKIP_FORMATTER_TEST !== "true" &&
-      !process.env.SERVER_PATH_DEV?.includes("oxc_language_server")
+      !process.env.SERVER_PATH_DEV_OXFMT?.includes("oxc_language_server")
     ) {
       expectedCommands.push("oxc.restartServerFormatter", "oxc.toggleEnableFormatter");
     }

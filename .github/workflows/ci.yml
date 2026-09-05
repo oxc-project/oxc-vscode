@@ -70,6 +70,9 @@ jobs:
       - name: Oxfmt LSP Tests
         run: xvfb-run -a pnpm run test:oxfmt
 
+      - name: Format Save Tests
+        run: xvfb-run -a pnpm run test:format-save
+
   test-windows:
     if: ${{ github.ref_name == 'main' }}
     name: Test (windows)
@@ -101,3 +104,6 @@ jobs:
 
       - name: Oxfmt LSP Tests
         run: pnpm run test:oxfmt
+
+      - name: Format Save Tests
+        run: pnpm run test:format-save

@@ -15,6 +15,14 @@ writeFileSync(multiRootWorkspaceFile, JSON.stringify(multiRootWorkspaceConfig, n
 // Use binaries from node_modules
 const oxlintBin = path.resolve(import.meta.dirname, "node_modules/.bin/oxlint");
 const oxfmtBin = path.resolve(import.meta.dirname, "node_modules/.bin/oxfmt");
+const fakeOxlintBin = path.resolve(
+  import.meta.dirname,
+  "tests/fixtures/lsp_servers/fake_oxlint_server.js",
+);
+const fakeOxfmtBin = path.resolve(
+  import.meta.dirname,
+  "tests/fixtures/lsp_servers/fake_oxfmt_server.js",
+);
 
 const baseTest = {
   files: "out_test/integration/**/*.spec.js",
@@ -47,7 +55,7 @@ const allTestSuites = new Map([
       ...baseTest,
       env: {
         SINGLE_FOLDER_WORKSPACE: "true",
-        SERVER_PATH_DEV: oxlintBin,
+        SERVER_PATH_DEV_OXLINT: oxlintBin,
         SKIP_FORMATTER_TEST: "true",
       },
     },
@@ -59,7 +67,7 @@ const allTestSuites = new Map([
       workspaceFolder: multiRootWorkspaceFile,
       env: {
         MULTI_FOLDER_WORKSPACE: "true",
-        SERVER_PATH_DEV: oxlintBin,
+        SERVER_PATH_DEV_OXLINT: oxlintBin,
         SKIP_FORMATTER_TEST: "true",
       },
     },
@@ -73,7 +81,7 @@ const allTestSuites = new Map([
       env: {
         SINGLE_FOLDER_WORKSPACE: "true",
         OXLINT_JS_PLUGIN: "true",
-        SERVER_PATH_DEV: oxlintBin,
+        SERVER_PATH_DEV_OXLINT: oxlintBin,
         SKIP_FORMATTER_TEST: "true",
       },
     },
@@ -84,8 +92,22 @@ const allTestSuites = new Map([
       ...baseTest,
       env: {
         SINGLE_FOLDER_WORKSPACE: "true",
-        SERVER_PATH_DEV: oxfmtBin,
+        SERVER_PATH_DEV_OXFMT: oxfmtBin,
         SKIP_LINTER_TEST: "true",
+      },
+    },
+  ],
+  [
+    "format-save-path",
+    {
+      ...baseTest,
+      files: "out_test/format-save/**/*.spec.js",
+      env: {
+        SINGLE_FOLDER_WORKSPACE: "true",
+        SERVER_PATH_DEV_OXLINT: fakeOxlintBin,
+        SERVER_PATH_DEV_OXFMT: fakeOxfmtBin,
+        FAKE_OXLINT_CODE_ACTION_MS: "5000",
+        FAKE_OXLINT_DIAGNOSTIC_MS: "5000",
       },
     },
   ],

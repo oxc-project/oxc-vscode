@@ -293,7 +293,7 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider = languages.registerCodeActionsProvider(
       this.documentSelectors,
       {
-        provideCodeActions: (doc) => {
+        provideCodeActions: (doc, _range, _context, _token) => {
           if (
             !this.configService ||
             !this.client ||
@@ -317,8 +317,9 @@ export default class FormatterTool implements ToolInterface {
   }
 
   async getBinary(): Promise<BinarySearchResult | undefined> {
-    if (process.env.SERVER_PATH_DEV) {
-      return { path: process.env.SERVER_PATH_DEV, loader: "native" };
+    if (process.env.SERVER_PATH_DEV_OXFMT) {
+      const path = process.env.SERVER_PATH_DEV_OXFMT;
+      return { path, loader: path.endsWith(".js") ? "node" : "native" };
     }
     const bin = await this.configService.getOxfmtServerBinPath();
     if (bin) {
@@ -402,7 +403,6 @@ export default class FormatterTool implements ToolInterface {
     if (this.configService.vsCodeConfig.enableOxfmt) {
       await this.client.start();
     }
-
     this.updateStatusBar();
   }
 
