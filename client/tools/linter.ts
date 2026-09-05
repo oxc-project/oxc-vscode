@@ -71,7 +71,7 @@ export function shouldCodeActionsOnSaveRequestOxlint(
 ): boolean {
   if (Array.isArray(codeActionsOnSave)) {
     return codeActionsOnSave.some((configuredKind) =>
-      new CodeActionKind(configuredKind).contains(requestedKind),
+      CodeActionKind.Empty.append(configuredKind).contains(requestedKind),
     );
   }
 
@@ -81,7 +81,7 @@ export function shouldCodeActionsOnSaveRequestOxlint(
     if (configuredSetting === undefined) {
       continue;
     }
-    const configuredKind = new CodeActionKind(configuredKindValue);
+    const configuredKind = CodeActionKind.Empty.append(configuredKindValue);
     if (
       configuredKind.contains(requestedKind) &&
       (matchedKind === undefined || matchedKind.contains(configuredKind))
