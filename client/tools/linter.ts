@@ -244,7 +244,11 @@ export default class LinterTool implements ToolInterface {
     }
 
     this.disposeResources = async () => {
-      await this.client?.dispose();
+      try {
+        await this.client?.dispose();
+      } catch {
+        // do nothing, the client may already be stopped
+      }
       onNotificationDispose.dispose();
       onDeleteFilesDispose.dispose();
       activatorDispatcher?.dispose();
