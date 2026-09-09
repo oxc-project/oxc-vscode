@@ -59,7 +59,7 @@ export async function runExecutable(
     pnpArgs.push("--loader", pathToFileURL(esmLoaderPath).href);
   }
 
-  return isNode || useExecPath
+  return isNode
     ? {
         command: nodeCommand,
         args: [...pnpArgs, binary.path, "--lsp"],

@@ -8,6 +8,7 @@ import {
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
   searchEnvPath,
+  searchNodeEntryPoint,
   searchProjectNodeModulesBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
@@ -66,6 +67,20 @@ suite("findBinary", () => {
       mkdirSync(deepDir, { recursive: true });
 
       throws(() => replaceTargetFromMainToBin(path.join(deepDir, "index.js"), "oxlint"));
+    });
+  });
+
+  suite("searchNodeEntryPoint", () => {
+    test("should resolve the package's bin entry, not the .bin wrapper", async () => {
+      const result = (await searchNodeEntryPoint(binaryName))!;
+
+      strictEqual(result.loader, "node");
+      strictEqual(result.path.includes(`${path.sep}.bin${path.sep}`), false);
+      strictEqual(result.path.endsWith(`${path.sep}bin${path.sep}${binaryName}`), true);
+    });
+
+    test("should return undefined for a package that is not installed", async () => {
+      strictEqual(await searchNodeEntryPoint("non-existent-binary-package-name-12345"), undefined);
     });
   });
 

@@ -2,8 +2,9 @@ import { ConfigurationChangeEvent, Uri, workspace, WorkspaceFolder } from "vscod
 import { DiagnosticPullMode } from "vscode-languageclient";
 import {
   BinarySearchResult,
-  searchGlobalNodeModulesBin,
   searchEnvPath,
+  searchGlobalNodeModulesBin,
+  searchNodeEntryPoint,
   searchProjectNodeModulesBin,
   searchSettingsBin,
   searchYarnPnpBin,
@@ -120,6 +121,15 @@ export class ConfigService implements IDisposable {
   ): Promise<BinarySearchResult | undefined> {
     if (settingsBinary) {
       return searchSettingsBin(defaultBinaryName, settingsBinary);
+    }
+
+    // If a specific node is configured, prioritize the JS entrypoint to better ensure we use the
+    // configured node binary
+    if (this.vsCodeConfig.useExecPath || this.vsCodeConfig.nodePath) {
+      const entryPoint = await searchNodeEntryPoint(defaultBinaryName);
+      if (entryPoint) {
+        return entryPoint;
+      }
     }
 
     return (
