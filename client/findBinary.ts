@@ -11,6 +11,8 @@ export type BinarySearchResult = {
   path: string;
   loader: "node" | "native";
   yarnPnpLoaderPath?: string; // only set if loader is 'node' and found via Yarn PnP
+  vitePlus?: "lint" | "fmt";
+  cwd?: string;
 };
 
 /** @internal only used for testing */
@@ -38,32 +40,38 @@ export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: str
   throw new Error(`Could not find package.json for "${binaryName}"`);
 }
 
+function binaryCandidates(folder: string, binaryName: string): string[] {
+  const basePath = path.join(folder, binaryName);
+  if (process.platform !== "win32") {
+    return [basePath];
+  }
+  // Prefer Windows shims over the extensionless POSIX vp shim.
+  if (binaryName === "vp") {
+    return [`${basePath}.cmd`, `${basePath}.exe`, basePath];
+  }
+  return [basePath, `${basePath}.exe`];
+}
+
 async function searchNodeModulesDefaultBinPath(
   binaryName: string,
   folders: string[],
 ): Promise<BinarySearchResult | undefined> {
-  const candidates = folders.flatMap((folder) => {
-    const basePath = path.join(folder, ".bin", binaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
-  });
+  const candidates = folders.flatMap((folder) =>
+    binaryCandidates(path.join(folder, ".bin"), binaryName),
+  );
 
-  const exists = await Promise.all(
+  const binaries = await Promise.all(
     candidates.map(async (candidate) => {
       try {
         await workspace.fs.stat(Uri.file(candidate));
-        return true;
+        return { path: candidate, loader: "native" } as const;
       } catch {
-        return false;
+        return undefined;
       }
     }),
   );
 
-  const firstExistingCandidateIndex = exists.findIndex(Boolean);
-  if (firstExistingCandidateIndex === -1) {
-    return undefined;
-  }
-
-  return { path: candidates[firstExistingCandidateIndex], loader: "native" };
+  return binaries.find(Boolean);
 }
 /**
  * Returns node_modules paths derived from all package.json files found in the workspace.
@@ -202,6 +210,7 @@ export async function searchYarnPnpBin(
  */
 export async function searchGlobalNodeModulesBin(
   binaryName: string,
+  packageName = binaryName,
 ): Promise<BinarySearchResult | undefined> {
   const globalPaths = await globalNodeModulesPaths();
 
@@ -212,6 +221,23 @@ export async function searchGlobalNodeModulesBin(
   const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
   if (result) {
     return result;
+  }
+  // A package's executable can have a different name (vite-plus provides vp).
+  // Read only the global package directories, without resolving into a parent.
+  if (packageName !== binaryName) {
+    for (const globalPath of globalPaths) {
+      try {
+        const packageDir = path.join(globalPath, packageName);
+        const pkg = JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf8"));
+        const binEntry = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.[binaryName];
+        if (pkg.name !== packageName || typeof binEntry !== "string") continue;
+        const binPath = path.resolve(packageDir, binEntry);
+        // oxlint-disable-next-line no-await-in-loop -- preserve global lookup priority
+        await workspace.fs.stat(Uri.file(binPath));
+        return { path: binPath, loader: "node" };
+      } catch {}
+    }
+    return undefined;
   }
   // fallback to direct binary lookup via require.resolve
   try {
@@ -229,22 +255,20 @@ export async function searchGlobalNodeModulesBin(
  */
 export async function searchEnvPath(
   defaultBinaryName: string,
+  environment: Record<string, string | undefined> = env,
 ): Promise<BinarySearchResult | undefined> {
-  const envPath = env.PATH;
+  const envPath = environment.PATH;
 
   if (!envPath) {
     return undefined;
   }
 
-  // generate candidate paths by joining each PATH entry with the binary name
-  // on Windows, also consider the .exe extension
+  // Ignore empty PATH entries and preserve directory and executable priority.
   const candidates = envPath.split(path.delimiter).flatMap((folder) => {
-    // filter out empty entries which can occur if PATH starts or ends with a delimiter
     if (!folder) {
       return [];
     }
-    const basePath = path.join(folder, defaultBinaryName);
-    return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    return binaryCandidates(folder, defaultBinaryName);
   });
 
   const binary = await Promise.all(
@@ -270,6 +294,7 @@ export async function searchEnvPath(
 export async function searchSettingsBin(
   defaultBinaryName: string,
   settingsBinary: string,
+  cwd = workspace.workspaceFolders?.[0]?.uri.fsPath,
 ): Promise<BinarySearchResult | undefined> {
   if (!workspace.isTrusted) {
     return;
@@ -281,7 +306,6 @@ export async function searchSettingsBin(
   }
 
   if (!path.isAbsolute(settingsBinary)) {
-    const cwd = workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!cwd) {
       return undefined;
     }
@@ -298,7 +322,22 @@ export async function searchSettingsBin(
     settingsBinary.endsWith(".js") ||
     settingsBinary.endsWith(".cjs") ||
     settingsBinary.endsWith(".mjs") ||
-    settingsBinary.endsWith(`${defaultBinaryName}${path.sep}bin${path.sep}${defaultBinaryName}`);
+    settingsBinary.endsWith(`${defaultBinaryName}${path.sep}bin${path.sep}${defaultBinaryName}`) ||
+    (defaultBinaryName === "vp" && settingsBinary.endsWith(path.join("vite-plus", "bin", "vp")));
+
+  // npm creates both a POSIX shim and a .cmd shim on Windows. Prefer the
+  // latter when the configured vp path omits the extension.
+  if (
+    process.platform === "win32" &&
+    defaultBinaryName === "vp" &&
+    !isNode &&
+    !path.extname(settingsBinary)
+  ) {
+    try {
+      await workspace.fs.stat(Uri.file(`${settingsBinary}.cmd`));
+      return { path: `${settingsBinary}.cmd`, loader: "native" };
+    } catch {}
+  }
 
   try {
     await workspace.fs.stat(Uri.file(settingsBinary));
@@ -321,8 +360,21 @@ export async function searchSettingsBin(
   return undefined;
 }
 
+let cachedGlobalNodeModulesPaths: Promise<string[]> | undefined;
+
+/** Refresh package-manager locations on an explicit server restart. */
+export function clearGlobalNodeModulesPathsCache(): void {
+  cachedGlobalNodeModulesPaths = undefined;
+}
+
+function globalNodeModulesPaths(): Promise<string[]> {
+  // Lint and format share the pending lookup and its result across navigation.
+  // Only locations are cached; binary searches still check the filesystem.
+  return (cachedGlobalNodeModulesPaths ??= resolveGlobalNodeModulesPaths());
+}
+
 // copied from: https://github.com/biomejs/biome-vscode/blob/ae9b6df2254d0ff8ee9d626554251600eb2ca118/src/locator.ts#L28-L49
-async function globalNodeModulesPaths(): Promise<string[]> {
+async function resolveGlobalNodeModulesPaths(): Promise<string[]> {
   const npmGlobalNodeModulesPath = await safeSpawnSync("npm", ["root", "-g"]);
   const pnpmGlobalNodeModulesPath = await safeSpawnSync("pnpm", ["root", "-g"]);
   const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");
@@ -334,12 +386,10 @@ async function globalNodeModulesPaths(): Promise<string[]> {
 
 // only use this function with internal code, because it executes shell commands
 // which could be a security risk if the command or args are user-controlled
-const safeSpawnSync = async (
+async function safeSpawnSync(
   command: string,
   args: readonly string[] = [],
-): Promise<string | undefined> => {
-  let output: string | undefined;
-
+): Promise<string | undefined> {
   try {
     const result = spawnSync(command, args, {
       shell: true,
@@ -348,14 +398,10 @@ const safeSpawnSync = async (
     });
 
     if (result.error || result.status !== 0) {
-      output = undefined;
-    } else {
-      const trimmed = result.stdout.trim();
-      output = trimmed ? trimmed : undefined;
+      return undefined;
     }
+    return result.stdout.trim() || undefined;
   } catch {
-    output = undefined;
+    return undefined;
   }
-
-  return output;
-};
+}

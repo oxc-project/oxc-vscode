@@ -22,7 +22,15 @@ export async function getShellEnv(): Promise<Record<string, string | undefined>>
 
   // windows electron app does not have the problem of individual shell environment, as it inherits the environment from the parent process.
   if (process.platform === "win32") {
-    cachedEnv = Promise.resolve({ ...process.env });
+    // Plain objects lose process.env's case-insensitive lookup on Windows.
+    // Normalize PATH so discovery and launch use the same value.
+    const windowsEnv = Object.fromEntries(
+      Object.entries(process.env).map(([key, value]) => [
+        key.toUpperCase() === "PATH" ? "PATH" : key,
+        value,
+      ]),
+    );
+    cachedEnv = Promise.resolve(windowsEnv);
     return cachedEnv;
   }
 

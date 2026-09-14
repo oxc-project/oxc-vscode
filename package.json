@@ -216,7 +216,7 @@
           "type": "boolean",
           "scope": "resource",
           "default": false,
-          "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used."
+          "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used. The extension always sends `true` when using `vp lint --lsp`."
         },
         "oxc.fixKind": {
           "type": [
@@ -301,7 +301,7 @@
           "type": "boolean",
           "scope": "resource",
           "default": false,
-          "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.fmt.configPath` (if any) will be used."
+          "markdownDescription": "Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.fmt.configPath` (if any) will be used. The extension always sends `true` when using `vp fmt --lsp`."
         },
         "oxc.suppressProgramErrors": {
           "type": "boolean",
@@ -325,6 +325,33 @@
           "type": "string",
           "scope": "window",
           "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`."
+        },
+        "oxc.lint.binarySource": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "vite-plus",
+            "oxc"
+          ],
+          "scope": "resource",
+          "default": "auto",
+          "markdownDescription": "Select the linter source. `auto` detects a direct `vite-plus` dependency or uses `oxc.path.vp`, otherwise it finds standalone Oxlint. `vite-plus` selects `vp lint --lsp` without dependency detection. `oxc` finds standalone Oxlint and ignores `oxc.path.vp`. An explicit `oxc.path.oxlint` takes priority."
+        },
+        "oxc.fmt.binarySource": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "vite-plus",
+            "oxc"
+          ],
+          "scope": "resource",
+          "default": "auto",
+          "markdownDescription": "Select the formatter source. `auto` detects a direct `vite-plus` dependency or uses `oxc.path.vp`, otherwise it finds standalone Oxfmt. `vite-plus` selects `vp fmt --lsp` without dependency detection. `oxc` finds standalone Oxfmt and ignores `oxc.path.vp`. An explicit `oxc.path.oxfmt` takes priority."
+        },
+        "oxc.path.vp": {
+          "type": "string",
+          "scope": "resource",
+          "markdownDescription": "Path to a `vp` executable. Relative paths use the workspace folder. Setting this path selects Vite+ without dependency detection for tools whose `binarySource` is `auto` or `vite-plus`. Tools whose `binarySource` is `oxc` ignore this path. Explicit `oxc.path.oxlint` and `oxc.path.oxfmt` settings take priority."
         },
         "oxc.path.tsgolint": {
           "type": "string",
@@ -410,6 +437,9 @@
         "oxc.path.oxfmt",
         "oxc.path.tsgolint",
         "oxc.path.node",
+        "oxc.path.vp",
+        "oxc.lint.binarySource",
+        "oxc.fmt.binarySource",
         "oxc.useExecPath"
       ]
     }
