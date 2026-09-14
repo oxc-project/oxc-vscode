@@ -1,8 +1,8 @@
 import { strictEqual } from "assert";
-import { workspace } from "vscode";
+import { Uri, workspace } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
-import { sep } from "node:path";
+import { join, sep } from "node:path";
 
 const conf = workspace.getConfiguration("oxc");
 
@@ -65,6 +65,35 @@ suite("ConfigService", () => {
         true,
         "path should end with oxfmt/bin/oxfmt",
       );
+    });
+
+    test("prefers the JavaScript entry point when a runtime is configured", async () => {
+      const service = new ConfigService();
+      // the wrapper a package manager writes, which normally wins the search
+      const wrapperPath = join(WORKSPACE_FOLDER.uri.fsPath, "node_modules", ".bin", "oxlint");
+      await workspace.fs.writeFile(Uri.file(wrapperPath), new Uint8Array());
+
+      try {
+        const wrapper = (await service.getOxlintServerBinPath())!;
+        strictEqual(wrapper.loader, "native");
+        strictEqual(wrapper.path, wrapperPath);
+
+        // a wrapper runs whichever node it finds, so it cannot honor a configured runtime
+        await conf.update("useExecPath", true);
+        const withExecPath = (await service.getOxlintServerBinPath())!;
+        strictEqual(withExecPath.loader, "node");
+        strictEqual(withExecPath.path.endsWith(`oxlint${sep}bin${sep}oxlint`), true);
+        await conf.update("useExecPath", undefined);
+
+        await conf.update("path.node", "/usr/bin/node");
+        const withNodePath = (await service.getOxlintServerBinPath())!;
+        strictEqual(withNodePath.loader, "node");
+        strictEqual(withNodePath.path.endsWith(`oxlint${sep}bin${sep}oxlint`), true);
+      } finally {
+        await conf.update("useExecPath", undefined);
+        await conf.update("path.node", undefined);
+        await workspace.fs.delete(Uri.file(wrapperPath));
+      }
     });
 
     test("resolves relative server path with workspace folder", async () => {
