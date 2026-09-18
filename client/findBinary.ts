@@ -113,6 +113,16 @@ export async function searchProjectNodeModulesBin(
   }
 
   // fallback to direct binary lookup via require.resolve
+  return searchNodeEntryPoint(binaryName);
+}
+
+/**
+ * Search for the binary's JavaScript entry point, the target of its package.json `bin` field.
+ * Returns undefined if not found.
+ */
+export async function searchNodeEntryPoint(
+  binaryName: string,
+): Promise<BinarySearchResult | undefined> {
   try {
     const resolvedPath = replaceTargetFromMainToBin(
       require.resolve(binaryName, {
@@ -120,6 +130,7 @@ export async function searchProjectNodeModulesBin(
       }),
       binaryName,
     );
+    await workspace.fs.stat(Uri.file(resolvedPath));
     return { path: resolvedPath, loader: "node" };
   } catch {}
 }
