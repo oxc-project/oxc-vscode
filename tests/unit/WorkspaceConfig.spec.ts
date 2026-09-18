@@ -1,6 +1,6 @@
 import * as path from "node:path";
-import { strictEqual } from "assert";
-import { ConfigurationTarget, workspace } from "vscode";
+import { ok, strictEqual } from "assert";
+import { ConfigurationTarget, extensions, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { FixKind, RuleCustomization, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
@@ -11,6 +11,7 @@ const keys = [
   "tsConfigPath",
   "unusedDisableDirectives",
   "typeAware",
+  "runExternalCode",
   "disableNestedConfig",
   "fixKind",
   "lint.customization",
@@ -47,6 +48,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.tsConfigPath, null);
     strictEqual(config.unusedDisableDirectives, null);
     strictEqual(config.typeAware, null);
+    strictEqual(config.runExternalCode, false);
     strictEqual(config.disableNestedConfig, false);
     strictEqual(config.fixKind, null);
     strictEqual(config.rulesCustomization, null);
@@ -74,6 +76,7 @@ suite("WorkspaceConfig", () => {
       config.updateTsConfigPath("./tsconfig.json"),
       config.updateUnusedDisableDirectives("deny"),
       config.updateTypeAware(true),
+      config.updateRunExternalCode(true),
       config.updateDisableNestedConfig(true),
       config.updateFixKind(FixKind.DangerousFix),
       config.updateRulesCustomization({ "some.rule": { autofix: false } }),
@@ -88,6 +91,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(wsConfig.get("tsConfigPath"), "./tsconfig.json");
     strictEqual(wsConfig.get("unusedDisableDirectives"), "deny");
     strictEqual(wsConfig.get("typeAware"), true);
+    strictEqual(wsConfig.get("runExternalCode"), true);
     strictEqual(wsConfig.get("disableNestedConfig"), true);
     strictEqual(wsConfig.get("fixKind"), "dangerous_fix");
     strictEqual(
@@ -109,6 +113,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.tsConfigPath, undefined);
     strictEqual(oxlintConfig.unusedDisableDirectives, undefined);
     strictEqual(oxlintConfig.typeAware, undefined);
+    strictEqual(oxlintConfig.runExternalCode, false);
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, undefined);
     strictEqual(oxlintConfig.rulesCustomization, undefined);
@@ -119,6 +124,7 @@ suite("WorkspaceConfig", () => {
       config.updateTsConfigPath("./tsconfig.json"),
       config.updateUnusedDisableDirectives("deny"),
       config.updateTypeAware(true),
+      config.updateRunExternalCode(true),
       config.updateDisableNestedConfig(true),
       config.updateFixKind(FixKind.DangerousFix),
       config.updateFormattingConfigPath("./oxfmt.json"),
@@ -132,9 +138,20 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfigUpdated.tsConfigPath, "./tsconfig.json");
     strictEqual(oxlintConfigUpdated.unusedDisableDirectives, "deny");
     strictEqual(oxlintConfigUpdated.typeAware, true);
+    // the test workspace is trusted, otherwise this stays `false`
+    strictEqual(oxlintConfigUpdated.runExternalCode, true);
     strictEqual(oxlintConfigUpdated.disableNestedConfig, true);
     strictEqual(oxlintConfigUpdated.fixKind, "dangerous_fix");
     strictEqual(oxlintConfigUpdated.rulesCustomization!["some.rule"]?.autofix, false);
+  });
+
+  // VS Code ignores a workspace-provided value while untrusted only for settings listed here.
+  test("runExternalCode is restricted in untrusted workspaces", () => {
+    const packageJSON = extensions.getExtension("oxc.oxc-vscode")!.packageJSON;
+    const restricted: string[] =
+      packageJSON.capabilities.untrustedWorkspaces.restrictedConfigurations;
+
+    ok(restricted.includes("oxc.runExternalCode"));
   });
 
   test("toOxfmtConfig method", async () => {

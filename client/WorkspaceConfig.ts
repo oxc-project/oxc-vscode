@@ -71,6 +71,16 @@ interface WorkspaceConfigInterface {
   typeAware?: boolean | null;
 
   /**
+   * Whether type-aware linting may execute TypeScript `contentMappers` from the workspace.
+   * Only ever `true` in a trusted workspace.
+   *
+   * `oxc.runExternalCode`
+   *
+   * @default false
+   */
+  runExternalCode?: boolean;
+
+  /**
    * Disable nested config files detection
    * `oxc.disableNestedConfig`
    * @default false
@@ -131,6 +141,7 @@ export class WorkspaceConfig {
   private _runTrigger: DiagnosticPullMode = DiagnosticPullMode.onType;
   private _unusedDisableDirectives: UnusedDisableDirectives | null = null;
   private _typeAware: boolean | null = null;
+  private _runExternalCode: boolean = false;
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind | null = null;
   private _rulesCustomization: Record<string, RuleCustomization> | null = null;
@@ -169,6 +180,10 @@ export class WorkspaceConfig {
     this._unusedDisableDirectives =
       this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
     this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
+    // Permission to execute code from the project. `scope: resource` lets a checked-in
+    // `.vscode/settings.json` ask for it, so an untrusted workspace never gets it.
+    this._runExternalCode =
+      workspace.isTrusted && (this.configuration.get<boolean>("runExternalCode") ?? false);
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.getResolvedPathSetting("fmt.configPath");
@@ -228,6 +243,9 @@ export class WorkspaceConfig {
       return true;
     }
     if (event.affectsConfiguration(`${ConfigService.namespace}.typeAware`, this.workspace)) {
+      return true;
+    }
+    if (event.affectsConfiguration(`${ConfigService.namespace}.runExternalCode`, this.workspace)) {
       return true;
     }
     if (
@@ -314,6 +332,15 @@ export class WorkspaceConfig {
     return this.configuration.update("typeAware", value, ConfigurationTarget.WorkspaceFolder);
   }
 
+  get runExternalCode(): boolean {
+    return this._runExternalCode;
+  }
+
+  updateRunExternalCode(value: boolean): PromiseLike<void> {
+    this._runExternalCode = value && workspace.isTrusted;
+    return this.configuration.update("runExternalCode", value, ConfigurationTarget.WorkspaceFolder);
+  }
+
   get disableNestedConfig(): boolean {
     return this._disableNestedConfig;
   }
@@ -381,6 +408,7 @@ export class WorkspaceConfig {
       tsConfigPath: this.tsConfigPath ?? undefined,
       unusedDisableDirectives: this.unusedDisableDirectives ?? undefined,
       typeAware: this.typeAware ?? undefined,
+      runExternalCode: this.runExternalCode,
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind ?? undefined,
       rulesCustomization: this.rulesCustomization ?? undefined,
