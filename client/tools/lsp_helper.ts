@@ -4,6 +4,7 @@ import { LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
 import { getShellEnv } from "../getShellEnv";
+import { resolveVitePlusNodeEntry } from "../resolveVitePlusNodeEntry";
 
 export async function runExecutable(
   binary: BinarySearchResult,
@@ -12,6 +13,12 @@ export async function runExecutable(
   tsgolintPath?: string,
   suppressProgramErrors?: boolean,
 ): Promise<Executable> {
+  if (binary.vitePlus && useExecPath && binary.loader === "native") {
+    const nodeEntry = resolveVitePlusNodeEntry(binary.path);
+    if (nodeEntry) {
+      binary = { ...binary, path: nodeEntry, loader: "node" };
+    }
+  }
   const shellEnv = await getShellEnv();
 
   const serverEnv: Record<string, string> = {
@@ -26,10 +33,6 @@ export async function runExecutable(
   if (suppressProgramErrors) {
     serverEnv.OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS = "true";
   }
-  // when the binary path ends with `oxlint/bin/oxlint` or a common js extension, we should run it with `node`
-  // the path is defined in `ConfigService.searchNodeModulesBin`
-  // Probably it would be better to read the shebang for unknown extensions, and run with `node` if the shebang contains `node`,
-  // but for now we can just check for common node extensions and the known path for `oxlint`
   const isNode = binary.loader === "node";
 
   let nodeCommand: string;
@@ -46,44 +49,49 @@ export async function runExecutable(
     serverEnv.PATH = `${nodeDir}${path.delimiter}${serverEnv.PATH ?? ""}`;
   }
 
-  const isWindows = process.platform === "win32";
+  const args = binary.vitePlus ? [binary.vitePlus, "--lsp"] : ["--lsp"];
 
-  // In Yarn PnP environments, inject the PnP loaders so that both CJS require()
-  // and ESM import calls can resolve dependencies through PnP.
-  // --require .pnp.cjs: patches CJS resolution (e.g., oxlint's NAPI-RS bindings via createRequire)
-  // --loader .pnp.loader.mjs: patches ESM resolution (e.g., oxfmt's tinypool import)
-  const pnpArgs: string[] = [];
-  if (isNode && binary.yarnPnpLoaderPath) {
-    pnpArgs.push("--require", binary.yarnPnpLoaderPath);
-    const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
-    pnpArgs.push("--loader", pathToFileURL(esmLoaderPath).href);
+  if (isNode || (useExecPath && !binary.vitePlus)) {
+    const nodeArgs = [binary.path, ...args];
+    // Yarn PnP needs loaders for both CJS require() and ESM imports.
+    if (isNode && binary.yarnPnpLoaderPath) {
+      const esmLoaderPath = path.join(path.dirname(binary.yarnPnpLoaderPath), ".pnp.loader.mjs");
+      nodeArgs.unshift(
+        "--require",
+        binary.yarnPnpLoaderPath,
+        "--loader",
+        pathToFileURL(esmLoaderPath).href,
+      );
+    }
+
+    return {
+      command: nodeCommand,
+      args: nodeArgs,
+      options: {
+        cwd: binary.cwd,
+        env: serverEnv,
+      },
+    };
   }
 
-  return isNode || useExecPath
-    ? {
-        command: nodeCommand,
-        args: [...pnpArgs, binary.path, "--lsp"],
-        options: {
-          env: serverEnv,
-        },
-      }
-    : {
-        // On Windows with shell, quote the command path to handle spaces in usernames/paths
-        command: isWindows ? `"${binary.path}"` : binary.path,
-        args: ["--lsp"],
-        options: {
-          // On Windows we need to run the binary in a shell to be able to execute the shell npm bin script.
-          // Searching for the right `.exe` file inside `node_modules/` is not reliable as it depends on
-          // the package manager used (npm, yarn, pnpm, etc) and the package version.
-          // The npm bin script is a shell script that points to the actual binary.
-          // Security: We validated the user defined binary path in `configService.searchBinaryPath()`.
-          shell: isWindows,
-          env: serverEnv,
-        },
-      };
+  // Keep native vp binaries and unresolved shell shims out of the Node launch path.
+  const isWindows = process.platform === "win32";
+  return {
+    // Windows package-manager shims need a shell; quote paths that can contain spaces.
+    command: isWindows ? `"${binary.path}"` : binary.path,
+    args,
+    options: {
+      cwd: binary.cwd,
+      shell: isWindows,
+      env: serverEnv,
+    },
+  };
 }
 
-export function onClientNotification(params: ShowMessageParams, outputChannel: LogOutputChannel) {
+export function onClientNotification(
+  params: ShowMessageParams,
+  outputChannel: LogOutputChannel,
+): void {
   switch (params.type) {
     case MessageType.Debug:
       outputChannel.debug(params.message);

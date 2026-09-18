@@ -29,7 +29,7 @@ export default interface ToolInterface {
   /**
    * Restarts the tool, cleaning up resources and reinitializing with the current configuration.
    */
-  restart(): Promise<void>;
+  restart(onlyIfBinaryChanged?: boolean): Promise<void>;
 
   /**
    * Handles configuration changes.

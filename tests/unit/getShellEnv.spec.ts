@@ -1,18 +1,18 @@
 import { strictEqual } from "assert";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
+import { mockProcessEnv, mockProcessPlatform } from "../processMocks";
 
 type GetShellEnvModule = {
   getShellEnv: () => Promise<Record<string, string | undefined>>;
 };
 
-async function loadFreshGetShellEnvModule(): Promise<GetShellEnvModule> {
-  const timestamp = Date.now();
-  // append a query parameter to force a fresh import of the module to reset the cachedEnv variable
-  const module = await import(`../../client/getShellEnv.ts?ts=${timestamp}`);
+let moduleId = 0;
 
-  return module;
+async function loadFreshGetShellEnvModule(): Promise<GetShellEnvModule> {
+  // append a query parameter to force a fresh import of the module to reset the cachedEnv variable
+  return import(`../../client/getShellEnv.ts?testModule=${moduleId++}`);
 }
 
 function createMockShellScript(dir: string, name: string, scriptBody: string): string {
@@ -23,20 +23,19 @@ function createMockShellScript(dir: string, name: string, scriptBody: string): s
 
 suite("getShellEnv", () => {
   let tempDir: string;
-  const originalPlatform = process.platform;
-  const originalEnv = process.env;
+  const setPlatform = mockProcessPlatform();
+  mockProcessEnv();
 
   setup(() => {
     tempDir = mkdtempSync(path.join(tmpdir(), "get-shell-env-test-"));
   });
 
   teardown(() => {
-    Object.defineProperty(process, "platform", { value: originalPlatform });
-    process.env = originalEnv;
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
-  test("returns process.env directly on win32", async () => {
-    Object.defineProperty(process, "platform", { value: "win32" });
+  test("copies process.env on win32", async () => {
+    setPlatform("win32");
     process.env.GET_SHELL_ENV_TEST_KEY = "windows-fast-path";
     process.env.SHELL = path.join(tempDir, "does-not-matter-on-win32");
 
@@ -45,6 +44,21 @@ suite("getShellEnv", () => {
 
     strictEqual(env.GET_SHELL_ENV_TEST_KEY, "windows-fast-path");
   });
+
+  for (const key of ["Path", "PATH", "pAtH"]) {
+    test(`normalizes ${key} in the Windows environment copy`, async () => {
+      setPlatform("win32");
+      process.env = { [key]: tempDir, KEEP_ME: "unchanged" };
+      const { getShellEnv } = await loadFreshGetShellEnvModule();
+      const env = await getShellEnv();
+
+      strictEqual(env.PATH, tempDir);
+      strictEqual(env.KEEP_ME, "unchanged");
+      strictEqual(Object.keys(env).filter((name) => name.toUpperCase() === "PATH").length, 1);
+      strictEqual(process.env[key], tempDir, "the original environment must not change");
+      strictEqual(Object.keys(process.env)[0], key);
+    });
+  }
 
   test("parses shell output into env object", async function () {
     if (process.platform === "win32") {

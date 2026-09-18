@@ -18,6 +18,9 @@ suite("VSCodeConfig", () => {
     "path.node",
     "useExecPath",
     "suppressProgramErrors",
+    "path.vp",
+    "lint.binarySource",
+    "fmt.binarySource",
   ];
   setup(async () => {
     await Promise.all(keys.map((key) => conf.update(key, undefined)));
@@ -39,6 +42,8 @@ suite("VSCodeConfig", () => {
     strictEqual(config.binPathTsGoLint, "");
     strictEqual(config.nodePath, "");
     strictEqual(config.useExecPath, false);
+    strictEqual(conf.get("lint.binarySource"), "auto");
+    strictEqual(conf.get("fmt.binarySource"), "auto");
     strictEqual(
       config.suppressProgramErrors,
       false,
@@ -109,6 +114,9 @@ suite("VSCodeConfig", () => {
       { key: "path.tsgolint", affects: true },
       { key: "path.node", affects: true },
       { key: "useExecPath", affects: true },
+      { key: "path.vp", affects: true },
+      { key: "lint.binarySource", affects: true },
+      { key: "fmt.binarySource", affects: false },
       { key: "requireConfig", affects: false },
       { key: "path.oxfmt", affects: false },
     ];
@@ -136,6 +144,9 @@ suite("VSCodeConfig", () => {
       { key: "path.oxfmt", affects: true },
       { key: "path.node", affects: true },
       { key: "useExecPath", affects: true },
+      { key: "path.vp", affects: true },
+      { key: "fmt.binarySource", affects: true },
+      { key: "lint.binarySource", affects: false },
       { key: "path.tsgolint", affects: false },
       { key: "requireConfig", affects: false },
       { key: "path.oxlint", affects: false },

@@ -154,6 +154,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   private effectsGeneralLSPConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.node`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.path.vp`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.useExecPath`)
     );
   }
@@ -161,6 +162,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   effectsOxlintConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.oxlint`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.lint.binarySource`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.path.tsgolint`) ||
       this.effectsGeneralLSPConnection(event)
     );
@@ -169,6 +171,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   effectsOxfmtConnection(event: ConfigurationChangeEvent): boolean {
     return (
       event.affectsConfiguration(`${ConfigService.namespace}.path.oxfmt`) ||
+      event.affectsConfiguration(`${ConfigService.namespace}.fmt.binarySource`) ||
       this.effectsGeneralLSPConnection(event)
     );
   }
