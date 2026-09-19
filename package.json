@@ -126,14 +126,14 @@
         "oxc.enable.oxlint": {
           "type": "boolean",
           "default": true,
-          "scope": "window",
-          "markdownDescription": "Enable oxlint (linter). Falls back to `oxc.enable` if not set."
+          "scope": "resource",
+          "markdownDescription": "Enable oxlint (linter). Falls back to `oxc.enable` if not set. Can be set per workspace folder, see [Enabling and disabling per workspace folder](#enabling-and-disabling-per-workspace-folder)."
         },
         "oxc.enable.oxfmt": {
           "type": "boolean",
           "default": true,
-          "scope": "window",
-          "markdownDescription": "Enable oxfmt (formatter). Falls back to `oxc.enable` if not set."
+          "scope": "resource",
+          "markdownDescription": "Enable oxfmt (formatter). Falls back to `oxc.enable` if not set. Can be set per workspace folder, see [Enabling and disabling per workspace folder](#enabling-and-disabling-per-workspace-folder)."
         },
         "oxc.enable": {
           "type": [
@@ -141,14 +141,14 @@
             "null"
           ],
           "default": null,
-          "scope": "window",
-          "markdownDescription": "This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`."
+          "scope": "resource",
+          "markdownDescription": "This is a master toggle for both `oxc.enable.oxlint` and `oxc.enable.oxfmt`. See [Enabling and disabling per workspace folder](#enabling-and-disabling-per-workspace-folder) for its precedence."
         },
         "oxc.requireConfig": {
           "scope": "resource",
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Start the language server only when a `.oxlintrc.json(c)` or `oxlint.config.ts` file exists in one of the workspaces."
+          "markdownDescription": "Handle a workspace folder only when an oxlint configuration file exists inside it. Evaluated per workspace folder, see [Enabling and disabling per workspace folder](#enabling-and-disabling-per-workspace-folder)."
         },
         "oxc.trace.server": {
           "type": "string",
@@ -214,7 +214,7 @@
               }
             ]
           },
-          "markdownDescription": "Additional project roots below this workspace folder. Every entry is handled by the language server as if it were its own workspace folder, like `eslint.workingDirectories`. \n\nAccepted forms: a directory relative to the workspace folder (`\"packages/a\"`) or an object with the same meaning (`{ \"directory\": \"client\" }`, accepting an ignored `\"!cwd\"` flag). Each directory has to exist and stay inside the workspace folder; `..`, absolute paths and `.` are rejected, and glob characters are taken literally, so globs are not supported yet. \n\nA working directory is linted and formatted exactly as if it were opened alone: it does its own configuration file lookup, and `tsgolint` and JS plugins are resolved from it. A relative `oxc.configPath`, `oxc.tsConfigPath` or `oxc.fmt.configPath` set at the workspace folder level resolves inside each working directory; a value set in the `.code-workspace` file is resolved to an absolute path and therefore applies everywhere. \n\nRequires oxlint/oxfmt versions that support `workingDirectories` (see oxc PR <PENDING>). See <https://github.com/oxc-project/oxc-vscode/issues/370>."
+          "markdownDescription": "Additional project roots below this workspace folder, each one handled by the language server as if it were its own workspace folder (like `eslint.workingDirectories`). See [`oxc.workingDirectories`](#oxcworkingdirectories) for the accepted forms and the requirements."
         },
         "oxc.unusedDisableDirectives": {
           "type": [

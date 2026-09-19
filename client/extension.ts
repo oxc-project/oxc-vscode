@@ -48,6 +48,9 @@ export async function activate(context: ExtensionContext) {
       for (const folder of event.removed) {
         configService.removeWorkspaceConfig(folder);
       }
+
+      // the workspace folders decide which documents every tool handles
+      await Promise.all(tools.map((tool) => tool.onWorkspaceFoldersChange(event)));
     },
   );
 

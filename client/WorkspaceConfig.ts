@@ -1,8 +1,10 @@
 import * as path from "node:path";
 import { ConfigurationChangeEvent, ConfigurationTarget, workspace, WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
-import { ConfigService } from "./ConfigService";
+import { affectsClientState, ConfigService } from "./ConfigService";
 import { substitutePathVariables } from "./PathVariables";
+import type { OxcTool } from "./types";
+import { resolveEnabledTools } from "./VSCodeConfig";
 
 export const oxlintConfigFileName = ".oxlintrc.json";
 
@@ -157,6 +159,8 @@ export class WorkspaceConfig {
   private _fixKind: FixKind | null = null;
   private _rulesCustomization: Record<string, RuleCustomization> | null = null;
   private _workingDirectories: WorkingDirectory[] = [];
+  private _enabled: Record<OxcTool, boolean> = { oxlint: true, oxfmt: true };
+  private _requireConfig: boolean = false;
 
   private _formattingConfigPath: string | null = null;
   private _formattingDisableNestedConfig: boolean = false;
@@ -170,37 +174,40 @@ export class WorkspaceConfig {
   }
 
   public refresh(): void {
-    const flags = this.configuration.get<Record<string, string>>("flags") ?? {};
+    const configuration = this.configuration;
+    const flags = configuration.get<Record<string, string>>("flags") ?? {};
 
     // `configuration.get` takes the default value from the package.json, which is `null`.
     // We need to check the deprecated flags.fix_kind for the real default value.
-    let fixKind = this.configuration.get<FixKind | null>("fixKind");
+    let fixKind = configuration.get<FixKind | null>("fixKind");
     if (fixKind === null && flags.fix_kind !== undefined) {
       fixKind = flags.fix_kind as FixKind;
     }
 
     // the same for disabledNestedConfig
-    let disableNestedConfig = this.configuration.get<boolean>("disableNestedConfig");
+    let disableNestedConfig = configuration.get<boolean>("disableNestedConfig");
     if (disableNestedConfig === false && flags.disable_nested_config === "true") {
       disableNestedConfig = true;
     }
 
     this._runTrigger =
-      this.configuration.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
+      configuration.get<DiagnosticPullMode>("lint.run") || DiagnosticPullMode.onType;
     this._configPath = this.getResolvedPathSetting("configPath");
     this._tsConfigPath = this.getResolvedPathSetting("tsConfigPath");
     this._unusedDisableDirectives =
-      this.configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
-    this._typeAware = this.configuration.get<boolean | null>("typeAware") ?? null;
+      configuration.get<UnusedDisableDirectives | null>("unusedDisableDirectives") ?? null;
+    this._typeAware = configuration.get<boolean | null>("typeAware") ?? null;
     this._disableNestedConfig = disableNestedConfig ?? false;
     this._fixKind = fixKind ?? null;
     this._formattingConfigPath = this.getResolvedPathSetting("fmt.configPath");
     this._formattingDisableNestedConfig =
-      this.configuration.get<boolean>("fmt.disableNestedConfig") ?? false;
+      configuration.get<boolean>("fmt.disableNestedConfig") ?? false;
     this._rulesCustomization =
-      this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
-    this._workingDirectories =
-      this.configuration.get<WorkingDirectory[]>("workingDirectories") ?? [];
+      configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
+    this._workingDirectories = configuration.get<WorkingDirectory[]>("workingDirectories") ?? [];
+
+    this._enabled = resolveEnabledTools(configuration);
+    this._requireConfig = configuration.get<boolean>("requireConfig") ?? false;
   }
 
   private getResolvedPathSetting(section: PathSettingKey): string | null {
@@ -245,7 +252,24 @@ export class WorkspaceConfig {
     return inspected.workspaceValue !== undefined;
   }
 
+  /**
+   * Whether the change affects a setting cached by this workspace configuration.
+   */
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
+    if (this.effectsServerOptionsChange(event)) {
+      return true;
+    }
+    // `resource` scoped settings which are not sent to the language server.
+    return (
+      affectsClientState(event, "oxlint", this.workspace) ||
+      affectsClientState(event, "oxfmt", this.workspace)
+    );
+  }
+
+  /**
+   * Whether the change affects an option sent to the language server.
+   */
+  public effectsServerOptionsChange(event: ConfigurationChangeEvent): boolean {
     if (event.affectsConfiguration(`${ConfigService.namespace}.configPath`, this.workspace)) {
       return true;
     }
@@ -300,6 +324,20 @@ export class WorkspaceConfig {
       return true;
     }
     return false;
+  }
+
+  /**
+   * `oxc.enable.<tool>` of this workspace folder, falling back to `oxc.enable`.
+   */
+  isEnabled(tool: OxcTool): boolean {
+    return this._enabled[tool];
+  }
+
+  /**
+   * `oxc.requireConfig` of this workspace folder.
+   */
+  get requireConfig(): boolean {
+    return this._requireConfig;
   }
 
   public get isCustomConfigPath(): boolean {
