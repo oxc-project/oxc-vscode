@@ -1,10 +1,10 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { strictEqual } from "assert";
+import { deepStrictEqual, strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { FixKind, RuleCustomization, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
-import { WORKSPACE_FOLDER } from "../test-helpers.js";
+import { WORKSPACE_FOLDER, WORKSPACE_SECOND_FOLDER } from "../test-helpers.js";
 
 const keys = [
   "lint.run",
@@ -17,6 +17,7 @@ const keys = [
   "lint.customization",
   "fmt.configPath",
   "fmt.disableNestedConfig",
+  "workingDirectories",
   // deprecated
   "flags",
 ];
@@ -34,11 +35,27 @@ suite("WorkspaceConfig", () => {
     ]);
   };
 
+  const updateSecondFolderConfiguration = async (key: string, value: unknown) => {
+    if (WORKSPACE_SECOND_FOLDER === undefined) {
+      return;
+    }
+
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_SECOND_FOLDER)
+      .update(key, value, ConfigurationTarget.WorkspaceFolder);
+  };
+
   setup(async () => {
-    await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
+    await Promise.all([
+      ...keys.map((key) => updateConfiguration(key, undefined)),
+      ...keys.map((key) => updateSecondFolderConfiguration(key, undefined)),
+    ]);
   });
   teardown(async () => {
-    await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
+    await Promise.all([
+      ...keys.map((key) => updateConfiguration(key, undefined)),
+      ...keys.map((key) => updateSecondFolderConfiguration(key, undefined)),
+    ]);
   });
 
   test("resolves path variables in path settings", async () => {
@@ -77,6 +94,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.rulesCustomization, null);
     strictEqual(config.formattingConfigPath, null);
     strictEqual(config.formattingDisableNestedConfig, false);
+    deepStrictEqual(config.workingDirectories, []);
   });
 
   test("deprecated values are respected", async () => {
@@ -137,6 +155,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, undefined);
     strictEqual(oxlintConfig.rulesCustomization, undefined);
+    deepStrictEqual(oxlintConfig.workingDirectories, []);
 
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
@@ -168,6 +187,7 @@ suite("WorkspaceConfig", () => {
     const oxfmtConfig = config.toOxfmtConfig();
     strictEqual(oxfmtConfig["fmt.configPath"], undefined);
     strictEqual(oxfmtConfig["fmt.disableNestedConfig"], false);
+    deepStrictEqual(oxfmtConfig.workingDirectories, []);
 
     await Promise.all([
       config.updateFormattingConfigPath("./oxfmt.json"),
@@ -180,6 +200,49 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
     strictEqual(oxfmtConfigUpdated["fmt.disableNestedConfig"], true);
+  });
+
+  test("workingDirectories is forwarded to both the oxlint and the oxfmt config", async () => {
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+
+    // an empty list is sent too, so that clearing the setting is unambiguous
+    deepStrictEqual(config.toOxlintConfig().workingDirectories, []);
+    deepStrictEqual(config.toOxfmtConfig().workingDirectories, []);
+
+    const workingDirectories = ["packages/a", { directory: "client" }];
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_FOLDER)
+      .update("workingDirectories", workingDirectories, ConfigurationTarget.WorkspaceFolder);
+    config.refresh();
+
+    deepStrictEqual(config.toOxlintConfig().workingDirectories, [
+      "packages/a",
+      { directory: "client" },
+    ]);
+    deepStrictEqual(config.toOxfmtConfig().workingDirectories, [
+      "packages/a",
+      { directory: "client" },
+    ]);
+    deepStrictEqual(workspace.getConfiguration("oxc", WORKSPACE_FOLDER).get("workingDirectories"), [
+      "packages/a",
+      { directory: "client" },
+    ]);
+  });
+
+  test("workingDirectories is read per workspace folder", async () => {
+    if (WORKSPACE_SECOND_FOLDER === undefined) {
+      return;
+    }
+
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_FOLDER)
+      .update("workingDirectories", ["packages/a"], ConfigurationTarget.WorkspaceFolder);
+
+    const firstConfig = new WorkspaceConfig(WORKSPACE_FOLDER);
+    const secondConfig = new WorkspaceConfig(WORKSPACE_SECOND_FOLDER);
+
+    deepStrictEqual(firstConfig.workingDirectories, ["packages/a"]);
+    deepStrictEqual(secondConfig.workingDirectories, []);
   });
 
   test("workspace-level relative paths resolve from code-workspace location", async () => {

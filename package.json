@@ -184,6 +184,38 @@
           "default": null,
           "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports [variables](#variables)."
         },
+        "oxc.workingDirectories": {
+          "type": "array",
+          "scope": "resource",
+          "default": [],
+          "uniqueItems": true,
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "markdownDescription": "A directory, relative to the workspace folder, e.g. `packages/a`."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "directory": {
+                    "type": "string",
+                    "markdownDescription": "A directory, relative to the workspace folder. Same as using the plain string form."
+                  },
+                  "!cwd": {
+                    "type": "boolean",
+                    "markdownDescription": "Accepted for compatibility with `eslint.workingDirectories`. The Oxc language server ignores it, it always resolves the configuration and the plugins from the working directory."
+                  }
+                },
+                "required": [
+                  "directory"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "markdownDescription": "Additional project roots below this workspace folder. Every entry is handled by the language server as if it were its own workspace folder, like `eslint.workingDirectories`. \n\nAccepted forms: a directory relative to the workspace folder (`\"packages/a\"`) or an object with the same meaning (`{ \"directory\": \"client\" }`, accepting an ignored `\"!cwd\"` flag). Each directory has to exist and stay inside the workspace folder; `..`, absolute paths and `.` are rejected, and glob characters are taken literally, so globs are not supported yet. \n\nA working directory is linted and formatted exactly as if it were opened alone: it does its own configuration file lookup, and `tsgolint` and JS plugins are resolved from it. A relative `oxc.configPath`, `oxc.tsConfigPath` or `oxc.fmt.configPath` set at the workspace folder level resolves inside each working directory; a value set in the `.code-workspace` file is resolved to an absolute path and therefore applies everywhere. \n\nRequires oxlint/oxfmt versions that support `workingDirectories` (see oxc PR <PENDING>). See <https://github.com/oxc-project/oxc-vscode/issues/370>."
+        },
         "oxc.unusedDisableDirectives": {
           "type": [
             "string",
