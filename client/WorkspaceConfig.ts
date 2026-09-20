@@ -375,31 +375,33 @@ export class WorkspaceConfig {
     return diagnosticPullMode === this.runTrigger;
   }
 
-  public toOxlintConfig(): OxlintWorkspaceConfigInterface {
+  public toOxlintConfig(isVitePlus = false): OxlintWorkspaceConfigInterface {
+    // Vite+ uses one configuration, so nested Oxc configs must not override it.
+    const disableNestedConfig = isVitePlus || this.disableNestedConfig;
     return {
       configPath: this.configPath ?? undefined,
       tsConfigPath: this.tsConfigPath ?? undefined,
       unusedDisableDirectives: this.unusedDisableDirectives ?? undefined,
       typeAware: this.typeAware ?? undefined,
-      disableNestedConfig: this.disableNestedConfig,
+      disableNestedConfig,
       fixKind: this.fixKind ?? undefined,
       rulesCustomization: this.rulesCustomization ?? undefined,
       // keep for backward compatibility
       run: this.runTrigger,
       // deprecated, kept for backward compatibility
       flags: {
-        disable_nested_config: this.disableNestedConfig ? "true" : "false",
+        disable_nested_config: disableNestedConfig ? "true" : "false",
         ...(this.fixKind ? { fix_kind: this.fixKind } : {}),
       },
     };
   }
 
-  public toOxfmtConfig(): OxfmtWorkspaceConfigInterface {
+  public toOxfmtConfig(isVitePlus = false): OxfmtWorkspaceConfigInterface {
     return {
       // @ts-expect-error -- deprecated setting, kept for backward compatibility
       ["fmt.experimental"]: true,
       ["fmt.configPath"]: this.formattingConfigPath ?? undefined,
-      ["fmt.disableNestedConfig"]: this.formattingDisableNestedConfig,
+      ["fmt.disableNestedConfig"]: isVitePlus || this.formattingDisableNestedConfig,
     };
   }
 }

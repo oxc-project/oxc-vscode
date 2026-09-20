@@ -1,4 +1,5 @@
 import { promises as fsPromises } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 
 import {
   CodeAction,
@@ -22,10 +23,11 @@ import {
 
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
+import { VitePlusError } from "../detectVitePlus";
+import type { BinarySearchResult } from "../findBinary";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
-import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -247,6 +249,9 @@ const supportedLanguageIds = [
 export default class FormatterTool implements ToolInterface {
   // LSP client instance
   private client: LanguageClient | undefined;
+  private binary: BinarySearchResult | undefined;
+  private binaryError: string | undefined;
+  private restartQueue: Promise<void> = Promise.resolve();
 
   private documentSelectors = [
     {
@@ -262,7 +267,7 @@ export default class FormatterTool implements ToolInterface {
     })),
   ];
 
-  private disposeResources: (() => Promise<void>) | undefined;
+  private disposeResources: (() => void) | undefined;
 
   // Command and provider disposables (registered once at construction)
   private readonly restartCommand: { dispose: () => void };
@@ -317,32 +322,42 @@ export default class FormatterTool implements ToolInterface {
   }
 
   async getBinary(): Promise<BinarySearchResult | undefined> {
+    this.binaryError = undefined;
     if (process.env.SERVER_PATH_DEV_OXFMT) {
       const path = process.env.SERVER_PATH_DEV_OXFMT;
       return { path, loader: path.endsWith(".js") ? "node" : "native" };
     }
-    const bin = await this.configService.getOxfmtServerBinPath();
-    if (bin) {
-      try {
-        await fsPromises.access(bin.path);
-        return bin;
-      } catch (e) {
-        this.outputChannel.error(`Invalid bin path: ${bin.path}`, e);
+    let bin: BinarySearchResult | undefined;
+    try {
+      bin = await this.configService.getOxfmtServerBinPath();
+    } catch (error) {
+      if (!(error instanceof VitePlusError)) {
+        throw error;
       }
+      this.binaryError = error.message;
+      return undefined;
+    }
+    if (!bin) {
+      return undefined;
+    }
+    try {
+      await fsPromises.access(bin.path);
+      return bin;
+    } catch (error) {
+      this.outputChannel.error(`Invalid bin path: ${bin.path}`, error);
     }
   }
 
-  async activate(binary?: BinarySearchResult) {
-    // No valid binary found for the formatter.
+  async activate(binary?: BinarySearchResult): Promise<void> {
+    this.binary = binary;
     if (!binary) {
-      this.statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
-      this.outputChannel.appendLine(
-        "No valid oxfmt binary found. Formatter will not be activated.",
-      );
-      return Promise.resolve();
+      const message = this.binaryError ?? "No valid oxfmt binary found.";
+      this.statusBarItemHandler.updateTool("formatter", false, message);
+      this.outputChannel.warn(message);
+      return;
     }
 
-    this.outputChannel.info(`Using server binary at: ${binary?.path}`);
+    this.outputChannel.info(`Using server binary at: ${binary.path}`);
 
     const run: Executable = await runExecutable(
       binary,
@@ -361,23 +376,21 @@ export default class FormatterTool implements ToolInterface {
     const clientOptions: LanguageClientOptions = {
       // Register the server for plain text documents
       documentSelector: this.documentSelectors,
-      initializationOptions: this.configService.formatterServerConfig,
+      initializationOptions: this.configService.getFormatterServerConfig(!!binary.vitePlus),
       outputChannel: this.outputChannel,
       traceOutputChannel: this.outputChannel,
       middleware: {
         workspace: {
           configuration: (params: ConfigurationParams) => {
             return params.items.map((item) => {
-              if (item.section !== "oxc_language_server") {
-                return null;
-              }
-              if (item.scopeUri === undefined) {
+              if (item.section !== "oxc_language_server" || item.scopeUri === undefined) {
                 return null;
               }
 
               return (
-                this.configService.getWorkspaceConfig(Uri.parse(item.scopeUri))?.toOxfmtConfig() ??
-                null
+                this.configService
+                  .getWorkspaceConfig(Uri.parse(item.scopeUri))
+                  ?.toOxfmtConfig(!!this.binary?.vitePlus) ?? null
               );
             });
           },
@@ -395,36 +408,67 @@ export default class FormatterTool implements ToolInterface {
       },
     );
 
-    this.disposeResources = async () => {
-      try {
-        await this.client?.dispose();
-      } catch {
-        // do nothing, the client may already be stopped
-      }
+    this.disposeResources = () => {
       onNotificationDispose.dispose();
     };
 
     if (this.configService.vsCodeConfig.enableOxfmt) {
-      await this.client.start();
+      await this.startClient();
     }
     this.updateStatusBar();
   }
 
   async deactivate(): Promise<void> {
-    try {
-      await this.client?.stop();
-    } catch {
-      // do nothing, the client may already be stopped
-    }
-    await this.disposeResources?.();
-    this.disposeResources = undefined;
-    this.client = undefined;
+    await this.restartQueue;
+    await this.stopClient();
   }
 
-  async restart(): Promise<void> {
-    await this.deactivate();
-    const newBinaryPath = await this.getBinary();
-    await this.activate(newBinaryPath);
+  private async stopClient(): Promise<void> {
+    try {
+      await this.client?.dispose();
+    } catch (error) {
+      // A client whose startup failed can reject disposal. Still release our resources
+      // so a corrected executable can start without reloading the window.
+      this.outputChannel.warn("Failed to dispose the oxfmt client.", error);
+    } finally {
+      this.disposeResources?.();
+      this.disposeResources = undefined;
+      this.client = undefined;
+    }
+  }
+
+  restart(onlyIfBinaryChanged = false): Promise<void> {
+    const restart = this.restartQueue.then(async () => {
+      if (!onlyIfBinaryChanged) {
+        this.configService.clearBinarySearchCaches();
+      }
+      const previousError = this.binaryError;
+      const newBinary = await this.getBinary();
+      if (
+        onlyIfBinaryChanged &&
+        isDeepStrictEqual(this.binary, newBinary) &&
+        previousError === this.binaryError
+      ) {
+        return;
+      }
+      await this.stopClient();
+      await this.activate(newBinary);
+    });
+    this.restartQueue = restart.catch(() => {});
+    return restart;
+  }
+
+  private async startClient(): Promise<void> {
+    try {
+      await this.client?.start();
+      this.binaryError = undefined;
+    } catch (error) {
+      if (!this.binary?.vitePlus) {
+        throw error;
+      }
+      this.binaryError = `Failed to start Vite+ ${this.binary.vitePlus} --lsp. Install or upgrade vite-plus in ${this.binary.cwd}, then restart the Oxc servers. ${error instanceof Error ? error.message : String(error)}`;
+      this.outputChannel.error(this.binaryError);
+    }
   }
 
   async toggleClient(): Promise<void> {
@@ -436,19 +480,23 @@ export default class FormatterTool implements ToolInterface {
       if (!this.configService.vsCodeConfig.enableOxfmt) {
         await this.client.stop();
       }
-    } else {
-      if (this.configService.vsCodeConfig.enableOxfmt) {
-        await this.client.start();
-      }
+    } else if (this.configService.vsCodeConfig.enableOxfmt) {
+      await this.startClient();
     }
   }
 
-  async onConfigChange(event: ConfigurationChangeEvent): Promise<void> {
+  onConfigChange(event: ConfigurationChangeEvent): Promise<void> {
+    const change = this.restartQueue.then(() => this.applyConfigChange(event));
+    this.restartQueue = change.catch(() => {});
+    return change;
+  }
+
+  private async applyConfigChange(event: ConfigurationChangeEvent): Promise<void> {
     if (
       event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
       event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)
     ) {
-      await this.toggleClient(); // update the client state
+      await this.toggleClient();
     }
     this.updateStatusBar();
 
@@ -457,11 +505,12 @@ export default class FormatterTool implements ToolInterface {
     }
 
     // update the initializationOptions for a possible restart
-    this.client.clientOptions.initializationOptions = this.configService.formatterServerConfig;
+    const settings = this.configService.getFormatterServerConfig(!!this.binary?.vitePlus);
+    this.client.clientOptions.initializationOptions = settings;
 
     if (this.configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
       await this.client.sendNotification("workspace/didChangeConfiguration", {
-        settings: this.configService.formatterServerConfig,
+        settings,
       });
     }
   }
@@ -472,7 +521,7 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider.dispose();
   }
 
-  private updateStatusBar() {
+  private updateStatusBar(): void {
     const enable = this.configService.vsCodeConfig.enableOxfmt;
 
     let text =
@@ -485,14 +534,15 @@ export default class FormatterTool implements ToolInterface {
       text += `[$(play) Start Server](command:${OxcCommands.ToggleEnableFmt})\n\n`;
     }
 
-    const tooltipText = enable ? undefined : "`oxc.enable.oxfmt` or `oxc.enable` is false";
+    const tooltipText =
+      this.binaryError ?? (enable ? undefined : "`oxc.enable.oxfmt` or `oxc.enable` is false");
     if (tooltipText) {
       text = `${tooltipText}\n\n` + text;
     }
 
     this.statusBarItemHandler.updateTool(
       "formatter",
-      enable,
+      enable && !this.binaryError,
       text,
       this.client?.initializeResult?.serverInfo?.version,
     );
