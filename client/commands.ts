@@ -1,7 +1,7 @@
 import { VSCodeConfig } from "./VSCodeConfig";
-import { execFile } from "node:child_process";
 import * as os from "node:os";
 import { env, version, window } from "vscode";
+import { runCommand } from "./runCommand";
 
 const commandPrefix = "oxc";
 
@@ -50,16 +50,15 @@ export async function copyDebugCommand(
   window.showInformationMessage("Debug info copied to clipboard.");
 }
 
-function getNodeVersion(nodeCommand: string): Promise<string> {
-  return new Promise((resolve) => {
-    execFile(nodeCommand, ["--version"], { timeout: 5000 }, (error, stdout) => {
-      if (error) {
-        resolve("unknown");
-      } else {
-        resolve(stdout.trim());
-      }
-    });
+/** Bounds the wait for the version of the configured node binary. */
+const NODE_VERSION_TIMEOUT_MS = 5000;
+
+async function getNodeVersion(nodeCommand: string): Promise<string> {
+  const stdout = await runCommand(nodeCommand, ["--version"], {
+    timeoutMs: NODE_VERSION_TIMEOUT_MS,
   });
+
+  return stdout?.trim() || "unknown";
 }
 
 function getOsName(): string {
