@@ -139,6 +139,22 @@ suite("runExecutable", () => {
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
 
+  test("should execute a native binary directly even with 'execPath' enabled", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+
+    const result = await runExecutable(
+      {
+        // a package manager's shell shim, which Node cannot parse
+        path: "/path/to/node_modules/.bin/oxfmt",
+        loader: "native",
+      },
+      true,
+    );
+
+    strictEqual(result.command, "/path/to/node_modules/.bin/oxfmt");
+    strictEqual(result.args?.[0], "--lsp");
+  });
+
   test("should set yarn PnP loader path when provided", async () => {
     const result = await runExecutable({
       path: "/path/to/server.js",
