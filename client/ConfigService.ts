@@ -6,6 +6,7 @@ import {
   searchEnvPath,
   searchProjectNodeModulesBin,
   searchSettingsBin,
+  searchVitePlusBin,
   searchYarnPnpBin,
 } from "./findBinary";
 import { IDisposable } from "./types";
@@ -123,6 +124,7 @@ export class ConfigService implements IDisposable {
     }
 
     return (
+      searchVitePlusBin(defaultBinaryName === "oxlint" ? "lint" : "fmt") ??
       (await searchProjectNodeModulesBin(defaultBinaryName)) ??
       (await searchYarnPnpBin(defaultBinaryName)) ??
       (await searchGlobalNodeModulesBin(defaultBinaryName)) ??

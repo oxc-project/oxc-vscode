@@ -11,6 +11,8 @@ Any of the below options can be used to install the extension.
 
 The extension does not bundle the Oxc tools. For the recommended setup, install the tool you want to use locally in your project: `oxlint` for linting and `oxfmt` for formatting. If you install a tool while VS Code is already open and it is not detected, run the **Oxc: Restart oxlint Server** and/or **Oxc: Restart oxfmt Server** commands, then hover over the `oxc` status item or check the corresponding `Oxc (Lint)` or `Oxc (Fmt)` output channel.
 
+For [Vite+](https://viteplus.dev) projects, the extension runs `vp lint --lsp` and `vp fmt --lsp` from the locally installed `vite-plus` package, so the `lint` and `fmt` fields in `vite.config.*` are used. It resolves `vite-plus` from the workspace folders, like the standalone tools. Set `oxc.path.oxlint` or `oxc.path.oxfmt` to use a standalone tool instead.
+
 See the official [Oxlint editor setup](https://oxc.rs/docs/guide/usage/linter/editors.html) and [Oxfmt editor setup](https://oxc.rs/docs/guide/usage/formatter/editors.html) guides for installation details.
 
 ## Oxlint

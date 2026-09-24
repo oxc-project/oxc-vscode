@@ -1,5 +1,5 @@
-import { strictEqual, throws } from "assert";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { deepStrictEqual, strictEqual, throws } from "assert";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
 import { Uri, workspace } from "vscode";
@@ -9,6 +9,7 @@ import {
   searchGlobalNodeModulesBin,
   searchEnvPath,
   searchProjectNodeModulesBin,
+  searchVitePlusBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
@@ -131,6 +132,53 @@ suite("findBinary", () => {
           recursive: true,
         });
       }
+    });
+  });
+
+  suite("searchVitePlusBin", () => {
+    let tmpDir: string;
+
+    const installVitePlus = (dir: string) => {
+      const pkgDir = path.join(dir, "node_modules", "vite-plus");
+      mkdirSync(path.join(pkgDir, "bin"), { recursive: true });
+      writeFileSync(
+        path.join(pkgDir, "package.json"),
+        JSON.stringify({ name: "vite-plus", main: "index.js", bin: { vp: "./bin/vp" } }),
+      );
+      writeFileSync(path.join(pkgDir, "index.js"), "");
+      writeFileSync(path.join(pkgDir, "bin", "vp"), "");
+      return path.join(pkgDir, "bin", "vp");
+    };
+
+    setup(() => {
+      // `require.resolve` returns real paths, e.g. `/private/var` for `/var` on macOS.
+      tmpDir = realpathSync(mkdtempSync(path.join(tmpdir(), "test-vite-plus-")));
+    });
+
+    teardown(() => {
+      rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    test("should find vp installed in the workspace folder", () => {
+      const vpPath = installVitePlus(tmpDir);
+
+      const result = searchVitePlusBin("lint", [tmpDir]);
+
+      strictEqual(result?.path, vpPath);
+      strictEqual(result?.loader, "node");
+      deepStrictEqual(result?.args, ["lint"]);
+    });
+
+    test("should find vp hoisted to an ancestor", () => {
+      const vpPath = installVitePlus(tmpDir);
+      const pkgDir = path.join(tmpDir, "packages", "app");
+      mkdirSync(pkgDir, { recursive: true });
+
+      strictEqual(searchVitePlusBin("fmt", [pkgDir])?.path, vpPath);
+    });
+
+    test("should return undefined when vite-plus is not installed", () => {
+      strictEqual(searchVitePlusBin("lint", [tmpDir]), undefined);
     });
   });
 

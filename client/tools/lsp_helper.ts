@@ -59,10 +59,12 @@ export async function runExecutable(
     pnpArgs.push("--loader", pathToFileURL(esmLoaderPath).href);
   }
 
+  const lspArgs = [...(binary.args ?? []), "--lsp"];
+
   return isNode || useExecPath
     ? {
         command: nodeCommand,
-        args: [...pnpArgs, binary.path, "--lsp"],
+        args: [...pnpArgs, binary.path, ...lspArgs],
         options: {
           env: serverEnv,
         },
@@ -70,7 +72,7 @@ export async function runExecutable(
     : {
         // On Windows with shell, quote the command path to handle spaces in usernames/paths
         command: isWindows ? `"${binary.path}"` : binary.path,
-        args: ["--lsp"],
+        args: lspArgs,
         options: {
           // On Windows we need to run the binary in a shell to be able to execute the shell npm bin script.
           // Searching for the right `.exe` file inside `node_modules/` is not reliable as it depends on

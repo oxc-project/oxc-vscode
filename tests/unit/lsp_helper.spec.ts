@@ -139,6 +139,19 @@ suite("runExecutable", () => {
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
   });
 
+  test("should pass the Vite+ command before --lsp", async () => {
+    const result = await runExecutable({
+      path: "/path/to/node_modules/vite-plus/bin/vp",
+      loader: "node",
+      args: ["fmt"],
+    });
+
+    strictEqual(result.command, "node");
+    strictEqual(result.args?.[0], "/path/to/node_modules/vite-plus/bin/vp");
+    strictEqual(result.args?.[1], "fmt");
+    strictEqual(result.args?.[2], "--lsp");
+  });
+
   test("should set yarn PnP loader path when provided", async () => {
     const result = await runExecutable({
       path: "/path/to/server.js",

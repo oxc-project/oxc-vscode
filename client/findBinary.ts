@@ -11,6 +11,7 @@ export type BinarySearchResult = {
   path: string;
   loader: "node" | "native";
   yarnPnpLoaderPath?: string; // only set if loader is 'node' and found via Yarn PnP
+  args?: string[]; // extra args before `--lsp`, e.g. `vp lint`
 };
 
 /** @internal only used for testing */
@@ -94,9 +95,6 @@ export async function searchProjectNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
   // try to find shared binary inside `node_modules/.bin` of each workspace folder
-  // This is required, because the project can use `vite-plus`,
-  // which has different environment variables for `oxlint` and `oxfmt`.
-  // Example: It will skip the `vite.config.ts` search without `VP_VERSION` env variable.
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
   );
@@ -121,6 +119,24 @@ export async function searchProjectNodeModulesBin(
       binaryName,
     );
     return { path: resolvedPath, loader: "node" };
+  } catch {}
+}
+
+/**
+ * Search for `vite-plus` resolvable from the workspace folders, like `searchProjectNodeModulesBin`.
+ * Vite+ runs Oxlint and Oxfmt with the environment they need to read `vite.config.*`.
+ */
+export function searchVitePlusBin(
+  command: "lint" | "fmt",
+  folders: string[] = (workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath),
+): BinarySearchResult | undefined {
+  try {
+    // `bin/vp` is a Node.js script, which avoids package manager shims in `node_modules/.bin`.
+    const vpPath = replaceTargetFromMainToBin(
+      require.resolve("vite-plus", { paths: folders }),
+      "vp",
+    );
+    return { path: vpPath, loader: "node", args: [command] };
   } catch {}
 }
 
@@ -206,9 +222,6 @@ export async function searchGlobalNodeModulesBin(
   const globalPaths = await globalNodeModulesPaths();
 
   // try to find shared binary inside `node_modules/.bin` of each workspace folder
-  // This is required, because the project can use `vite-plus`,
-  // which has different environment variables for `oxlint` and `oxfmt`.
-  // Example: It will skip the `vite.config.ts` search without `VP_VERSION` env variable.
   const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
   if (result) {
     return result;
