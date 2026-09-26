@@ -10,12 +10,20 @@ import {
   searchYarnPnpBin,
 } from "./findBinary";
 import { IDisposable } from "./types";
-import { VSCodeConfig } from "./VSCodeConfig";
+import { EnabledTools, VSCodeConfig } from "./VSCodeConfig";
 import {
   OxfmtWorkspaceConfigInterface,
   OxlintWorkspaceConfigInterface,
   WorkspaceConfig,
 } from "./WorkspaceConfig";
+
+/** The tools handled by this extension, each one has its own language server. */
+export type OxcTool = "oxlint" | "oxfmt";
+
+const enablePicker: Record<OxcTool, (config: EnabledTools) => boolean> = {
+  oxlint: (config) => config.enableOxlint,
+  oxfmt: (config) => config.enableOxfmt,
+};
 
 export class ConfigService implements IDisposable {
   public static readonly namespace = "oxc";
@@ -81,9 +89,63 @@ export class ConfigService implements IDisposable {
     return this.workspaceConfigs.get(workspace.fsPath);
   }
 
+  /**
+   * Resolves a `resource` scoped setting for the workspace folder which contains `resource`.
+   * Resources outside of every workspace folder, like untitled documents, use `fallback`.
+   */
+  private forResource<T>(resource: Uri, pick: (config: WorkspaceConfig) => T, fallback: T): T {
+    const folder = workspace.getWorkspaceFolder(resource);
+    const config = folder === undefined ? undefined : this.getWorkspaceConfig(folder.uri);
+    return config === undefined ? fallback : pick(config);
+  }
+
+  /**
+   * Whether at least one workspace folder resolves the setting to `true`.
+   * Without any workspace folder, the window level value is used.
+   */
+  private someWorkspace(pick: (config: WorkspaceConfig) => boolean, fallback: boolean): boolean {
+    if (this.workspaceConfigs.size === 0) {
+      return fallback;
+    }
+    return [...this.workspaceConfigs.values()].some(pick);
+  }
+
+  /**
+   * Whether the tool is enabled for `resource`.
+   */
+  public isToolEnabled(tool: OxcTool, resource: Uri): boolean {
+    return this.forResource(resource, enablePicker[tool], enablePicker[tool](this.vsCodeConfig));
+  }
+
+  /**
+   * Whether the workspace folder resolves the enable setting differently than the window,
+   * in both directions.
+   */
+  public overridesToolEnabled(tool: OxcTool, resource: Uri): boolean {
+    return this.isToolEnabled(tool, resource) !== enablePicker[tool](this.vsCodeConfig);
+  }
+
+  /**
+   * `oxc.requireConfig` of the workspace folder which contains `resource`.
+   */
+  public requiresConfig(resource: Uri): boolean {
+    return this.forResource(
+      resource,
+      (config) => config.requireConfig,
+      this.vsCodeConfig.requireConfig,
+    );
+  }
+
+  /**
+   * Whether at least one workspace folder requires a configuration file.
+   */
+  public requiresConfigInAnyWorkspace(): boolean {
+    return this.someWorkspace((config) => config.requireConfig, this.vsCodeConfig.requireConfig);
+  }
+
   public effectsWorkspaceConfigChange(event: ConfigurationChangeEvent): boolean {
     for (const workspaceConfig of this.workspaceConfigs.values()) {
-      if (workspaceConfig.effectsConfigChange(event)) {
+      if (workspaceConfig.effectsServerOptionsChange(event)) {
         return true;
       }
     }
@@ -102,17 +164,24 @@ export class ConfigService implements IDisposable {
     textDocumentUri: Uri,
     diagnosticPullMode: DiagnosticPullMode,
   ): boolean {
-    if (!this.vsCodeConfig.enableOxlint) {
+    if (!this.isToolEnabled("oxlint", textDocumentUri)) {
       return false;
     }
 
-    const ws = workspace.getWorkspaceFolder(textDocumentUri);
-    if (!ws) {
-      return false;
+    const folder = workspace.getWorkspaceFolder(textDocumentUri);
+    const workspaceConfig = folder === undefined ? undefined : this.getWorkspaceConfig(folder.uri);
+    if (workspaceConfig !== undefined) {
+      return workspaceConfig.shouldRequestDiagnostics(diagnosticPullMode);
     }
-    const workspaceConfig = this.getWorkspaceConfig(ws.uri);
 
-    return workspaceConfig?.shouldRequestDiagnostics(diagnosticPullMode) ?? false;
+    // documents outside of every workspace folder follow the window level value
+    const runTrigger =
+      workspace
+        // `null` selects the window level value of this `resource` scoped setting
+        .getConfiguration(ConfigService.namespace, null)
+        .get<DiagnosticPullMode>("lint.run") ?? DiagnosticPullMode.onType;
+
+    return runTrigger === diagnosticPullMode;
   }
 
   private async searchBinaryPath(
@@ -133,23 +202,19 @@ export class ConfigService implements IDisposable {
   }
 
   private async onVscodeConfigChange(event: ConfigurationChangeEvent): Promise<void> {
-    let isConfigChanged = false;
-
-    if (event.affectsConfiguration(ConfigService.namespace)) {
-      this.vsCodeConfig.refresh();
-      isConfigChanged = true;
+    if (!event.affectsConfiguration(ConfigService.namespace)) {
+      return;
     }
 
+    this.vsCodeConfig.refresh();
+    // `resource` scoped settings are resolved per workspace folder, refresh the affected ones.
     for (const workspaceConfig of this.workspaceConfigs.values()) {
       if (workspaceConfig.effectsConfigChange(event)) {
         workspaceConfig.refresh();
-        isConfigChanged = true;
       }
     }
 
-    if (isConfigChanged) {
-      await this.onConfigChange?.(event);
-    }
+    await this.onConfigChange?.(event);
   }
 
   dispose() {

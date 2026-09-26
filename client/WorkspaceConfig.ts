@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { ConfigurationChangeEvent, ConfigurationTarget, workspace, WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "./ConfigService";
+import { resolveEnabledTools } from "./VSCodeConfig";
 
 export const oxlintConfigFileName = ".oxlintrc.json";
 
@@ -15,6 +16,22 @@ export enum FixKind {
   None = "none",
   All = "all",
 }
+
+/**
+ * An additional project root below the workspace folder.
+ *
+ * - a `string` is a path or a glob, relative to the workspace folder
+ * - `{ directory }` is equivalent to the `string` form, `{ pattern }` is its
+ *   `eslint.workingDirectories` alias. Both accept a `"!cwd"` flag, which the
+ *   Oxc language server ignores.
+ * - `{ mode: "auto" }` lets the language server detect the directories
+ *   which contain both a `package.json` and an oxlint/oxfmt configuration file
+ */
+export type WorkingDirectory =
+  | string
+  | { directory: string; "!cwd"?: boolean }
+  | { pattern: string; "!cwd"?: boolean }
+  | { mode: "auto" };
 
 export type RuleCustomization = {
   autofix?: boolean;
@@ -100,6 +117,16 @@ interface WorkspaceConfigInterface {
   flags?: Record<string, string>;
 
   /**
+   * Additional project roots below the workspace folder.
+   * Every entry is handled by the language server as if it were its own workspace folder.
+   *
+   * `oxc.workingDirectories`
+   *
+   * @default []
+   */
+  workingDirectories?: WorkingDirectory[];
+
+  /**
    * Path to an oxfmt configuration file
    * `oxc.fmt.configPath`
    */
@@ -120,7 +147,7 @@ export type OxlintWorkspaceConfigInterface = Omit<
 
 export type OxfmtWorkspaceConfigInterface = Pick<
   WorkspaceConfigInterface,
-  "fmt.configPath" | "fmt.disableNestedConfig"
+  "fmt.configPath" | "fmt.disableNestedConfig" | "workingDirectories"
 >;
 
 type PathSettingKey = "configPath" | "tsConfigPath" | "fmt.configPath";
@@ -134,6 +161,10 @@ export class WorkspaceConfig {
   private _disableNestedConfig: boolean = false;
   private _fixKind: FixKind | null = null;
   private _rulesCustomization: Record<string, RuleCustomization> | null = null;
+  private _workingDirectories: WorkingDirectory[] = [];
+  private _enableOxlint: boolean = true;
+  private _enableOxfmt: boolean = true;
+  private _requireConfig: boolean = false;
 
   private _formattingConfigPath: string | null = null;
   private _formattingDisableNestedConfig: boolean = false;
@@ -176,6 +207,13 @@ export class WorkspaceConfig {
       this.configuration.get<boolean>("fmt.disableNestedConfig") ?? false;
     this._rulesCustomization =
       this.configuration.get<Record<string, RuleCustomization>>("lint.customization") ?? null;
+    this._workingDirectories =
+      this.configuration.get<WorkingDirectory[]>("workingDirectories") ?? [];
+
+    const enable = resolveEnabledTools(this.configuration);
+    this._enableOxlint = enable.enableOxlint;
+    this._enableOxfmt = enable.enableOxfmt;
+    this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
   }
 
   private getResolvedPathSetting(section: PathSettingKey): string | null {
@@ -209,7 +247,27 @@ export class WorkspaceConfig {
     return inspected.workspaceValue !== undefined;
   }
 
+  /**
+   * Whether the change affects a setting cached by this workspace configuration.
+   */
   public effectsConfigChange(event: ConfigurationChangeEvent): boolean {
+    if (this.effectsServerOptionsChange(event)) {
+      return true;
+    }
+    // `resource` scoped settings which are not sent to the language server.
+    // `oxc.enable` also covers `oxc.enable.oxlint` and `oxc.enable.oxfmt`.
+    for (const section of ["enable", "requireConfig"]) {
+      if (event.affectsConfiguration(`${ConfigService.namespace}.${section}`, this.workspace)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Whether the change affects an option sent to the language server.
+   */
+  public effectsServerOptionsChange(event: ConfigurationChangeEvent): boolean {
     if (event.affectsConfiguration(`${ConfigService.namespace}.configPath`, this.workspace)) {
       return true;
     }
@@ -243,6 +301,11 @@ export class WorkspaceConfig {
     ) {
       return true;
     }
+    if (
+      event.affectsConfiguration(`${ConfigService.namespace}.workingDirectories`, this.workspace)
+    ) {
+      return true;
+    }
     if (event.affectsConfiguration(`${ConfigService.namespace}.fmt.configPath`, this.workspace)) {
       return true;
     }
@@ -259,6 +322,27 @@ export class WorkspaceConfig {
       return true;
     }
     return false;
+  }
+
+  /**
+   * `oxc.enable.oxlint` of this workspace folder, falling back to `oxc.enable`.
+   */
+  get enableOxlint(): boolean {
+    return this._enableOxlint;
+  }
+
+  /**
+   * `oxc.enable.oxfmt` of this workspace folder, falling back to `oxc.enable`.
+   */
+  get enableOxfmt(): boolean {
+    return this._enableOxfmt;
+  }
+
+  /**
+   * `oxc.requireConfig` of this workspace folder.
+   */
+  get requireConfig(): boolean {
+    return this._requireConfig;
   }
 
   public get isCustomConfigPath(): boolean {
@@ -349,6 +433,10 @@ export class WorkspaceConfig {
     return this._rulesCustomization;
   }
 
+  get workingDirectories(): WorkingDirectory[] {
+    return this._workingDirectories;
+  }
+
   get formattingConfigPath(): string | null {
     return this._formattingConfigPath;
   }
@@ -384,6 +472,8 @@ export class WorkspaceConfig {
       disableNestedConfig: this.disableNestedConfig,
       fixKind: this.fixKind ?? undefined,
       rulesCustomization: this.rulesCustomization ?? undefined,
+      // always sent, an empty list unambiguously clears the working directories
+      workingDirectories: this.workingDirectories,
       // keep for backward compatibility
       run: this.runTrigger,
       // deprecated, kept for backward compatibility
@@ -400,6 +490,8 @@ export class WorkspaceConfig {
       ["fmt.experimental"]: true,
       ["fmt.configPath"]: this.formattingConfigPath ?? undefined,
       ["fmt.disableNestedConfig"]: this.formattingDisableNestedConfig,
+      // always sent, an empty list unambiguously clears the working directories
+      workingDirectories: this.workingDirectories,
     };
   }
 }

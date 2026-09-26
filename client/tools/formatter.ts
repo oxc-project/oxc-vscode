@@ -10,8 +10,13 @@ import {
   Uri,
   workspace,
 } from "vscode";
+import type { WorkspaceFoldersChangeEvent } from "vscode";
 
-import { ConfigurationParams, ShowMessageNotification } from "vscode-languageclient";
+import {
+  ConfigurationParams,
+  DocumentSelector,
+  ShowMessageNotification,
+} from "vscode-languageclient";
 
 import {
   Executable,
@@ -23,7 +28,16 @@ import {
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
-import { onClientNotification, runExecutable } from "./lsp_helper";
+import {
+  affectsClientState,
+  buildStatusBarText,
+  ClientLifecycle,
+  ClientState,
+  computeClientState,
+  CreatedClient,
+  onClientNotification,
+  runExecutable,
+} from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
 
@@ -244,17 +258,21 @@ const supportedLanguageIds = [
   // astro
 ];
 
-export default class FormatterTool implements ToolInterface {
-  // LSP client instance
-  private client: LanguageClient | undefined;
+const disabledStatusReason = "`oxc.enable.oxfmt` or `oxc.enable` is false";
 
+/** The settings which decide what the oxfmt client handles. */
+export const formatterStateSections = ["enable", "enable.oxfmt"];
+
+export default class FormatterTool implements ToolInterface {
+  private documentPatterns = [
+    `**/*.{${supportedExtensions.join(",")}}`,
+    ...specialFilenames.map((filename) => `**/${filename}`),
+  ];
+
+  // The document selector of the client, also used to offer the `source.format.oxc` code action.
   private documentSelectors = [
-    {
-      pattern: `**/*.{${supportedExtensions.join(",")}}`,
-      scheme: "file",
-    },
-    ...specialFilenames.map((filename) => ({
-      pattern: `**/${filename}`,
+    ...this.documentPatterns.map((pattern) => ({
+      pattern,
       scheme: "file",
     })),
     ...supportedLanguageIds.map((language) => ({
@@ -262,7 +280,8 @@ export default class FormatterTool implements ToolInterface {
     })),
   ];
 
-  private disposeResources: (() => Promise<void>) | undefined;
+  // Only one client exists for the whole window, `oxc.enable.oxfmt` is `resource` scoped.
+  private readonly lifecycle: ClientLifecycle<BinarySearchResult, LanguageClient>;
 
   // Command and provider disposables (registered once at construction)
   private readonly restartCommand: { dispose: () => void };
@@ -274,6 +293,20 @@ export default class FormatterTool implements ToolInterface {
     private readonly configService: ConfigService,
     private readonly statusBarItemHandler: StatusBarItemHandler,
   ) {
+    this.lifecycle = new ClientLifecycle({
+      toolName: "oxfmt",
+      selector: this.documentSelectors,
+      isEnabledForResource: (uri) => this.configService.isToolEnabled("oxfmt", uri),
+      computeState: () => this.computeClientState(),
+      resolveBinary: () => this.getBinary(),
+      createClient: (selector, binary) => this.createClient(selector, binary),
+      onStateChange: () => this.updateStatusBar(),
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel.error(`Failed to update the oxfmt language server: ${message}`);
+      },
+    });
+
     // Register commands once at construction
     this.restartCommand = commands.registerCommand(OxcCommands.RestartServerFmt, async () => {
       if (this.outputChannel && this.configService && this.statusBarItemHandler) {
@@ -282,11 +315,12 @@ export default class FormatterTool implements ToolInterface {
     });
 
     this.toggleEnableCommand = commands.registerCommand(OxcCommands.ToggleEnableFmt, async () => {
-      if (this.configService) {
-        await this.configService.vsCodeConfig.updateEnableOxfmt(
-          !this.configService.vsCodeConfig.enableOxfmt,
-        );
-      }
+      // the status bar shows whether the server runs, the toggle writes the value which stops or
+      // starts it
+      await this.lifecycle.toggle({
+        currentValue: () => this.configService.vsCodeConfig.rawEnableOxfmt,
+        update: (value) => this.configService.vsCodeConfig.updateEnableOxfmt(value),
+      });
     });
 
     // Register code action provider once at construction
@@ -295,10 +329,8 @@ export default class FormatterTool implements ToolInterface {
       {
         provideCodeActions: (doc, _range, _context, _token) => {
           if (
-            !this.configService ||
-            !this.client ||
-            !this.client.isRunning() ||
-            this.configService.vsCodeConfig.enableOxfmt === false ||
+            // the client has to run and to handle this document
+            !this.lifecycle.handlesDocument(doc) ||
             workspace.getConfiguration("editor", doc).get("defaultFormatter") !== "oxc.oxc-vscode"
           ) {
             return [];
@@ -313,7 +345,7 @@ export default class FormatterTool implements ToolInterface {
   }
 
   getLspVersion(): string | undefined {
-    return this.client?.initializeResult?.serverInfo?.version;
+    return this.lifecycle.client?.initializeResult?.serverInfo?.version;
   }
 
   async getBinary(): Promise<BinarySearchResult | undefined> {
@@ -332,14 +364,20 @@ export default class FormatterTool implements ToolInterface {
     }
   }
 
-  async activate(binary?: BinarySearchResult) {
+  async activate(binary?: BinarySearchResult): Promise<void> {
+    await this.lifecycle.activate(binary);
+  }
+
+  private async createClient(
+    documentSelector: DocumentSelector,
+    binary: BinarySearchResult | undefined,
+  ): Promise<CreatedClient<LanguageClient> | undefined> {
     // No valid binary found for the formatter.
     if (!binary) {
-      this.statusBarItemHandler.updateTool("formatter", false, "No valid oxfmt binary found.");
       this.outputChannel.appendLine(
         "No valid oxfmt binary found. Formatter will not be activated.",
       );
-      return Promise.resolve();
+      return undefined;
     }
 
     this.outputChannel.info(`Using server binary at: ${binary?.path}`);
@@ -359,12 +397,15 @@ export default class FormatterTool implements ToolInterface {
     // Otherwise the run options are used
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
-      // Register the server for plain text documents
-      documentSelector: this.documentSelectors,
+      // The document selector does not depend on the configuration: documents of excluded
+      // folders are filtered by the middleware, see the `ClientLifecycle` semantics.
+      documentSelector,
       initializationOptions: this.configService.formatterServerConfig,
       outputChannel: this.outputChannel,
       traceOutputChannel: this.outputChannel,
       middleware: {
+        // filters out the documents of the workspace folders which are excluded from oxfmt
+        ...this.lifecycle.middleware,
         workspace: {
           configuration: (params: ConfigurationParams) => {
             return params.items.map((item) => {
@@ -385,82 +426,73 @@ export default class FormatterTool implements ToolInterface {
       },
     };
 
-    // Create the language client and start the client.
-    this.client = new LanguageClient(languageClientName, serverOptions, clientOptions);
+    // Create the language client, the lifecycle starts it.
+    const client = new LanguageClient(languageClientName, serverOptions, clientOptions);
 
-    const onNotificationDispose = this.client.onNotification(
-      ShowMessageNotification.type,
-      (params) => {
-        onClientNotification(params, this.outputChannel);
+    const onNotificationDispose = client.onNotification(ShowMessageNotification.type, (params) => {
+      onClientNotification(params, this.outputChannel);
+    });
+
+    return {
+      client,
+      dispose: async () => {
+        try {
+          await client.dispose();
+        } catch {
+          // do nothing, the client may already be stopped
+        }
+        onNotificationDispose.dispose();
       },
-    );
-
-    this.disposeResources = async () => {
-      try {
-        await this.client?.dispose();
-      } catch {
-        // do nothing, the client may already be stopped
-      }
-      onNotificationDispose.dispose();
     };
-
-    if (this.configService.vsCodeConfig.enableOxfmt) {
-      await this.client.start();
-    }
-    this.updateStatusBar();
   }
 
   async deactivate(): Promise<void> {
-    try {
-      await this.client?.stop();
-    } catch {
-      // do nothing, the client may already be stopped
-    }
-    await this.disposeResources?.();
-    this.disposeResources = undefined;
-    this.client = undefined;
+    await this.lifecycle.deactivate();
   }
 
   async restart(): Promise<void> {
-    await this.deactivate();
-    const newBinaryPath = await this.getBinary();
-    await this.activate(newBinaryPath);
+    await this.lifecycle.restart();
   }
 
-  async toggleClient(): Promise<void> {
-    if (this.client === undefined) {
-      return;
-    }
+  /**
+   * Rules 1 to 3: the document selector never changes, the excluded workspace folders do.
+   */
+  private computeClientState(): Promise<ClientState> {
+    return computeClientState({
+      folders: workspace.workspaceFolders ?? [],
+      windowEnabled: this.configService.vsCodeConfig.enableOxfmt,
+      isEnabled: (folder) => this.configService.isToolEnabled("oxfmt", folder.uri),
+      isOverriding: (folder) => this.configService.overridesToolEnabled("oxfmt", folder.uri),
+      disabledReason: disabledStatusReason,
+      missingConfigReason: disabledStatusReason,
+    });
+  }
 
-    if (this.client.isRunning()) {
-      if (!this.configService.vsCodeConfig.enableOxfmt) {
-        await this.client.stop();
-      }
-    } else {
-      if (this.configService.vsCodeConfig.enableOxfmt) {
-        await this.client.start();
-      }
-    }
+  async onWorkspaceFoldersChange(event: WorkspaceFoldersChangeEvent): Promise<void> {
+    // the server keeps the documents of a removed workspace folder open, they need a new client
+    await this.lifecycle.applyClientStateSafely({ removedFolders: event.removed });
   }
 
   async onConfigChange(event: ConfigurationChangeEvent): Promise<void> {
-    if (
-      event.affectsConfiguration(`${ConfigService.namespace}.enable`) ||
-      event.affectsConfiguration(`${ConfigService.namespace}.enable.oxfmt`)
-    ) {
-      await this.toggleClient(); // update the client state
+    // `oxc.enable` has to be listed: a change of a parent key is not reported for the section of
+    // one of its children. A change of `oxc.enable.oxlint` is reported by the parent section too,
+    // the state key then skips it.
+    if (affectsClientState(event, ConfigService.namespace, formatterStateSections)) {
+      // the document selector is applied when the client starts, restart it when it changed
+      await this.lifecycle.applyClientStateSafely();
     }
     this.updateStatusBar();
 
-    if (this.client === undefined) {
+    const client = this.lifecycle.client;
+    if (client === undefined) {
       return;
     }
 
     // update the initializationOptions for a possible restart
-    this.client.clientOptions.initializationOptions = this.configService.formatterServerConfig;
+    client.clientOptions.initializationOptions = this.configService.formatterServerConfig;
 
-    if (this.configService.effectsWorkspaceConfigChange(event) && this.client.isRunning()) {
-      await this.client.sendNotification("workspace/didChangeConfiguration", {
+    if (this.configService.effectsWorkspaceConfigChange(event) && client.isRunning()) {
+      await client.sendNotification("workspace/didChangeConfiguration", {
         settings: this.configService.formatterServerConfig,
       });
     }
@@ -472,29 +504,24 @@ export default class FormatterTool implements ToolInterface {
     this.formatActionProvider.dispose();
   }
 
+  /**
+   * Rule 4: the status bar shows whether the language server is running.
+   */
   private updateStatusBar() {
-    const enable = this.configService.vsCodeConfig.enableOxfmt;
-
-    let text =
-      `[$(terminal) Open Output](command:${OxcCommands.ShowOutputChannelFmt})\n\n` +
-      `[$(refresh) Restart Server](command:${OxcCommands.RestartServerFmt})\n\n`;
-
-    if (enable) {
-      text += `[$(stop) Stop Server](command:${OxcCommands.ToggleEnableFmt})\n\n`;
-    } else {
-      text += `[$(play) Start Server](command:${OxcCommands.ToggleEnableFmt})\n\n`;
-    }
-
-    const tooltipText = enable ? undefined : "`oxc.enable.oxfmt` or `oxc.enable` is false";
-    if (tooltipText) {
-      text = `${tooltipText}\n\n` + text;
-    }
+    const isRunning = this.lifecycle.isRunning();
 
     this.statusBarItemHandler.updateTool(
       "formatter",
-      enable,
-      text,
-      this.client?.initializeResult?.serverInfo?.version,
+      isRunning,
+      buildStatusBarText({
+        toolName: "oxfmt",
+        isRunning,
+        reason: this.lifecycle.statusReason,
+        showOutputCommand: OxcCommands.ShowOutputChannelFmt,
+        restartCommand: OxcCommands.RestartServerFmt,
+        toggleCommand: OxcCommands.ToggleEnableFmt,
+      }),
+      this.lifecycle.client?.initializeResult?.serverInfo?.version,
     );
   }
 }

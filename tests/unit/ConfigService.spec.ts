@@ -1,7 +1,8 @@
 import { strictEqual } from "assert";
-import { workspace } from "vscode";
+import { ConfigurationTarget, Uri, workspace } from "vscode";
+import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "../../client/ConfigService.js";
-import { WORKSPACE_FOLDER } from "../test-helpers.js";
+import { WORKSPACE_FOLDER, WORKSPACE_SECOND_FOLDER } from "../test-helpers.js";
 import { sep } from "node:path";
 
 const conf = workspace.getConfiguration("oxc");
@@ -117,6 +118,112 @@ suite("ConfigService", () => {
       );
       strictEqual(relativeServer?.path, `${workspace_path}\\relative\\oxfmt`);
       await deleteWorkspaceFolderFileUri("./relative/oxfmt");
+    });
+  });
+
+  suite("resource scoped enable settings", () => {
+    const enableKeys = ["enable", "enable.oxlint", "enable.oxfmt", "requireConfig"];
+    const folders = [WORKSPACE_FOLDER, WORKSPACE_SECOND_FOLDER].filter(
+      (folder) => folder !== undefined,
+    );
+
+    const resetEnableKeys = async () => {
+      await Promise.all([
+        ...enableKeys.map((key) => conf.update(key, undefined)),
+        // the user settings are shared by every suite, they must not keep a value
+        ...enableKeys.map((key) => conf.update(key, undefined, ConfigurationTarget.Global)),
+        ...folders.flatMap((folder) =>
+          enableKeys.map((key) =>
+            workspace
+              .getConfiguration("oxc", folder)
+              .update(key, undefined, ConfigurationTarget.WorkspaceFolder),
+          ),
+        ),
+      ]);
+    };
+
+    setup(resetEnableKeys);
+    teardown(resetEnableKeys);
+
+    test("a workspace folder can disable oxlint on its own", async () => {
+      if (WORKSPACE_SECOND_FOLDER === undefined) {
+        return;
+      }
+
+      await workspace
+        .getConfiguration("oxc", WORKSPACE_SECOND_FOLDER)
+        .update("enable.oxlint", false, ConfigurationTarget.WorkspaceFolder);
+
+      const service = new ConfigService();
+      const firstFile = Uri.joinPath(WORKSPACE_FOLDER.uri, "index.js");
+      const secondFile = Uri.joinPath(WORKSPACE_SECOND_FOLDER.uri, "index.js");
+
+      strictEqual(service.isToolEnabled("oxlint", firstFile), true);
+      strictEqual(service.isToolEnabled("oxlint", secondFile), false);
+      // oxfmt is not affected
+      strictEqual(service.isToolEnabled("oxfmt", secondFile), true);
+
+      service.dispose();
+    });
+
+    test("rule 4: a workspace folder which overrides the window value is reported", async () => {
+      // rule 4 of the `ClientLifecycle` semantics: the toggle is window wide, and it tells the
+      // user when the settings of a workspace folder take precedence over it
+      if (WORKSPACE_SECOND_FOLDER === undefined) {
+        return;
+      }
+
+      await workspace
+        .getConfiguration("oxc", WORKSPACE_SECOND_FOLDER)
+        .update("enable.oxlint", false, ConfigurationTarget.WorkspaceFolder);
+
+      const service = new ConfigService();
+
+      // the window value is `true`, the second workspace folder overrides it
+      strictEqual(service.overridesToolEnabled("oxlint", WORKSPACE_SECOND_FOLDER.uri), true);
+      strictEqual(service.overridesToolEnabled("oxlint", WORKSPACE_FOLDER.uri), false);
+      strictEqual(service.overridesToolEnabled("oxfmt", WORKSPACE_SECOND_FOLDER.uri), false);
+
+      service.dispose();
+    });
+
+    test("rule 3: a document outside of every workspace folder follows the window value", async () => {
+      // rule 3 of the `ClientLifecycle` semantics, the diagnostics follow the same rule
+      const outside = Uri.file("/tmp/outside-of-the-workspace/index.js");
+
+      const service = new ConfigService();
+      // the window value enables oxlint, the default run trigger is `onType`
+      strictEqual(service.shouldRequestDiagnostics(outside, DiagnosticPullMode.onType), true);
+      strictEqual(service.shouldRequestDiagnostics(outside, DiagnosticPullMode.onSave), false);
+      service.dispose();
+
+      await conf.update("enable.oxlint", false);
+
+      const disabledService = new ConfigService();
+      strictEqual(
+        disabledService.shouldRequestDiagnostics(outside, DiagnosticPullMode.onType),
+        false,
+      );
+      disabledService.dispose();
+    });
+
+    test("rule 6: `oxc.requireConfig` is read per workspace folder", async () => {
+      if (WORKSPACE_SECOND_FOLDER === undefined) {
+        return;
+      }
+
+      await workspace
+        .getConfiguration("oxc", WORKSPACE_SECOND_FOLDER)
+        .update("requireConfig", true, ConfigurationTarget.WorkspaceFolder);
+
+      const service = new ConfigService();
+
+      // rule 6 of the `ClientLifecycle` semantics
+      strictEqual(service.requiresConfig(WORKSPACE_FOLDER.uri), false);
+      strictEqual(service.requiresConfig(WORKSPACE_SECOND_FOLDER.uri), true);
+      strictEqual(service.requiresConfigInAnyWorkspace(), true);
+
+      service.dispose();
     });
   });
 
