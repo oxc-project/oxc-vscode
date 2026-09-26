@@ -1,7 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { runCommand } from "./runCommand";
 
-const execFileAsync = promisify(execFile);
+/** Bounds the wait for the login shell, which runs on the activation path. */
+const SHELL_ENV_TIMEOUT_MS = 5000;
 
 let cachedEnv: Promise<Record<string, string | undefined>> | undefined;
 
@@ -30,82 +30,54 @@ export async function getShellEnv(): Promise<Record<string, string | undefined>>
   return cachedEnv;
 }
 
+/** @internal only used for clearing test states */
+export function clearShellEnvCache(): void {
+  cachedEnv = undefined;
+}
+
+/**
+ * Parses the environment a login shell prints between the two delimiters.
+ *
+ * A shell which fails to start, exits with a non-zero status, outlives the timeout or prints no
+ * environment leaves the environment of the extension host as the result.
+ */
 async function getInteractiveShellEnv(): Promise<Record<string, string | undefined>> {
   const shell = process.env.SHELL ?? "/bin/bash";
 
-  try {
-    const TIMEOUT_MS = 5000;
-
-    // POSIX shells
-    // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
-    // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
-    const execPromise = execFileAsync(
-      shell,
-      ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env; echo -n "_ENV_DELIMITER_"; exit'],
-      {
-        env: {
-          HOME: process.env.HOME,
-          // indicates that this shell is only launched to read the environment - tools like inshellisense
-          // check for this to prevent breaking interactive shell output
-          // https://code.visualstudio.com/docs/configure/command-line#_how-do-i-detect-when-a-shell-was-launched-by-vs-code
-          VSCODE_RESOLVING_ENVIRONMENT: "1",
-        },
-        timeout: TIMEOUT_MS,
+  // POSIX shells
+  // Run the shell as a login shell to get the environment variables. The `-i` flag is for interactive shell, which is needed to load the shell configuration files.
+  // The `-l` flag is for login shell, which is needed to load the environment variables defined in the shell configuration files.
+  const stdout = await runCommand(
+    shell,
+    ["-ilc", 'echo -n "_ENV_DELIMITER_"; command env; echo -n "_ENV_DELIMITER_"; exit'],
+    {
+      timeoutMs: SHELL_ENV_TIMEOUT_MS,
+      env: {
+        HOME: process.env.HOME,
+        // indicates that this shell is only launched to read the environment - tools like inshellisense
+        // check for this to prevent breaking interactive shell output
+        // https://code.visualstudio.com/docs/configure/command-line#_how-do-i-detect-when-a-shell-was-launched-by-vs-code
+        VSCODE_RESOLVING_ENVIRONMENT: "1",
       },
-    );
+    },
+  );
 
-    const child = execPromise.child;
-    let exited = false;
-
-    child.once("exit", () => {
-      exited = true;
-    });
-
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        if (!exited && child.pid) {
-          try {
-            // Kill the whole process group so grandchildren cannot keep stdio open.
-            process.kill(-child.pid, "SIGKILL");
-          } catch {}
-        }
-        reject(`Failed to get shell environment variables within ${TIMEOUT_MS}ms.`);
-      }, TIMEOUT_MS);
-    });
-
-    // Avoid an unhandled rejection if execPromise settles after the timeout wins.
-    execPromise.catch(() => {});
-
-    // In some cases the execFile promise may not resolve or reject, e.g if the shell is misconfigured or requires user input.
-    // To avoid waiting indefinitely, we use Promise.race with the same timeout as the shell command.
-    const { stdout } = await Promise.race([execPromise, timeoutPromise]);
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    const envsOutput = stdout.split("_ENV_DELIMITER_")[1] ?? "";
-    if (!envsOutput) {
-      // If the output is empty, return the current process.env as a fallback.
-      return { ...process.env };
-    }
-
-    const env: Record<string, string | undefined> = {};
-    for (const entry of envsOutput.split("\n")) {
-      if (!entry) continue;
-
-      const i = entry.indexOf("=");
-
-      if (i === -1) continue;
-
-      env[entry.slice(0, i)] = entry.slice(i + 1);
-    }
-
-    return env;
-  } catch {
-    // If there is an error (e.g., timeout, shell not found, etc.), return the current process.env as a fallback.
+  const envsOutput = stdout?.split("_ENV_DELIMITER_")[1] ?? "";
+  if (!envsOutput) {
+    // If the output is empty, return the current process.env as a fallback.
     return { ...process.env };
   }
+
+  const env: Record<string, string | undefined> = {};
+  for (const entry of envsOutput.split("\n")) {
+    if (!entry) continue;
+
+    const i = entry.indexOf("=");
+
+    if (i === -1) continue;
+
+    env[entry.slice(0, i)] = entry.slice(i + 1);
+  }
+
+  return env;
 }

@@ -1,18 +1,27 @@
 import { strictEqual } from "assert";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
+import { clearShellEnvCache, getShellEnv } from "../../client/getShellEnv";
 
-type GetShellEnvModule = {
-  getShellEnv: () => Promise<Record<string, string | undefined>>;
-};
+/**
+ * Restores `process.env` in place from a snapshot, without replacing the object.
+ *
+ * Assigning `process.env` leaves a plain object behind, which `os.homedir` and the other readers of
+ * the real environment no longer see, so the later suites of the run read stale values.
+ */
+function restoreEnv(snapshot: NodeJS.ProcessEnv): void {
+  for (const key of Object.keys(process.env)) {
+    if (!(key in snapshot)) {
+      delete process.env[key];
+    }
+  }
 
-async function loadFreshGetShellEnvModule(): Promise<GetShellEnvModule> {
-  const timestamp = Date.now();
-  // append a query parameter to force a fresh import of the module to reset the cachedEnv variable
-  const module = await import(`../../client/getShellEnv.ts?ts=${timestamp}`);
-
-  return module;
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (value !== undefined && process.env[key] !== value) {
+      process.env[key] = value;
+    }
+  }
 }
 
 function createMockShellScript(dir: string, name: string, scriptBody: string): string {
@@ -23,16 +32,21 @@ function createMockShellScript(dir: string, name: string, scriptBody: string): s
 
 suite("getShellEnv", () => {
   let tempDir: string;
+  let originalEnv: NodeJS.ProcessEnv;
   const originalPlatform = process.platform;
-  const originalEnv = process.env;
 
   setup(() => {
+    // a copy, not `process.env` itself: the reference reads back the values the test assigns
+    originalEnv = { ...process.env };
     tempDir = mkdtempSync(path.join(tmpdir(), "get-shell-env-test-"));
+    clearShellEnvCache();
   });
 
   teardown(() => {
     Object.defineProperty(process, "platform", { value: originalPlatform });
-    process.env = originalEnv;
+    restoreEnv(originalEnv);
+    clearShellEnvCache();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("returns process.env directly on win32", async () => {
@@ -40,7 +54,6 @@ suite("getShellEnv", () => {
     process.env.GET_SHELL_ENV_TEST_KEY = "windows-fast-path";
     process.env.SHELL = path.join(tempDir, "does-not-matter-on-win32");
 
-    const { getShellEnv } = await loadFreshGetShellEnvModule();
     const env = await getShellEnv();
 
     strictEqual(env.GET_SHELL_ENV_TEST_KEY, "windows-fast-path");
@@ -59,7 +72,6 @@ suite("getShellEnv", () => {
 
     process.env.SHELL = shellPath;
 
-    const { getShellEnv } = await loadFreshGetShellEnvModule();
     const env = await getShellEnv();
 
     strictEqual(env.PATH, "/mock/bin");
@@ -67,51 +79,56 @@ suite("getShellEnv", () => {
     strictEqual(env.EQ, "a=b");
   });
 
-  test("falls back to process.env when shell output is empty", async function () {
+  test("runs the shell with a restricted environment", async function () {
     if (process.platform === "win32") {
       this.skip();
     }
 
-    process.env.GET_SHELL_ENV_TEST_KEY = "fallback-works";
-    const shellPath = createMockShellScript(tempDir, "mock-shell-empty.sh", "# no output");
+    process.env.GET_SHELL_ENV_TEST_KEY = "must-not-be-inherited";
+
+    // the mock shell reports what it received instead of its own environment
+    const shellPath = createMockShellScript(
+      tempDir,
+      "mock-shell-environment.sh",
+      'printf "_ENV_DELIMITER_RESOLVING=%s\\nSHELL_HOME=%s\\nINHERITED=%s\\n_ENV_DELIMITER_" "$VSCODE_RESOLVING_ENVIRONMENT" "$HOME" "$GET_SHELL_ENV_TEST_KEY"',
+    );
 
     process.env.SHELL = shellPath;
 
-    const { getShellEnv } = await loadFreshGetShellEnvModule();
     const env = await getShellEnv();
 
-    strictEqual(env.GET_SHELL_ENV_TEST_KEY, "fallback-works");
+    strictEqual(env.RESOLVING, "1");
+    strictEqual(env.SHELL_HOME, process.env.HOME);
+    strictEqual(env.INHERITED, "");
   });
 
-  test("falls back to process.env when shell executable is invalid", async () => {
+  test("falls back to process.env when the shell fails to start", async () => {
     process.env.GET_SHELL_ENV_TEST_KEY = "reject-fallback";
     process.env.SHELL = path.join(tempDir, "does-not-exist-shell");
 
-    const { getShellEnv } = await loadFreshGetShellEnvModule();
     const env = await getShellEnv();
 
     strictEqual(env.GET_SHELL_ENV_TEST_KEY, "reject-fallback");
   });
 
-  test("falls back to process.env after timeout", async function () {
+  test("falls back to process.env when the shell output carries no delimiter", async function () {
     if (process.platform === "win32") {
       this.skip();
     }
 
-    process.env.GET_SHELL_ENV_TEST_KEY = "timeout-fallback";
+    process.env.GET_SHELL_ENV_TEST_KEY = "no-delimiter-fallback";
 
     const shellPath = createMockShellScript(
       tempDir,
-      "mock-shell-timeout.sh",
-      'sleep 6; printf "_ENV_DELIMITER_TIMEOUT_SHOULD_NOT_APPEAR=1\\n_ENV_DELIMITER_"',
+      "mock-shell-no-delimiter.sh",
+      'printf "PATH=/mock/bin\nFOO=bar\n"',
     );
 
     process.env.SHELL = shellPath;
 
-    const { getShellEnv } = await loadFreshGetShellEnvModule();
     const env = await getShellEnv();
 
-    strictEqual(env.GET_SHELL_ENV_TEST_KEY, "timeout-fallback");
-    strictEqual(env.TIMEOUT_SHOULD_NOT_APPEAR, undefined);
+    strictEqual(env.GET_SHELL_ENV_TEST_KEY, "no-delimiter-fallback");
+    strictEqual(env.FOO, undefined);
   });
 });

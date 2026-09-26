@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
@@ -6,6 +5,7 @@ import { env } from "node:process";
 import { Uri, workspace } from "vscode";
 import { validateSafeBinaryPath } from "./PathValidator";
 import { getShellEnv } from "./getShellEnv";
+import { runCommand } from "./runCommand";
 
 export type BinarySearchResult = {
   path: string;
@@ -334,41 +334,64 @@ export async function searchSettingsBin(
   return undefined;
 }
 
-// copied from: https://github.com/biomejs/biome-vscode/blob/ae9b6df2254d0ff8ee9d626554251600eb2ca118/src/locator.ts#L28-L49
-async function globalNodeModulesPaths(): Promise<string[]> {
-  const npmGlobalNodeModulesPath = await safeSpawnSync("npm", ["root", "-g"]);
-  const pnpmGlobalNodeModulesPath = await safeSpawnSync("pnpm", ["root", "-g"]);
-  const bunGlobalNodeModulesPath = path.resolve(homedir(), ".bun/install/global/node_modules");
+/** Bounds the wait for a single package manager root command, which runs on the activation path. */
+const GLOBAL_ROOT_COMMAND_TIMEOUT_MS = 2000;
 
-  return [npmGlobalNodeModulesPath, pnpmGlobalNodeModulesPath, bunGlobalNodeModulesPath].filter(
-    Boolean,
-  ) as string[];
-}
+let cachedGlobalNodeModulesPaths: Promise<string[]> | undefined;
 
-// only use this function with internal code, because it executes shell commands
-// which could be a security risk if the command or args are user-controlled
-const safeSpawnSync = async (
-  command: string,
-  args: readonly string[] = [],
-): Promise<string | undefined> => {
-  let output: string | undefined;
-
-  try {
-    const result = spawnSync(command, args, {
-      shell: true,
-      encoding: "utf8",
-      env: await getShellEnv(),
+/**
+ * Returns the global node_modules paths of npm, pnpm and bun.
+ *
+ * The package manager list is copied from:
+ * https://github.com/biomejs/biome-vscode/blob/ae9b6df2254d0ff8ee9d626554251600eb2ca118/src/locator.ts#L28-L49
+ *
+ * The npm and pnpm root commands run at the same time and a command which produces no path is
+ * left out of the result, the bun path is a fixed location and starts no process. The paths are
+ * resolved once per session and shared by all callers, a package manager installed afterwards is
+ * only seen by the next extension host.
+ */
+function globalNodeModulesPaths(): Promise<string[]> {
+  if (!cachedGlobalNodeModulesPaths) {
+    cachedGlobalNodeModulesPaths = resolveGlobalNodeModulesPaths().catch(() => {
+      // a resolution which failed is not kept, the next caller runs the commands again
+      cachedGlobalNodeModulesPaths = undefined;
+      return [bunGlobalNodeModulesPath()].filter(Boolean) as string[];
     });
-
-    if (result.error || result.status !== 0) {
-      output = undefined;
-    } else {
-      const trimmed = result.stdout.trim();
-      output = trimmed ? trimmed : undefined;
-    }
-  } catch {
-    output = undefined;
   }
 
-  return output;
-};
+  return cachedGlobalNodeModulesPaths;
+}
+
+/** @internal only used for clearing test states */
+export function clearGlobalNodeModulesPathsCache(): void {
+  cachedGlobalNodeModulesPaths = undefined;
+}
+
+function bunGlobalNodeModulesPath(): string | undefined {
+  try {
+    return path.resolve(homedir(), ".bun/install/global/node_modules");
+  } catch {
+    // `homedir` throws when the home directory cannot be resolved, which leaves no bun path
+    return undefined;
+  }
+}
+
+async function resolveGlobalNodeModulesPaths(): Promise<string[]> {
+  const options = {
+    timeoutMs: GLOBAL_ROOT_COMMAND_TIMEOUT_MS,
+    // the npm and pnpm entry points on Windows are shims which only resolve through a shell
+    shell: true,
+    env: await getShellEnv(),
+  };
+
+  const [npmGlobalNodeModulesPath, pnpmGlobalNodeModulesPath] = await Promise.all([
+    runCommand("npm", ["root", "-g"], options),
+    runCommand("pnpm", ["root", "-g"], options),
+  ]);
+
+  return [
+    npmGlobalNodeModulesPath?.trim(),
+    pnpmGlobalNodeModulesPath?.trim(),
+    bunGlobalNodeModulesPath(),
+  ].filter(Boolean) as string[];
+}

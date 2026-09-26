@@ -1,9 +1,18 @@
 import { deepStrictEqual, strictEqual, throws } from "assert";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
 import { Uri, workspace } from "vscode";
 import {
+  clearGlobalNodeModulesPathsCache,
   clearWorkspacePackageJsonNodeModulesCache,
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
@@ -12,7 +21,26 @@ import {
   searchVitePlusBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
+import { getShellEnv } from "../../client/getShellEnv";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
+
+const globalBinaryName = "global-node-modules-search-test-binary";
+
+function createMockCommand(dir: string, name: string, scriptBody: string): void {
+  writeFileSync(path.join(dir, name), `#!/bin/sh\n${scriptBody}\n`, { mode: 0o755 });
+}
+
+/** Creates a node_modules directory containing `globalBinaryName` and returns its path. */
+function createGlobalNodeModules(parentDir: string): string {
+  const nodeModules = path.join(parentDir, "node_modules");
+  mkdirSync(path.join(nodeModules, ".bin"), { recursive: true });
+  writeFileSync(path.join(nodeModules, ".bin", globalBinaryName), "", { mode: 0o755 });
+  return nodeModules;
+}
+
+function globalBinaryPath(nodeModules: string): string {
+  return path.join(nodeModules, ".bin", globalBinaryName);
+}
 
 suite("findBinary", () => {
   const binaryName = "oxlint";
@@ -257,6 +285,195 @@ suite("findBinary", () => {
       strictEqual(result.loader, "node");
       strictEqual(result.path.includes(`${path.sep}dist${path.sep}index.js`), false);
       strictEqual(result.path.includes(`${path.sep}bin${path.sep}${binaryName}`), true);
+    });
+  });
+
+  suite("global node_modules paths", () => {
+    let tmpDir: string;
+    let commandDir: string;
+    let shellEnv: Record<string, string | undefined>;
+    let originalShellPath: string | undefined;
+    let originalHome: string | undefined;
+
+    suiteSetup(async () => {
+      shellEnv = await getShellEnv();
+    });
+
+    setup(() => {
+      tmpDir = mkdtempSync(path.join(tmpdir(), "test-global-node-modules-"));
+      commandDir = path.join(tmpDir, "commands");
+      mkdirSync(commandDir, { recursive: true });
+
+      // the commands inherit the environment of `getShellEnv`, which is cached and shared with the
+      // extension, so the mock command directory is prepended to its `PATH` and restored afterwards
+      originalShellPath = shellEnv.PATH;
+      shellEnv.PATH = `${commandDir}${path.delimiter}${originalShellPath ?? ""}`;
+
+      // `homedir` reads `HOME`, which moves the bun path into the temporary directory
+      originalHome = process.env.HOME;
+      process.env.HOME = path.join(tmpDir, "home");
+
+      clearGlobalNodeModulesPathsCache();
+    });
+
+    teardown(() => {
+      shellEnv.PATH = originalShellPath;
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      clearGlobalNodeModulesPathsCache();
+      rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    test("`npm root -g` and `pnpm root -g` run concurrently", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      const pnpmNodeModules = createGlobalNodeModules(path.join(tmpDir, "pnpm"));
+      const npmStarted = path.join(tmpDir, "npm.started");
+      const pnpmStarted = path.join(tmpDir, "pnpm.started");
+      // each command prints its path only once the other one has started, one command waiting for
+      // the other to finish leaves both without a path
+      createMockCommand(
+        commandDir,
+        "npm",
+        `printf "x" > "${npmStarted}"; sleep 1; [ -f "${pnpmStarted}" ] && printf "%s" "${npmNodeModules}"`,
+      );
+      createMockCommand(
+        commandDir,
+        "pnpm",
+        `printf "x" > "${pnpmStarted}"; sleep 1; [ -f "${npmStarted}" ] && printf "%s" "${pnpmNodeModules}"`,
+      );
+
+      const result = await searchGlobalNodeModulesBin(globalBinaryName);
+
+      strictEqual(result?.path, globalBinaryPath(npmNodeModules));
+    });
+
+    test("a command exiting with a non-zero status contributes no path, the other paths are kept", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      const pnpmNodeModules = createGlobalNodeModules(path.join(tmpDir, "pnpm"));
+      createMockCommand(commandDir, "npm", `printf "%s" "${npmNodeModules}"; exit 1`);
+      createMockCommand(commandDir, "pnpm", `printf "%s" "${pnpmNodeModules}"`);
+
+      const result = await searchGlobalNodeModulesBin(globalBinaryName);
+
+      strictEqual(result?.path, globalBinaryPath(pnpmNodeModules));
+    });
+
+    test("the bun path is returned when neither command produces a path", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const bunNodeModules = createGlobalNodeModules(
+        path.join(process.env.HOME!, ".bun/install/global"),
+      );
+      const bunRuns = path.join(tmpDir, "bun.runs");
+      createMockCommand(commandDir, "npm", "exit 1");
+      createMockCommand(commandDir, "pnpm", "exit 1");
+      // the bun path is a fixed location, a `bun` command on the `PATH` is never run
+      createMockCommand(commandDir, "bun", `printf "x" >> "${bunRuns}"; exit 1`);
+
+      const result = await searchGlobalNodeModulesBin(globalBinaryName);
+
+      strictEqual(result?.path, globalBinaryPath(bunNodeModules));
+      strictEqual(existsSync(bunRuns), false);
+    });
+
+    test("the returned order stays npm, pnpm, bun", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      const pnpmNodeModules = createGlobalNodeModules(path.join(tmpDir, "pnpm"));
+      createGlobalNodeModules(path.join(process.env.HOME!, ".bun/install/global"));
+      createMockCommand(commandDir, "npm", `printf "%s" "${npmNodeModules}"`);
+      createMockCommand(commandDir, "pnpm", `printf "%s" "${pnpmNodeModules}"`);
+
+      const result = await searchGlobalNodeModulesBin(globalBinaryName);
+
+      strictEqual(result?.path, globalBinaryPath(npmNodeModules));
+    });
+
+    test("concurrent resolutions share a single pair of commands", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      const npmRuns = path.join(tmpDir, "npm.runs");
+      const pnpmRuns = path.join(tmpDir, "pnpm.runs");
+      createMockCommand(
+        commandDir,
+        "npm",
+        `printf "x" >> "${npmRuns}"; printf "%s" "${npmNodeModules}"`,
+      );
+      createMockCommand(commandDir, "pnpm", `printf "x" >> "${pnpmRuns}"; exit 1`);
+
+      writeFileSync(path.join(npmNodeModules, ".bin", "oxlint"), "", { mode: 0o755 });
+      writeFileSync(path.join(npmNodeModules, ".bin", "oxfmt"), "", { mode: 0o755 });
+
+      const [oxlintResult, oxfmtResult] = await Promise.all([
+        searchGlobalNodeModulesBin("oxlint"),
+        searchGlobalNodeModulesBin("oxfmt"),
+      ]);
+
+      strictEqual(oxlintResult?.path, path.join(npmNodeModules, ".bin", "oxlint"));
+      strictEqual(oxfmtResult?.path, path.join(npmNodeModules, ".bin", "oxfmt"));
+      strictEqual(readFileSync(npmRuns, "utf8"), "x");
+      strictEqual(readFileSync(pnpmRuns, "utf8"), "x");
+    });
+
+    test("clearGlobalNodeModulesPathsCache lets the commands run again", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      const npmRuns = path.join(tmpDir, "npm.runs");
+      createMockCommand(
+        commandDir,
+        "npm",
+        `printf "x" >> "${npmRuns}"; printf "%s" "${npmNodeModules}"`,
+      );
+      createMockCommand(commandDir, "pnpm", "exit 1");
+
+      await searchGlobalNodeModulesBin(globalBinaryName);
+      clearGlobalNodeModulesPathsCache();
+      await searchGlobalNodeModulesBin(globalBinaryName);
+
+      strictEqual(readFileSync(npmRuns, "utf8"), "xx");
+    });
+
+    test("the commands run with the environment of getShellEnv", async function () {
+      if (process.platform === "win32") {
+        this.skip();
+      }
+
+      const npmNodeModules = createGlobalNodeModules(path.join(tmpDir, "npm"));
+      shellEnv.GLOBAL_NODE_MODULES_TEST_PATH = npmNodeModules;
+
+      createMockCommand(commandDir, "npm", `printf "%s" "$GLOBAL_NODE_MODULES_TEST_PATH"`);
+      createMockCommand(commandDir, "pnpm", "exit 1");
+
+      try {
+        const result = await searchGlobalNodeModulesBin(globalBinaryName);
+
+        strictEqual(process.env.GLOBAL_NODE_MODULES_TEST_PATH, undefined);
+        strictEqual(result?.path, globalBinaryPath(npmNodeModules));
+      } finally {
+        delete shellEnv.GLOBAL_NODE_MODULES_TEST_PATH;
+      }
     });
   });
 
