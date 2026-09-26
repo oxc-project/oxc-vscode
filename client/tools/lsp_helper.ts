@@ -1,9 +1,31 @@
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
-import { LogOutputChannel, window } from "vscode";
+import { LogLevel, LogOutputChannel, window } from "vscode";
 import { Executable, MessageType, ShowMessageParams } from "vscode-languageclient/node";
 import type { BinarySearchResult } from "../findBinary";
 import { getShellEnv } from "../getShellEnv";
+
+/**
+ * vscode-languageclient v10 only forwards LSP protocol traces to the trace output
+ * channel when that channel's *own* log level is set to `Trace`, ignoring the
+ * `oxc.trace.server` setting entirely otherwise (channel log level defaults to `Info`).
+ * Wrap the channel so tracing is controlled by `oxc.trace.server` again, like before v10.
+ * See https://github.com/microsoft/vscode-languageserver-node/issues/1754.
+ */
+export function createTraceOutputChannel(channel: LogOutputChannel): LogOutputChannel {
+  const appendLine = (message: string) => channel.appendLine(message);
+
+  return {
+    ...channel,
+    logLevel: LogLevel.Trace,
+    onDidChangeLogLevel: () => ({ dispose() {} }),
+    trace: appendLine,
+    debug: appendLine,
+    info: appendLine,
+    warn: appendLine,
+    error: appendLine,
+  };
+}
 
 export async function runExecutable(
   binary: BinarySearchResult,
