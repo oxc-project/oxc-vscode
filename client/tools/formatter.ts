@@ -23,7 +23,7 @@ import {
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
-import { onClientNotification, runExecutable } from "./lsp_helper";
+import { createTraceOutputChannel, onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
 
@@ -363,7 +363,7 @@ export default class FormatterTool implements ToolInterface {
       documentSelector: this.documentSelectors,
       initializationOptions: this.configService.formatterServerConfig,
       outputChannel: this.outputChannel,
-      traceOutputChannel: this.outputChannel,
+      traceOutputChannel: createTraceOutputChannel(this.outputChannel),
       middleware: {
         workspace: {
           configuration: (params: ConfigurationParams) => {

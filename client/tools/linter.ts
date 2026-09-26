@@ -29,7 +29,7 @@ import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
-import { onClientNotification, runExecutable } from "./lsp_helper";
+import { createTraceOutputChannel, onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
 import type { BinarySearchResult } from "../findBinary";
 
@@ -274,7 +274,7 @@ export default class LinterTool implements ToolInterface {
       ],
       initializationOptions: this.configService.oxlintServerConfig,
       outputChannel: this.outputChannel,
-      traceOutputChannel: this.outputChannel,
+      traceOutputChannel: createTraceOutputChannel(this.outputChannel),
       diagnosticPullOptions: {
         onChange: true,
         onSave: true,
