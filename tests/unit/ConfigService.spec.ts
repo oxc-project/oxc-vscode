@@ -1,10 +1,11 @@
-import { strictEqual } from "assert";
+import { deepStrictEqual, notStrictEqual, strictEqual } from "assert";
 import { workspace } from "vscode";
 import { ConfigService } from "../../client/ConfigService.js";
 import { WORKSPACE_FOLDER } from "../test-helpers.js";
-import { sep } from "node:path";
+import { resolve, sep } from "node:path";
 
 const conf = workspace.getConfiguration("oxc");
+const ENV_VARIABLE = "OXC_TEST_SETTINGS_BINARY";
 
 suite("ConfigService", () => {
   setup(async () => {
@@ -17,6 +18,7 @@ suite("ConfigService", () => {
     const keys = ["path.server", "path.oxlint", "path.oxfmt", "path.tsgolint"];
 
     await Promise.all(keys.map((key) => conf.update(key, undefined)));
+    delete process.env[ENV_VARIABLE];
   });
 
   const getWorkspaceFolderPlatformSafe = (folder = WORKSPACE_FOLDER) => {
@@ -78,7 +80,8 @@ suite("ConfigService", () => {
       const absoluteServer = await service.getOxfmtServerBinPath();
 
       strictEqual(absoluteServer?.loader, "native");
-      strictEqual(absoluteServer?.path, `${workspace_path}/absolute/oxfmt`);
+      // the configured path is normalized, which turns the separators into platform ones
+      strictEqual(absoluteServer?.path, `${workspace_path}${sep}absolute${sep}oxfmt`);
 
       await conf.update("path.oxfmt", "./relative/oxfmt");
       const relativeServer = await service.getOxfmtServerBinPath();
@@ -90,14 +93,60 @@ suite("ConfigService", () => {
       await deleteWorkspaceFolderFileUri("relative/oxfmt");
     });
 
-    test("returns undefined for unsafe server path", async () => {
-      await createWorkspaceFolderFileUri("../unsafe/oxfmt");
+    test("resolves server path outside of the workspace folder", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("../outside/oxfmt");
       const service = new ConfigService();
-      await conf.update("path.oxfmt", "../unsafe/oxfmt");
-      const unsafeServerPath = await service.getOxfmtServerBinPath();
+      await conf.update("path.oxfmt", "../outside/oxfmt");
+      const outsideServerPath = await service.getOxfmtServerBinPath();
 
-      strictEqual(unsafeServerPath, undefined);
-      await deleteWorkspaceFolderFileUri("../unsafe/oxfmt");
+      strictEqual(outsideServerPath?.loader, "native");
+      strictEqual(outsideServerPath?.path, resolve(workspace_path, "../outside/oxfmt"));
+      await deleteWorkspaceFolderFileUri("../outside/oxfmt");
+    });
+
+    test("resolves server path with an environment variable", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("variable/oxfmt");
+      const service = new ConfigService();
+      process.env[ENV_VARIABLE] = workspace_path;
+      await conf.update("path.oxfmt", `\${env:${ENV_VARIABLE}}/variable/oxfmt`);
+      const variableServer = await service.getOxfmtServerBinPath();
+
+      strictEqual(variableServer?.loader, "native");
+      strictEqual(variableServer?.path, `${workspace_path}${sep}variable${sep}oxfmt`);
+      await deleteWorkspaceFolderFileUri("variable/oxfmt");
+    });
+
+    test("resolves server path with an optional variable prefix", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("optional/oxfmt");
+      await createWorkspaceFolderFileUri("package/optional/oxfmt");
+      const service = new ConfigService();
+      await conf.update("path.oxfmt", `./\${env:${ENV_VARIABLE}}optional/oxfmt`);
+      const unsetServer = await service.getOxfmtServerBinPath();
+
+      strictEqual(unsetServer?.path, `${workspace_path}${sep}optional${sep}oxfmt`);
+
+      process.env[ENV_VARIABLE] = "package/";
+      const packageServer = await service.getOxfmtServerBinPath();
+
+      strictEqual(packageServer?.path, `${workspace_path}${sep}package${sep}optional${sep}oxfmt`);
+      await deleteWorkspaceFolderFileUri("optional/oxfmt");
+      await deleteWorkspaceFolderFileUri("package/optional/oxfmt");
+    });
+
+    test("falls back to the default search when the server path is empty after substitution", async () => {
+      const service = new ConfigService();
+      const defaultServer = await service.getOxfmtServerBinPath();
+
+      notStrictEqual(defaultServer, undefined);
+
+      await conf.update("path.oxfmt", `\${env:${ENV_VARIABLE}}`);
+      deepStrictEqual(await service.getOxfmtServerBinPath(), defaultServer);
+
+      process.env[ENV_VARIABLE] = "";
+      deepStrictEqual(await service.getOxfmtServerBinPath(), defaultServer);
     });
 
     test("returns backslashes path on Windows", async () => {
@@ -154,7 +203,8 @@ suite("ConfigService", () => {
       const absoluteServer = await service.getOxlintServerBinPath();
 
       strictEqual(absoluteServer?.loader, "native");
-      strictEqual(absoluteServer?.path, `${workspace_path}/absolute/oxlint`);
+      // the configured path is normalized, which turns the separators into platform ones
+      strictEqual(absoluteServer?.path, `${workspace_path}${sep}absolute${sep}oxlint`);
 
       await conf.update("path.oxlint", "./relative/oxlint");
       const relativeServer = await service.getOxlintServerBinPath();
@@ -166,14 +216,60 @@ suite("ConfigService", () => {
       await deleteWorkspaceFolderFileUri("relative/oxlint");
     });
 
-    test("returns undefined for unsafe server path", async () => {
-      await createWorkspaceFolderFileUri("../unsafe/oxlint");
+    test("resolves server path outside of the workspace folder", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("../outside/oxlint");
       const service = new ConfigService();
-      await conf.update("path.oxlint", "../unsafe/oxlint");
-      const unsafeServerPath = await service.getOxlintServerBinPath();
+      await conf.update("path.oxlint", "../outside/oxlint");
+      const outsideServerPath = await service.getOxlintServerBinPath();
 
-      strictEqual(unsafeServerPath, undefined);
-      await deleteWorkspaceFolderFileUri("../unsafe/oxlint");
+      strictEqual(outsideServerPath?.loader, "native");
+      strictEqual(outsideServerPath?.path, resolve(workspace_path, "../outside/oxlint"));
+      await deleteWorkspaceFolderFileUri("../outside/oxlint");
+    });
+
+    test("resolves server path with an environment variable", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("variable/oxlint");
+      const service = new ConfigService();
+      process.env[ENV_VARIABLE] = workspace_path;
+      await conf.update("path.oxlint", `\${env:${ENV_VARIABLE}}/variable/oxlint`);
+      const variableServer = await service.getOxlintServerBinPath();
+
+      strictEqual(variableServer?.loader, "native");
+      strictEqual(variableServer?.path, `${workspace_path}${sep}variable${sep}oxlint`);
+      await deleteWorkspaceFolderFileUri("variable/oxlint");
+    });
+
+    test("resolves server path with an optional variable prefix", async () => {
+      const workspace_path = getWorkspaceFolderPlatformSafe();
+      await createWorkspaceFolderFileUri("optional/oxlint");
+      await createWorkspaceFolderFileUri("package/optional/oxlint");
+      const service = new ConfigService();
+      await conf.update("path.oxlint", `./\${env:${ENV_VARIABLE}}optional/oxlint`);
+      const unsetServer = await service.getOxlintServerBinPath();
+
+      strictEqual(unsetServer?.path, `${workspace_path}${sep}optional${sep}oxlint`);
+
+      process.env[ENV_VARIABLE] = "package/";
+      const packageServer = await service.getOxlintServerBinPath();
+
+      strictEqual(packageServer?.path, `${workspace_path}${sep}package${sep}optional${sep}oxlint`);
+      await deleteWorkspaceFolderFileUri("optional/oxlint");
+      await deleteWorkspaceFolderFileUri("package/optional/oxlint");
+    });
+
+    test("falls back to the default search when the server path is empty after substitution", async () => {
+      const service = new ConfigService();
+      const defaultServer = await service.getOxlintServerBinPath();
+
+      notStrictEqual(defaultServer, undefined);
+
+      await conf.update("path.oxlint", `\${env:${ENV_VARIABLE}}`);
+      deepStrictEqual(await service.getOxlintServerBinPath(), defaultServer);
+
+      process.env[ENV_VARIABLE] = "";
+      deepStrictEqual(await service.getOxlintServerBinPath(), defaultServer);
     });
 
     test("returns backslashes path on Windows", async () => {

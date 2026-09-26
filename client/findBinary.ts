@@ -277,6 +277,8 @@ export async function searchEnvPath(
 
 /**
  * Search for the binary based on user settings.
+ * `settingsBinary` is the setting value with its path variables already substituted, see
+ * `substitutePathVariables`.
  * If the path is relative, it is resolved against the first workspace folder.
  * Returns undefined if no valid binary is found or the path is unsafe.
  */
@@ -293,7 +295,9 @@ export async function searchSettingsBin(
     return undefined;
   }
 
-  if (!path.isAbsolute(settingsBinary)) {
+  if (path.isAbsolute(settingsBinary)) {
+    settingsBinary = path.normalize(settingsBinary);
+  } else {
     const cwd = workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!cwd) {
       return undefined;

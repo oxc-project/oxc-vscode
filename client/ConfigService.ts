@@ -9,6 +9,7 @@ import {
   searchVitePlusBin,
   searchYarnPnpBin,
 } from "./findBinary";
+import { substitutePathVariables } from "./PathVariables";
 import { IDisposable } from "./types";
 import { VSCodeConfig } from "./VSCodeConfig";
 import {
@@ -119,8 +120,11 @@ export class ConfigService implements IDisposable {
     settingsBinary: string | undefined,
     defaultBinaryName: string,
   ): Promise<BinarySearchResult | undefined> {
-    if (settingsBinary) {
-      return searchSettingsBin(defaultBinaryName, settingsBinary);
+    // a setting which is empty after substitution counts as not configured, so that
+    // `${env:OXLINT_BIN}` with the variable unset searches like an empty setting
+    const settingsPath = settingsBinary ? substitutePathVariables(settingsBinary) : undefined;
+    if (settingsPath) {
+      return searchSettingsBin(defaultBinaryName, settingsPath);
     }
 
     return (

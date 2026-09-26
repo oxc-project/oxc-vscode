@@ -16,12 +16,12 @@ suite("validateSafeBinaryPath", () => {
     strictEqual(validateSafeBinaryPath("C:\\Program Files\\OXC_LANGUAGE_SERVER.exe"), true);
   });
 
-  test("should reject paths with directory traversal", () => {
-    strictEqual(validateSafeBinaryPath("../oxc_language_server"), false);
-    strictEqual(validateSafeBinaryPath("../../oxc_language_server"), false);
-    strictEqual(validateSafeBinaryPath("/usr/local/../bin/oxc_language_server"), false);
-    strictEqual(validateSafeBinaryPath("..\\oxc_language_server"), false);
-    strictEqual(validateSafeBinaryPath(".\\oxc_language_server"), false);
+  test("should accept paths with `..` or `.` segments", () => {
+    strictEqual(validateSafeBinaryPath("../oxc_language_server"), true);
+    strictEqual(validateSafeBinaryPath("../../oxc_language_server"), true);
+    strictEqual(validateSafeBinaryPath("/usr/local/../bin/oxc_language_server"), true);
+    strictEqual(validateSafeBinaryPath("..\\oxc_language_server"), true);
+    strictEqual(validateSafeBinaryPath(".\\oxc_language_server"), true);
   });
 
   test("should reject paths with malicious characters", () => {

@@ -312,19 +312,19 @@
         "oxc.path.server": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server.",
+          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection.",
           "deprecated": true,
           "markdownDeprecationMessage": "Use `oxc.path.oxlint` instead, targeting the `oxlint` binary."
         },
         "oxc.path.oxlint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`."
+          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection."
         },
         "oxc.path.oxfmt": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`."
+          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection."
         },
         "oxc.path.tsgolint": {
           "type": "string",

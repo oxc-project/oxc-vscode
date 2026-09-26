@@ -9,10 +9,11 @@ import {
   searchGlobalNodeModulesBin,
   searchEnvPath,
   searchProjectNodeModulesBin,
+  searchSettingsBin,
   searchVitePlusBin,
   searchYarnPnpBin,
 } from "../../client/findBinary";
-import { WORKSPACE_FOLDER } from "../test-helpers.js";
+import { WORKSPACE_FOLDER, WORKSPACE_SECOND_FOLDER } from "../test-helpers.js";
 
 suite("findBinary", () => {
   const binaryName = "oxlint";
@@ -300,6 +301,99 @@ suite("findBinary", () => {
       const result = await searchEnvPath(binaryName);
 
       strictEqual(result, undefined);
+    });
+  });
+
+  suite("searchSettingsBin", () => {
+    const settingsBinaryName = "settings-bin-test";
+    const metacharacterBinaryName = "settings-bin&test";
+    const workspacePath = WORKSPACE_FOLDER.uri.fsPath;
+    const siblingPath = WORKSPACE_SECOND_FOLDER!.uri.fsPath;
+    const workspaceBinary = path.join(workspacePath, settingsBinaryName);
+    const siblingBinary = path.join(siblingPath, settingsBinaryName);
+    const metacharacterBinary = path.join(workspacePath, metacharacterBinaryName);
+
+    setup(async () => {
+      await Promise.all(
+        [workspaceBinary, siblingBinary, metacharacterBinary].map((binary) =>
+          workspace.fs.writeFile(Uri.file(binary), new Uint8Array()),
+        ),
+      );
+    });
+
+    teardown(async () => {
+      await Promise.all(
+        [workspaceBinary, siblingBinary, metacharacterBinary].map((binary) =>
+          workspace.fs.delete(Uri.file(binary)),
+        ),
+      );
+    });
+
+    test("should resolve a relative path against the first workspace folder", async () => {
+      const result = await searchSettingsBin(binaryName, settingsBinaryName);
+
+      strictEqual(result?.loader, "native");
+      strictEqual(result?.path, workspaceBinary);
+    });
+
+    test("should accept a path in a sibling directory of the workspace folder", async () => {
+      const relativePath = path.join("..", path.basename(siblingPath), settingsBinaryName);
+      const relativeResult = await searchSettingsBin(binaryName, relativePath);
+
+      strictEqual(relativeResult?.path, siblingBinary);
+
+      // kept unnormalized, so that the `..` segment reaches the path resolution
+      const absolutePath = [
+        workspacePath,
+        "..",
+        path.basename(siblingPath),
+        settingsBinaryName,
+      ].join(path.sep);
+      const absoluteResult = await searchSettingsBin(binaryName, absolutePath);
+
+      strictEqual(absoluteResult?.path, siblingBinary);
+    });
+
+    test("should return undefined when the path contains a shell metacharacter", async () => {
+      const result = await searchSettingsBin(binaryName, metacharacterBinaryName);
+
+      strictEqual(result, undefined);
+    });
+
+    test("should accept a relative path in a workspace folder whose path contains a shell metacharacter", async () => {
+      const metacharacterFolder = mkdtempSync(path.join(tmpdir(), "test-settings-bin&"));
+      const descriptor = Object.getOwnPropertyDescriptor(workspace, "workspaceFolders")!;
+      Object.defineProperty(workspace, "workspaceFolders", {
+        configurable: true,
+        get: () => [{ uri: Uri.file(metacharacterFolder), name: "metacharacter", index: 0 }],
+      });
+
+      try {
+        writeFileSync(path.join(metacharacterFolder, settingsBinaryName), "");
+        const result = await searchSettingsBin(binaryName, settingsBinaryName);
+
+        // `searchSettingsBin` resolves against `Uri.fsPath`, which lowercases the drive letter
+        strictEqual(
+          result?.path,
+          path.join(Uri.file(metacharacterFolder).fsPath, settingsBinaryName),
+        );
+      } finally {
+        Object.defineProperty(workspace, "workspaceFolders", descriptor);
+        rmSync(metacharacterFolder, { recursive: true, force: true });
+      }
+    });
+
+    test("should return undefined when the workspace is not trusted", async () => {
+      const descriptor = Object.getOwnPropertyDescriptor(workspace, "isTrusted")!;
+      Object.defineProperty(workspace, "isTrusted", { configurable: true, get: () => false });
+
+      try {
+        const result = await searchSettingsBin(binaryName, settingsBinaryName);
+
+        strictEqual(result, undefined);
+      } finally {
+        Object.defineProperty(workspace, "isTrusted", descriptor);
+      }
     });
   });
 });
