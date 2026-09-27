@@ -261,6 +261,7 @@ export default class LinterTool implements ToolInterface {
       "vue",
     ];
 
+    const traceOutputChannel = createTraceOutputChannel(this.outputChannel);
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     // Options to control the language client
@@ -274,7 +275,7 @@ export default class LinterTool implements ToolInterface {
       ],
       initializationOptions: this.configService.oxlintServerConfig,
       outputChannel: this.outputChannel,
-      traceOutputChannel: createTraceOutputChannel(this.outputChannel),
+      traceOutputChannel: traceOutputChannel,
       diagnosticPullOptions: {
         onChange: true,
         onSave: true,
@@ -371,6 +372,7 @@ export default class LinterTool implements ToolInterface {
       onNotificationDispose.dispose();
       onDeleteFilesDispose.dispose();
       activatorDispatcher?.dispose();
+      traceOutputChannel.dispose();
     };
 
     this.updateStatusBar(this.configService.vsCodeConfig.enableOxlint);
