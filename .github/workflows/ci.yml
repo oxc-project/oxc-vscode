@@ -74,7 +74,6 @@ jobs:
         run: xvfb-run -a pnpm run test:format-save
 
   test-windows:
-    if: ${{ github.ref_name == 'main' }}
     name: Test (windows)
     runs-on: windows-latest
     steps:
