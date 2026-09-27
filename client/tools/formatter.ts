@@ -268,6 +268,7 @@ export default class FormatterTool implements ToolInterface {
   private readonly restartCommand: { dispose: () => void };
   private readonly toggleEnableCommand: { dispose: () => void };
   private readonly formatActionProvider: { dispose: () => void };
+  private readonly traceOutputChannel: LogOutputChannel;
 
   constructor(
     private readonly outputChannel: LogOutputChannel,
@@ -310,6 +311,8 @@ export default class FormatterTool implements ToolInterface {
         providedCodeActionKinds: [formatCodeActionKind],
       },
     );
+
+    this.traceOutputChannel = createTraceOutputChannel(this.outputChannel);
   }
 
   getLspVersion(): string | undefined {
@@ -355,8 +358,6 @@ export default class FormatterTool implements ToolInterface {
       debug: run,
     };
 
-    const traceOutputChannel = createTraceOutputChannel(this.outputChannel);
-
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     // Options to control the language client
@@ -365,7 +366,7 @@ export default class FormatterTool implements ToolInterface {
       documentSelector: this.documentSelectors,
       initializationOptions: this.configService.formatterServerConfig,
       outputChannel: this.outputChannel,
-      traceOutputChannel: traceOutputChannel,
+      traceOutputChannel: this.traceOutputChannel,
       middleware: {
         workspace: {
           configuration: (params: ConfigurationParams) => {
@@ -404,7 +405,6 @@ export default class FormatterTool implements ToolInterface {
         // do nothing, the client may already be stopped
       }
       onNotificationDispose.dispose();
-      traceOutputChannel.dispose();
     };
 
     if (this.configService.vsCodeConfig.enableOxfmt) {
@@ -473,6 +473,7 @@ export default class FormatterTool implements ToolInterface {
     this.restartCommand.dispose();
     this.toggleEnableCommand.dispose();
     this.formatActionProvider.dispose();
+    this.traceOutputChannel.dispose();
   }
 
   private updateStatusBar() {

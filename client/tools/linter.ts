@@ -151,6 +151,7 @@ export default class LinterTool implements ToolInterface {
   private readonly restartCommand: { dispose: () => void };
   private readonly toggleEnableCommand: { dispose: () => void };
   private readonly applyAllFixesCommand: { dispose: () => void };
+  private readonly traceOutputChannel: LogOutputChannel;
 
   constructor(
     private readonly outputChannel: LogOutputChannel,
@@ -198,6 +199,8 @@ export default class LinterTool implements ToolInterface {
         await this.client.sendRequest(ExecuteCommandRequest.type, params);
       },
     );
+
+    this.traceOutputChannel = createTraceOutputChannel(this.outputChannel);
   }
 
   getLspVersion(): string | undefined {
@@ -261,7 +264,6 @@ export default class LinterTool implements ToolInterface {
       "vue",
     ];
 
-    const traceOutputChannel = createTraceOutputChannel(this.outputChannel);
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     // Options to control the language client
@@ -275,7 +277,7 @@ export default class LinterTool implements ToolInterface {
       ],
       initializationOptions: this.configService.oxlintServerConfig,
       outputChannel: this.outputChannel,
-      traceOutputChannel: traceOutputChannel,
+      traceOutputChannel: this.traceOutputChannel,
       diagnosticPullOptions: {
         onChange: true,
         onSave: true,
@@ -372,7 +374,6 @@ export default class LinterTool implements ToolInterface {
       onNotificationDispose.dispose();
       onDeleteFilesDispose.dispose();
       activatorDispatcher?.dispose();
-      traceOutputChannel.dispose();
     };
 
     this.updateStatusBar(this.configService.vsCodeConfig.enableOxlint);
@@ -393,6 +394,7 @@ export default class LinterTool implements ToolInterface {
     this.restartCommand.dispose();
     this.toggleEnableCommand.dispose();
     this.applyAllFixesCommand.dispose();
+    this.traceOutputChannel.dispose();
   }
 
   async toggleClient(configService: ConfigService): Promise<void> {
