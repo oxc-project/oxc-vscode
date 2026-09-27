@@ -6,6 +6,17 @@ import type { BinarySearchResult } from "../findBinary";
 import { getShellEnv } from "../getShellEnv";
 
 /**
+ * Get the currently configured trace setting for the oxc language server.
+ */
+const getConfiguredTrace = (): "off" | "messages" | "verbose" =>
+  workspace.getConfiguration("oxc").get<"off" | "messages" | "verbose">("trace.server", "off");
+
+/**
+ * Get the corresponding LogLevel for the given trace setting.
+ */
+const getLogLevel = (trace: "off" | "messages" | "verbose"): LogLevel =>
+  trace === "off" ? LogLevel.Off : LogLevel.Trace;
+/**
  * vscode-languageclient v10 only forwards LSP protocol traces to the trace output
  * channel when that channel's *own* log level is set to `Trace`, ignoring the
  * `oxc.trace.server` setting entirely otherwise (channel log level defaults to `Info`).
@@ -18,19 +29,16 @@ export function createTraceOutputChannel(channel: LogOutputChannel): LogOutputCh
   const appendLine = (message: string) => channel.appendLine(message);
   const logLevelEmitter = new EventEmitter<LogLevel>();
 
-  const getConfiguredLogLevel = (): LogLevel =>
-    workspace.getConfiguration("oxc").get<string>("trace.server") === "off"
-      ? LogLevel.Off
-      : LogLevel.Trace;
-
-  let logLevel = getConfiguredLogLevel();
+  let configuredTrace = getConfiguredTrace();
+  let logLevel = getLogLevel(configuredTrace);
   const configListener = workspace.onDidChangeConfiguration((event) => {
     if (!event.affectsConfiguration("oxc.trace.server")) {
       return;
     }
-    const newLogLevel = getConfiguredLogLevel();
-    if (newLogLevel !== logLevel) {
-      logLevel = newLogLevel;
+    const newTrace = getConfiguredTrace();
+    if (newTrace !== configuredTrace) {
+      configuredTrace = newTrace;
+      logLevel = getLogLevel(configuredTrace);
       logLevelEmitter.fire(logLevel);
     }
   });
