@@ -173,7 +173,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
+          "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration. Supports variables."
         },
         "oxc.tsConfigPath": {
           "type": [
@@ -182,7 +182,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
+          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports variables."
         },
         "oxc.unusedDisableDirectives": {
           "type": [
@@ -295,7 +295,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to an oxfmt configuration file. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
+          "markdownDescription": "Path to an oxfmt configuration file. Supports variables."
         },
         "oxc.fmt.disableNestedConfig": {
           "type": "boolean",
@@ -312,24 +312,24 @@
         "oxc.path.server": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection.",
+          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server. Supports variables.",
           "deprecated": true,
           "markdownDeprecationMessage": "Use `oxc.path.oxlint` instead, targeting the `oxlint` binary."
         },
         "oxc.path.oxlint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection."
+          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`. Supports variables."
         },
         "oxc.path.oxfmt": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`. Supports `${userHome}` and `${env:NAME}`. An unset or empty environment variable is replaced by an empty string; a value which is empty after this replacement uses the auto detection."
+          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`. Supports variables."
         },
         "oxc.path.tsgolint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
+          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. Supports variables."
         },
         "oxc.path.node": {
           "type": "string",
