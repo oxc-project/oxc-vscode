@@ -53,9 +53,8 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
     const binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
-    // `${env:NAME}` is only supported in trusted workspaces
     this._binPathTsGoLint = binPathTsGoLint
-      ? substitutePathVariables(binPathTsGoLint, workspace.isTrusted) || undefined
+      ? substitutePathVariables(binPathTsGoLint) || undefined
       : binPathTsGoLint;
     this._nodePath = this.configuration.get<string>("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;

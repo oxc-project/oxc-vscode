@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { env } from "node:process";
+import { workspace } from "vscode";
 
 /**
  * Substitutes the variables supported in user configured binary paths.
@@ -12,7 +13,7 @@ import { env } from "node:process";
  * Every other `${...}` form is left as it is, and so is `${userHome}` when the home directory
  * cannot be determined. It keeps its `$` character, which `validateSafeBinaryPath` rejects.
  */
-export function substitutePathVariables(value: string, allowEnv = true): string {
+export function substitutePathVariables(value: string): string {
   // the replacement is a function, so that a `$` in a substituted value is not a pattern
   return value.replaceAll(
     /\$\{(userHome|env:([^}]+))\}/g,
@@ -20,8 +21,8 @@ export function substitutePathVariables(value: string, allowEnv = true): string 
       if (name === undefined) {
         return homeDirectory() ?? match;
       }
-      // `${env:NAME}` is left as it is when not allowed (untrusted workspace)
-      return allowEnv ? (env[name] ?? "") : match;
+      // `${env:NAME}` is left as it is in an untrusted workspace
+      return workspace.isTrusted ? (env[name] ?? "") : match;
     },
   );
 }

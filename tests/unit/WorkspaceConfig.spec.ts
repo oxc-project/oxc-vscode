@@ -1,3 +1,4 @@
+import * as os from "node:os";
 import * as path from "node:path";
 import { strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
@@ -38,6 +39,30 @@ suite("WorkspaceConfig", () => {
   });
   teardown(async () => {
     await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
+  });
+
+  test("resolves path variables in path settings", async () => {
+    process.env.OXC_TEST_CONFIG_DIR = "/opt/oxc";
+    try {
+      await updateConfiguration("configPath", "${env:OXC_TEST_CONFIG_DIR}/oxlintrc.json");
+      await updateConfiguration("tsConfigPath", "${userHome}/tsconfig.json");
+      await updateConfiguration("fmt.configPath", "${env:OXC_TEST_CONFIG_DIR}/.oxfmtrc.json");
+
+      const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+      strictEqual(config.configPath, "/opt/oxc/oxlintrc.json");
+      strictEqual(config.tsConfigPath, path.join(os.homedir(), "tsconfig.json"));
+      strictEqual(config.formattingConfigPath, "/opt/oxc/.oxfmtrc.json");
+    } finally {
+      delete process.env.OXC_TEST_CONFIG_DIR;
+    }
+  });
+
+  test("path setting is null when empty after substitution", async () => {
+    delete process.env.OXC_TEST_CONFIG_DIR;
+    await updateConfiguration("configPath", "${env:OXC_TEST_CONFIG_DIR}");
+
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+    strictEqual(config.configPath, null);
   });
 
   test("default values on initialization", () => {

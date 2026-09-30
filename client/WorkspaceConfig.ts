@@ -185,8 +185,7 @@ export class WorkspaceConfig {
       return null;
     }
 
-    // `${env:NAME}` is only supported in trusted workspaces
-    const value = substitutePathVariables(rawValue, workspace.isTrusted);
+    const value = substitutePathVariables(rawValue);
     if (value === "" && rawValue !== "") {
       return null;
     }

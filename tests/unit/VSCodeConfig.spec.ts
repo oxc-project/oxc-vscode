@@ -100,6 +100,20 @@ suite("VSCodeConfig", () => {
     strictEqual(wsConfig.get("suppressProgramErrors"), true);
   });
 
+  test("resolves path variables in path.tsgolint", async () => {
+    process.env.OXC_TEST_TSGOLINT_DIR = "/opt/oxc";
+    try {
+      await conf.update("path.tsgolint", "${env:OXC_TEST_TSGOLINT_DIR}/tsgolint");
+      strictEqual(new VSCodeConfig().binPathTsGoLint, "/opt/oxc/tsgolint");
+
+      delete process.env.OXC_TEST_TSGOLINT_DIR;
+      await conf.update("path.tsgolint", "${env:OXC_TEST_TSGOLINT_DIR}");
+      strictEqual(new VSCodeConfig().binPathTsGoLint, undefined);
+    } finally {
+      delete process.env.OXC_TEST_TSGOLINT_DIR;
+    }
+  });
+
   test("effectsOxlintConnection detects changes to oxlint connection related settings", async () => {
     const config = new VSCodeConfig();
     const wsConfig = workspace.getConfiguration("oxc");
