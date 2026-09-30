@@ -44,6 +44,17 @@ export class ConfigService implements IDisposable {
       this.onVscodeConfigChange.bind(this),
     );
     this._disposables.push(disposeChangeListener);
+
+    // `${env:NAME}` is only substituted in trusted workspaces, so resolve again once trust is granted
+    this._disposables.push(
+      workspace.onDidGrantWorkspaceTrust(async () => {
+        this.vsCodeConfig.refresh();
+        for (const workspaceConfig of this.workspaceConfigs.values()) {
+          workspaceConfig.refresh();
+        }
+        await this.onConfigChange?.({ affectsConfiguration: () => true });
+      }),
+    );
   }
 
   public get oxlintServerConfig(): {
