@@ -1,5 +1,6 @@
 import { ConfigurationChangeEvent, workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
+import { substitutePathVariables } from "./PathVariables";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
   private _enableOxlint!: boolean;
@@ -51,7 +52,11 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
-    this._binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
+    const binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
+    // `${env:NAME}` is only supported in trusted workspaces
+    this._binPathTsGoLint = binPathTsGoLint
+      ? substitutePathVariables(binPathTsGoLint, workspace.isTrusted) || undefined
+      : binPathTsGoLint;
     this._nodePath = this.configuration.get<string>("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;

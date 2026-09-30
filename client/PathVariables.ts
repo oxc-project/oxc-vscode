@@ -12,12 +12,17 @@ import { env } from "node:process";
  * Every other `${...}` form is left as it is, and so is `${userHome}` when the home directory
  * cannot be determined. It keeps its `$` character, which `validateSafeBinaryPath` rejects.
  */
-export function substitutePathVariables(value: string): string {
+export function substitutePathVariables(value: string, allowEnv = true): string {
   // the replacement is a function, so that a `$` in a substituted value is not a pattern
   return value.replaceAll(
     /\$\{(userHome|env:([^}]+))\}/g,
-    (match, _variable: string, name: string | undefined) =>
-      name === undefined ? (homeDirectory() ?? match) : (env[name] ?? ""),
+    (match, _variable: string, name: string | undefined) => {
+      if (name === undefined) {
+        return homeDirectory() ?? match;
+      }
+      // `${env:NAME}` is left as it is when not allowed (untrusted workspace)
+      return allowEnv ? (env[name] ?? "") : match;
+    },
   );
 }
 

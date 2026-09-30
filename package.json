@@ -173,7 +173,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration."
+          "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
         },
         "oxc.tsConfigPath": {
           "type": [
@@ -182,7 +182,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly."
+          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
         },
         "oxc.unusedDisableDirectives": {
           "type": [
@@ -295,7 +295,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to an oxfmt configuration file"
+          "markdownDescription": "Path to an oxfmt configuration file. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
         },
         "oxc.fmt.disableNestedConfig": {
           "type": "boolean",
@@ -329,7 +329,7 @@
         "oxc.path.tsgolint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`."
+          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. Supports `${userHome}`, and `${env:NAME}` in trusted workspaces only."
         },
         "oxc.path.node": {
           "type": "string",

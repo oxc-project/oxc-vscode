@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { ConfigurationChangeEvent, ConfigurationTarget, workspace, WorkspaceFolder } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { ConfigService } from "./ConfigService";
+import { substitutePathVariables } from "./PathVariables";
 
 export const oxlintConfigFileName = ".oxlintrc.json";
 
@@ -179,8 +180,14 @@ export class WorkspaceConfig {
   }
 
   private getResolvedPathSetting(section: PathSettingKey): string | null {
-    const value = this.configuration.get<string | null>(section);
-    if (value === null || value === undefined) {
+    const rawValue = this.configuration.get<string | null>(section);
+    if (rawValue === null || rawValue === undefined) {
+      return null;
+    }
+
+    // `${env:NAME}` is only supported in trusted workspaces
+    const value = substitutePathVariables(rawValue, workspace.isTrusted);
+    if (value === "" && rawValue !== "") {
       return null;
     }
 
