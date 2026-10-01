@@ -173,7 +173,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Optional path to an Oxlint configuration file. When unset (`null`), Oxlint automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration. Supports variables."
+          "markdownDescription": "Optional path to an Oxlint configuration file. When unset (`null`), Oxlint automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration. Supports [variables](#variables)."
         },
         "oxc.tsConfigPath": {
           "type": [
@@ -182,7 +182,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports variables."
+          "markdownDescription": "Path to the project's TypeScript config file. \n\nIf your `tsconfig.json` is not at the root, you will need this set for the `import` plugin rules to resolve imports correctly. Supports [variables](#variables)."
         },
         "oxc.unusedDisableDirectives": {
           "type": [
@@ -312,29 +312,29 @@
         "oxc.path.server": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server. Supports variables.",
+          "markdownDescription": "Path to Oxc language server binary. Mostly for testing the language server. Supports [variables](#variables).",
           "deprecated": true,
           "markdownDeprecationMessage": "Use `oxc.path.oxlint` instead, targeting the `oxlint` binary."
         },
         "oxc.path.oxlint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`. Supports variables."
+          "markdownDescription": "Path to an Oxc linter binary. Default: auto detection in `node_modules`. Supports [variables](#variables)."
         },
         "oxc.path.oxfmt": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`. Supports variables."
+          "markdownDescription": "Path to an Oxc formatter binary. Default: auto detection in `node_modules`. Supports [variables](#variables)."
         },
         "oxc.path.tsgolint": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. Supports variables."
+          "markdownDescription": "Path to an Oxc tsgolint binary. Default: auto detection from `oxlint`. Supports [variables](#variables)."
         },
         "oxc.path.node": {
           "type": "string",
           "scope": "window",
-          "markdownDescription": "Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment. Supports variables."
+          "markdownDescription": "Path to a Node.js binary. Will be added to the `oxfmt` and `oxlint` `PATH` environment. Supports [variables](#variables)."
         },
         "oxc.useExecPath": {
           "type": "boolean",
