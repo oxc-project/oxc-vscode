@@ -22,11 +22,18 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     return workspace.getConfiguration(ConfigService.namespace);
   }
 
+  // a setting which is empty after substitution counts as not configured, so that
+  // `${env:OXLINT_BIN}` with the variable unset behaves like an empty setting
+  private getResolvedBinPath(section: string): string | undefined {
+    const value = this.configuration.get<string>(section);
+    return value ? substitutePathVariables(value) || undefined : value;
+  }
+
   public refresh(): void {
-    let binPathOxlint = this.configuration.get<string>("path.oxlint");
+    let binPathOxlint = this.getResolvedBinPath("path.oxlint");
     // fallback to deprecated 'path.server' setting
     if (!binPathOxlint) {
-      binPathOxlint = this.configuration.get<string>("path.server");
+      binPathOxlint = this.getResolvedBinPath("path.server");
     }
     let enable =
       this.configuration.get<boolean | null | { oxlint?: boolean; oxfmt?: boolean }>("enable") ??
@@ -51,11 +58,8 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._enableOxfmt = enable.oxfmt!;
     this._trace = this.configuration.get<TraceLevel>("trace.server") || "off";
     this._binPathOxlint = binPathOxlint;
-    this._binPathOxfmt = this.configuration.get<string>("path.oxfmt");
-    const binPathTsGoLint = this.configuration.get<string>("path.tsgolint");
-    this._binPathTsGoLint = binPathTsGoLint
-      ? substitutePathVariables(binPathTsGoLint) || undefined
-      : binPathTsGoLint;
+    this._binPathOxfmt = this.getResolvedBinPath("path.oxfmt");
+    this._binPathTsGoLint = this.getResolvedBinPath("path.tsgolint");
     this._nodePath = this.configuration.get<string>("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;

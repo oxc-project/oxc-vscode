@@ -111,6 +111,7 @@ suite("ConfigService", () => {
       const service = new ConfigService();
       process.env[ENV_VARIABLE] = workspace_path;
       await conf.update("path.oxfmt", `\${env:${ENV_VARIABLE}}/variable/oxfmt`);
+      service.vsCodeConfig.refresh();
       const variableServer = await service.getOxfmtServerBinPath();
 
       strictEqual(variableServer?.loader, "native");
@@ -124,11 +125,13 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("package/optional/oxfmt");
       const service = new ConfigService();
       await conf.update("path.oxfmt", `./\${env:${ENV_VARIABLE}}optional/oxfmt`);
+      service.vsCodeConfig.refresh();
       const unsetServer = await service.getOxfmtServerBinPath();
 
       strictEqual(unsetServer?.path, `${workspace_path}${sep}optional${sep}oxfmt`);
 
       process.env[ENV_VARIABLE] = "package/";
+      service.vsCodeConfig.refresh();
       const packageServer = await service.getOxfmtServerBinPath();
 
       strictEqual(packageServer?.path, `${workspace_path}${sep}package${sep}optional${sep}oxfmt`);
@@ -143,9 +146,11 @@ suite("ConfigService", () => {
       notStrictEqual(defaultServer, undefined);
 
       await conf.update("path.oxfmt", `\${env:${ENV_VARIABLE}}`);
+      service.vsCodeConfig.refresh();
       deepStrictEqual(await service.getOxfmtServerBinPath(), defaultServer);
 
       process.env[ENV_VARIABLE] = "";
+      service.vsCodeConfig.refresh();
       deepStrictEqual(await service.getOxfmtServerBinPath(), defaultServer);
     });
 
@@ -234,6 +239,7 @@ suite("ConfigService", () => {
       const service = new ConfigService();
       process.env[ENV_VARIABLE] = workspace_path;
       await conf.update("path.oxlint", `\${env:${ENV_VARIABLE}}/variable/oxlint`);
+      service.vsCodeConfig.refresh();
       const variableServer = await service.getOxlintServerBinPath();
 
       strictEqual(variableServer?.loader, "native");
@@ -247,11 +253,13 @@ suite("ConfigService", () => {
       await createWorkspaceFolderFileUri("package/optional/oxlint");
       const service = new ConfigService();
       await conf.update("path.oxlint", `./\${env:${ENV_VARIABLE}}optional/oxlint`);
+      service.vsCodeConfig.refresh();
       const unsetServer = await service.getOxlintServerBinPath();
 
       strictEqual(unsetServer?.path, `${workspace_path}${sep}optional${sep}oxlint`);
 
       process.env[ENV_VARIABLE] = "package/";
+      service.vsCodeConfig.refresh();
       const packageServer = await service.getOxlintServerBinPath();
 
       strictEqual(packageServer?.path, `${workspace_path}${sep}package${sep}optional${sep}oxlint`);
@@ -266,9 +274,11 @@ suite("ConfigService", () => {
       notStrictEqual(defaultServer, undefined);
 
       await conf.update("path.oxlint", `\${env:${ENV_VARIABLE}}`);
+      service.vsCodeConfig.refresh();
       deepStrictEqual(await service.getOxlintServerBinPath(), defaultServer);
 
       process.env[ENV_VARIABLE] = "";
+      service.vsCodeConfig.refresh();
       deepStrictEqual(await service.getOxlintServerBinPath(), defaultServer);
     });
 
