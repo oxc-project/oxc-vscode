@@ -53,6 +53,16 @@ suite("VSCodeConfig", () => {
     strictEqual(config.binPathOxlint, "./deprecatedBinary");
   });
 
+  test("safe `path.node` is returned", async () => {
+    await conf.update("path.node", "./node");
+    strictEqual(new VSCodeConfig().nodePath, "./node");
+  });
+
+  test("unsafe `path.node` is ignored", async () => {
+    await conf.update("path.node", "node;rm -rf /");
+    strictEqual(new VSCodeConfig().nodePath, undefined);
+  });
+
   test("update enable, will update enable.oxlint and enable.oxfmt respectively", async () => {
     await conf.update("enable", false);
     const config = new VSCodeConfig();

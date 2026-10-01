@@ -115,7 +115,10 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   get nodePath(): string | undefined {
     // drop unsafe values, so they never reach the shell command
-    return this._nodePath && validateSafeBinaryPath(this._nodePath) ? this._nodePath : undefined;
+    if (this._nodePath && !validateSafeBinaryPath(this._nodePath)) {
+      return undefined;
+    }
+    return this._nodePath;
   }
 
   updateNodePath(value: string | undefined): PromiseLike<void> {
