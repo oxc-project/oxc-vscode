@@ -25,9 +25,14 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   // a setting which is empty after substitution counts as not configured, so that
   // `${env:OXLINT_BIN}` with the variable unset behaves like an empty setting
+  // an unsafe path (see `validateSafeBinaryPath`) is treated the same way
   private getResolvedBinPath(section: string): string | undefined {
     const value = this.configuration.get<string>(section);
-    return value ? substitutePathVariables(value) || undefined : value;
+    if (!value) {
+      return value;
+    }
+    const resolved = substitutePathVariables(value);
+    return resolved && validateSafeBinaryPath(resolved) ? resolved : undefined;
   }
 
   public refresh(): void {
@@ -61,8 +66,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.getResolvedBinPath("path.oxfmt");
     this._binPathTsGoLint = this.getResolvedBinPath("path.tsgolint");
-    const nodePath = this.getResolvedBinPath("path.node");
-    this._nodePath = nodePath && validateSafeBinaryPath(nodePath) ? nodePath : undefined;
+    this._nodePath = this.getResolvedBinPath("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
     this._suppressProgramErrors = this.configuration.get<boolean>("suppressProgramErrors") ?? false;
