@@ -3,7 +3,6 @@ import { homedir } from "node:os";
 import * as path from "node:path";
 import { env } from "node:process";
 import { Uri, workspace } from "vscode";
-import { validateSafeBinaryPath } from "./PathValidator";
 import { getShellEnv } from "./getShellEnv";
 import { runCommand } from "./runCommand";
 
@@ -280,7 +279,8 @@ export async function searchEnvPath(
  * `settingsBinary` is the setting value with its path variables already substituted, see
  * `substitutePathVariables`.
  * If the path is relative, it is resolved against the first workspace folder.
- * Returns undefined if no valid binary is found or the path is unsafe.
+ * Returns undefined if no valid binary is found.
+ * The path must already be validated by `VSCodeConfig`.
  */
 export async function searchSettingsBin(
   defaultBinaryName: string,
@@ -288,11 +288,6 @@ export async function searchSettingsBin(
 ): Promise<BinarySearchResult | undefined> {
   if (!workspace.isTrusted) {
     return;
-  }
-
-  // validates the given path is safe to use
-  if (!validateSafeBinaryPath(settingsBinary)) {
-    return undefined;
   }
 
   if (path.isAbsolute(settingsBinary)) {
