@@ -1,4 +1,4 @@
-import { strictEqual } from "assert";
+import { ok, strictEqual } from "assert";
 import { workspace } from "vscode";
 import { VSCodeConfig } from "../../client/VSCodeConfig.js";
 
@@ -135,12 +135,12 @@ suite("VSCodeConfig", () => {
 
     test(`${key} with an unsupported variable is treated as not configured`, async () => {
       await conf.update(key, "${workspaceFolder}/bin");
-      strictEqual(read(new VSCodeConfig()), undefined);
+      ok(!read(new VSCodeConfig()));
     });
 
     test(`${key} with a shell metacharacter is treated as not configured`, async () => {
       await conf.update(key, "/opt/bin&calc");
-      strictEqual(read(new VSCodeConfig()), undefined);
+      ok(!read(new VSCodeConfig()));
     });
   }
 
