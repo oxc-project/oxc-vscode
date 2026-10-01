@@ -1,0 +1,21 @@
+README.md
+  s_bb6b1f960fa8aa::t_73e5b5f8dd4809 76-86,114,117
+package.json
+  s_bb6b1f960fa8aa::t_86b3655f88c3be 176,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bc4b46458ccdb25210ab0705954f2f2e2d931820",
+  "prompts": {},
+  "sessions": {
+    "s_bb6b1f960fa8aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f763-483c-7313-98f8-470da59f9d4c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "leaysgur <6259812+leaysgur@users.noreply.github.com>"
+    }
+  }
+}
