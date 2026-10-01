@@ -1,5 +1,7 @@
 import { ConfigurationChangeEvent, workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
+import { validateSafeBinaryPath } from "./PathValidator";
+import { substitutePathVariables } from "./PathVariables";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
   private _enableOxlint!: boolean;
@@ -113,7 +115,9 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   get nodePath(): string | undefined {
-    return this._nodePath;
+    // substitute variables and drop unsafe values, so they never reach the shell command
+    const nodePath = this._nodePath ? substitutePathVariables(this._nodePath) : undefined;
+    return nodePath && validateSafeBinaryPath(nodePath) ? nodePath : undefined;
   }
 
   updateNodePath(value: string | undefined): PromiseLike<void> {
