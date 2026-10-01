@@ -60,7 +60,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
     this._binPathOxlint = binPathOxlint;
     this._binPathOxfmt = this.getResolvedBinPath("path.oxfmt");
     this._binPathTsGoLint = this.getResolvedBinPath("path.tsgolint");
-    this._nodePath = this.configuration.get<string>("path.node");
+    this._nodePath = this.getResolvedBinPath("path.node");
     this._useExecPath = this.configuration.get<boolean>("useExecPath") ?? false;
     this._requireConfig = this.configuration.get<boolean>("requireConfig") ?? false;
     this._suppressProgramErrors = this.configuration.get<boolean>("suppressProgramErrors") ?? false;

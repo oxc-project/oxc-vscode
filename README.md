@@ -159,7 +159,7 @@ Each rule name maps to an object with the following optional properties:
 
 ### Variables
 
-The following settings support variables: `oxc.path.oxlint`, `oxc.path.oxfmt`, `oxc.path.server`, `oxc.path.tsgolint`, `oxc.configPath`, `oxc.fmt.configPath` and `oxc.tsConfigPath`.
+The following settings support variables: `oxc.path.oxlint`, `oxc.path.oxfmt`, `oxc.path.server`, `oxc.path.tsgolint`, `oxc.path.node`, `oxc.configPath`, `oxc.fmt.configPath` and `oxc.tsConfigPath`.
 
 | Variable      | Replaced by                                                                                              |
 | ------------- | -------------------------------------------------------------------------------------------------------- |
