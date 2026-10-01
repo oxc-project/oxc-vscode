@@ -73,6 +73,17 @@ Running formatting as a code action on save, allows to define the order of chang
 
 ## Configuration
 
+For standalone Oxlint and Oxfmt, configuration file paths are optional:
+
+- `oxc.configPath` for Oxlint
+- `oxc.fmt.configPath` for Oxfmt
+
+Leave these settings unset (`null`) to let each tool automatically discover configuration files. Nested configuration lookup is enabled by default; it can be disabled with `oxc.disableNestedConfig` for Oxlint or `oxc.fmt.disableNestedConfig` for Oxfmt.
+
+Set a path only when you want to use a specific configuration file, such as one with a custom name or location. Specifying a path disables nested configuration lookup for that tool.
+
+See the [Oxlint configuration guide](https://oxc.rs/docs/guide/usage/linter/config.html) and [Oxfmt configuration guide](https://oxc.rs/docs/guide/usage/formatter/config.html) for supported configuration files and discovery details.
+
 <!-- START_GENERATED_CONFIGURATION -->
 
 ### Window Configuration
@@ -100,10 +111,10 @@ Following configurations are supported via `settings.json` and can be changed fo
 
 | Key                           | Default Value | Possible Values                                                                                               | Description                                                                                                                                                                                                                            |
 | ----------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `oxc.configPath`              | `null`        | `<string>` \| `<null>`                                                                                        | Path to oxlint configuration. Keep it empty to enable nested configuration.                                                                                                                                                            |
+| `oxc.configPath`              | `null`        | `<string>` \| `<null>`                                                                                        | Optional path to an Oxlint configuration file. When unset (`null`), Oxlint automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration.                                       |
 | `oxc.disableNestedConfig`     | `false`       | `true` \| `false`                                                                                             | Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.configPath` (if any) will be used.                                                                                   |
 | `oxc.fixKind`                 | `null`        | `safe_fix` \| `safe_fix_or_suggestion` \| `dangerous_fix` \| `dangerous_fix_or_suggestion` \| `none` \| `all` | Specify the kind of fixes to suggest/apply.                                                                                                                                                                                            |
-| `oxc.fmt.configPath`          | `null`        | `<string>` \| `<null>`                                                                                        | Path to an oxfmt configuration file                                                                                                                                                                                                    |
+| `oxc.fmt.configPath`          | `null`        | `<string>` \| `<null>`                                                                                        | Optional path to an Oxfmt configuration file. When unset (`null`), Oxfmt automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration.                                         |
 | `oxc.fmt.disableNestedConfig` | `false`       | `true` \| `false`                                                                                             | Disable searching for nested configuration files. When set to true, only the configuration file specified in `oxc.fmt.configPath` (if any) will be used.                                                                               |
 | `oxc.lint.customization`      | `null`        | `Record<string, object>` \| `<null>`                                                                          | Customizes linting rules behavior. See <https://oxc.rs/docs/guide/usage/linter/lsp-config-reference.html#rulescustomization> for details.                                                                                              |
 | `oxc.lint.run`                | `onType`      | `onSave` \| `onType`                                                                                          | Run the linter on save (onSave) or on type (onType)                                                                                                                                                                                    |

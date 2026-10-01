@@ -173,7 +173,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to oxlint configuration. Keep it empty to enable nested configuration."
+          "markdownDescription": "Optional path to an Oxlint configuration file. When unset (`null`), Oxlint automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration."
         },
         "oxc.tsConfigPath": {
           "type": [
@@ -295,7 +295,7 @@
           ],
           "scope": "resource",
           "default": null,
-          "markdownDescription": "Path to an oxfmt configuration file"
+          "markdownDescription": "Optional path to an Oxfmt configuration file. When unset (`null`), Oxfmt automatically discovers configuration files. Set this to use a specific file; doing so disables nested configuration."
         },
         "oxc.fmt.disableNestedConfig": {
           "type": "boolean",
