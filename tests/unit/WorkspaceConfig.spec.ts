@@ -50,7 +50,7 @@ suite("WorkspaceConfig", () => {
 
       const config = new WorkspaceConfig(WORKSPACE_FOLDER);
       strictEqual(config.configPath, "/opt/oxc/oxlintrc.json");
-      strictEqual(config.tsConfigPath, path.join(os.homedir(), "tsconfig.json"));
+      strictEqual(config.tsConfigPath, `${os.homedir()}/tsconfig.json`);
       strictEqual(config.formattingConfigPath, "/opt/oxc/.oxfmtrc.json");
     } finally {
       delete process.env.OXC_TEST_CONFIG_DIR;
