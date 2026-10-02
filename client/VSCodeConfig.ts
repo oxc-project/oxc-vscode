@@ -29,7 +29,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   private getResolvedBinPath(section: string): string | undefined {
     const value = this.configuration.get<string>(section);
     if (!value) {
-      return value;
+      return undefined;
     }
     const resolved = substitutePathVariables(value);
     return resolved && validateSafeBinaryPath(resolved) ? resolved : undefined;

@@ -1,4 +1,4 @@
-import { ok, strictEqual } from "assert";
+import { strictEqual } from "assert";
 import { workspace } from "vscode";
 import { VSCodeConfig } from "../../client/VSCodeConfig.js";
 
@@ -34,10 +34,10 @@ suite("VSCodeConfig", () => {
     strictEqual(config.enableOxfmt, true, "enableOxfmt should default to true");
     strictEqual(config.requireConfig, false);
     strictEqual(config.trace, "off");
-    strictEqual(config.binPathOxlint, "");
-    strictEqual(config.binPathOxfmt, "");
-    strictEqual(config.binPathTsGoLint, "");
-    strictEqual(config.nodePath, "");
+    strictEqual(config.binPathOxlint, undefined);
+    strictEqual(config.binPathOxfmt, undefined);
+    strictEqual(config.binPathTsGoLint, undefined);
+    strictEqual(config.nodePath, undefined);
     strictEqual(config.useExecPath, false);
     strictEqual(
       config.suppressProgramErrors,
@@ -135,12 +135,12 @@ suite("VSCodeConfig", () => {
 
     test(`${key} with an unsupported variable is treated as not configured`, async () => {
       await conf.update(key, "${workspaceFolder}/bin");
-      ok(!read(new VSCodeConfig()));
+      strictEqual(read(new VSCodeConfig()), undefined);
     });
 
     test(`${key} with a shell metacharacter is treated as not configured`, async () => {
       await conf.update(key, "/opt/bin&calc");
-      ok(!read(new VSCodeConfig()));
+      strictEqual(read(new VSCodeConfig()), undefined);
     });
   }
 
