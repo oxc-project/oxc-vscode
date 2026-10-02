@@ -1,5 +1,6 @@
 import { ConfigurationChangeEvent, workspace } from "vscode";
 import { ConfigService } from "./ConfigService";
+import { validateSafeBinaryPath } from "./PathValidator";
 import { substitutePathVariables } from "./PathVariables";
 
 export class VSCodeConfig implements VSCodeConfigInterface {
@@ -24,9 +25,17 @@ export class VSCodeConfig implements VSCodeConfigInterface {
 
   // a setting which is empty after substitution counts as not configured, so that
   // `${env:OXLINT_BIN}` with the variable unset behaves like an empty setting
+  // an unsafe path (see `validateSafeBinaryPath`) is treated the same way
+  private resolveBinPath(value: string | undefined): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    const resolved = substitutePathVariables(value);
+    return resolved && validateSafeBinaryPath(resolved) ? resolved : undefined;
+  }
+
   private getResolvedBinPath(section: string): string | undefined {
-    const value = this.configuration.get<string>(section);
-    return value ? substitutePathVariables(value) || undefined : value;
+    return this.resolveBinPath(this.configuration.get<string>(section));
   }
 
   public refresh(): void {
@@ -98,7 +107,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathOxlint(value: string | undefined): PromiseLike<void> {
-    this._binPathOxlint = value;
+    this._binPathOxlint = this.resolveBinPath(value);
     return this.configuration.update("path.oxlint", value);
   }
 
@@ -107,7 +116,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathOxfmt(value: string | undefined): PromiseLike<void> {
-    this._binPathOxfmt = value;
+    this._binPathOxfmt = this.resolveBinPath(value);
     return this.configuration.update("path.oxfmt", value);
   }
 
@@ -116,7 +125,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathTsGoLint(value: string | undefined): PromiseLike<void> {
-    this._binPathTsGoLint = value;
+    this._binPathTsGoLint = this.resolveBinPath(value);
     return this.configuration.update("path.tsgolint", value);
   }
 
@@ -125,7 +134,7 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateNodePath(value: string | undefined): PromiseLike<void> {
-    this._nodePath = value;
+    this._nodePath = this.resolveBinPath(value);
     return this.configuration.update("path.node", value);
   }
 

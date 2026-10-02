@@ -571,12 +571,6 @@ suite("findBinary", () => {
       strictEqual(absoluteResult?.path, siblingBinary);
     });
 
-    test("should return undefined when the path contains a shell metacharacter", async () => {
-      const result = await searchSettingsBin(binaryName, metacharacterBinaryName);
-
-      strictEqual(result, undefined);
-    });
-
     test("should accept a relative path in a workspace folder whose path contains a shell metacharacter", async () => {
       const metacharacterFolder = mkdtempSync(path.join(tmpdir(), "test-settings-bin&"));
       const descriptor = Object.getOwnPropertyDescriptor(workspace, "workspaceFolders")!;

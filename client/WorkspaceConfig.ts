@@ -180,7 +180,13 @@ export class WorkspaceConfig {
   }
 
   private getResolvedPathSetting(section: PathSettingKey): string | null {
-    const rawValue = this.configuration.get<string | null>(section);
+    return this.resolvePathSetting(section, this.configuration.get<string | null>(section));
+  }
+
+  private resolvePathSetting(
+    section: PathSettingKey,
+    rawValue: string | null | undefined,
+  ): string | null {
     if (rawValue === null || rawValue === undefined) {
       return null;
     }
@@ -285,7 +291,7 @@ export class WorkspaceConfig {
   }
 
   updateConfigPath(value: string | null): PromiseLike<void> {
-    this._configPath = value;
+    this._configPath = this.resolvePathSetting("configPath", value);
     return this.configuration.update("configPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 
@@ -294,7 +300,7 @@ export class WorkspaceConfig {
   }
 
   updateTsConfigPath(value: string | null): PromiseLike<void> {
-    this._tsConfigPath = value;
+    this._tsConfigPath = this.resolvePathSetting("tsConfigPath", value);
     return this.configuration.update("tsConfigPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 
@@ -360,7 +366,7 @@ export class WorkspaceConfig {
   }
 
   updateFormattingConfigPath(value: string | null): PromiseLike<void> {
-    this._formattingConfigPath = value;
+    this._formattingConfigPath = this.resolvePathSetting("fmt.configPath", value);
     return this.configuration.update("fmt.configPath", value, ConfigurationTarget.WorkspaceFolder);
   }
 

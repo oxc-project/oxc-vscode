@@ -34,10 +34,10 @@ suite("VSCodeConfig", () => {
     strictEqual(config.enableOxfmt, true, "enableOxfmt should default to true");
     strictEqual(config.requireConfig, false);
     strictEqual(config.trace, "off");
-    strictEqual(config.binPathOxlint, "");
-    strictEqual(config.binPathOxfmt, "");
-    strictEqual(config.binPathTsGoLint, "");
-    strictEqual(config.nodePath, "");
+    strictEqual(config.binPathOxlint, undefined);
+    strictEqual(config.binPathOxfmt, undefined);
+    strictEqual(config.binPathTsGoLint, undefined);
+    strictEqual(config.nodePath, undefined);
     strictEqual(config.useExecPath, false);
     strictEqual(
       config.suppressProgramErrors,
@@ -113,6 +113,36 @@ suite("VSCodeConfig", () => {
       delete process.env.OXC_TEST_TSGOLINT_DIR;
     }
   });
+
+  const pathSettings = [
+    { key: "path.oxlint", read: (c: VSCodeConfig) => c.binPathOxlint },
+    { key: "path.server", read: (c: VSCodeConfig) => c.binPathOxlint },
+    { key: "path.oxfmt", read: (c: VSCodeConfig) => c.binPathOxfmt },
+    { key: "path.tsgolint", read: (c: VSCodeConfig) => c.binPathTsGoLint },
+    { key: "path.node", read: (c: VSCodeConfig) => c.nodePath },
+  ];
+
+  for (const { key, read } of pathSettings) {
+    test(`resolves path variables in ${key}`, async () => {
+      process.env.OXC_TEST_BIN_DIR = "/opt/oxc";
+      try {
+        await conf.update(key, "${env:OXC_TEST_BIN_DIR}/bin");
+        strictEqual(read(new VSCodeConfig()), "/opt/oxc/bin");
+      } finally {
+        delete process.env.OXC_TEST_BIN_DIR;
+      }
+    });
+
+    test(`${key} with an unsupported variable is treated as not configured`, async () => {
+      await conf.update(key, "${workspaceFolder}/bin");
+      strictEqual(read(new VSCodeConfig()), undefined);
+    });
+
+    test(`${key} with a shell metacharacter is treated as not configured`, async () => {
+      await conf.update(key, "/opt/bin&calc");
+      strictEqual(read(new VSCodeConfig()), undefined);
+    });
+  }
 
   test("effectsOxlintConnection detects changes to oxlint connection related settings", async () => {
     const config = new VSCodeConfig();
