@@ -104,7 +104,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathOxlint(value: string | undefined): PromiseLike<void> {
-    this._binPathOxlint = value;
     return this.configuration.update("path.oxlint", value);
   }
 
@@ -113,7 +112,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathOxfmt(value: string | undefined): PromiseLike<void> {
-    this._binPathOxfmt = value;
     return this.configuration.update("path.oxfmt", value);
   }
 
@@ -122,7 +120,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateBinPathTsGoLint(value: string | undefined): PromiseLike<void> {
-    this._binPathTsGoLint = value;
     return this.configuration.update("path.tsgolint", value);
   }
 
@@ -131,7 +128,6 @@ export class VSCodeConfig implements VSCodeConfigInterface {
   }
 
   updateNodePath(value: string | undefined): PromiseLike<void> {
-    this._nodePath = value;
     return this.configuration.update("path.node", value);
   }
 
