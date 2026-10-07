@@ -164,13 +164,13 @@ const supportedExtensions = [
   "syntax",
   "yaml",
   "yaml-tmlanguage",
-  // https://github.com/oxc-project/oxc/pull/17113/
-  // TOML
+  // TOML: https://github.com/oxc-project/oxc/pull/17113/
   "toml",
   "toml.example",
-  // https://github.com/oxc-project/oxc/pull/19807
-  // Svelte
+  // Svelte: https://github.com/oxc-project/oxc/pull/19807
   "svelte",
+  // Astro: https://github.com/oxc-project/oxc/pull/27386
+  "astro",
 ];
 
 // Special filenames that are valid JS files
@@ -241,7 +241,7 @@ const supportedLanguageIds = [
   "vue",
   "yaml",
   "svelte",
-  // astro
+  "astro",
 ];
 
 export default class FormatterTool implements ToolInterface {
