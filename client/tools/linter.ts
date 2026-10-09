@@ -27,11 +27,11 @@ import {
 
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
+import { canRunBinaryInCurrentWorkspace, type BinarySearchResult } from "../findBinary";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { VSCodeConfig } from "../VSCodeConfig";
 import { createTraceOutputChannel, onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
-import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -230,6 +230,18 @@ export default class LinterTool implements ToolInterface {
       return Promise.resolve();
     }
 
+    if (!canRunBinaryInCurrentWorkspace()) {
+      this.statusBarItemHandler.updateTool(
+        "linter",
+        false,
+        "Restricted Mode blocks oxlint server startup.",
+      );
+      this.outputChannel.appendLine(
+        "Restricted Mode blocks oxlint server startup. Linter will not be activated.",
+      );
+      return Promise.resolve();
+    }
+
     this.allowedToStartServer = this.configService.vsCodeConfig.requireConfig
       ? (await workspace.findFiles(oxlintConfigDefaultFilePattern, "**/node_modules/**", 1))
           .length > 0
@@ -359,7 +371,7 @@ export default class LinterTool implements ToolInterface {
     let activatorDispatcher: { dispose: () => void } | undefined;
     if (this.allowedToStartServer) {
       if (this.configService.vsCodeConfig.enableOxlint) {
-        await this.client.start();
+        await this.startClientIfAllowed();
       }
     } else {
       activatorDispatcher = this.generateActivatorByConfig(this.configService.vsCodeConfig);
@@ -408,7 +420,7 @@ export default class LinterTool implements ToolInterface {
       }
     } else {
       if (configService.vsCodeConfig.enableOxlint) {
-        await this.client.start();
+        await this.startClientIfAllowed();
       }
     }
   }
@@ -495,6 +507,21 @@ export default class LinterTool implements ToolInterface {
     );
   }
 
+  private async startClientIfAllowed(): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    if (!canRunBinaryInCurrentWorkspace()) {
+      this.outputChannel.appendLine(
+        "Restricted Mode blocks oxlint server startup. Linter start skipped.",
+      );
+      return;
+    }
+
+    await this.client.start();
+  }
+
   generateActivatorByConfig(config: VSCodeConfig): { dispose: () => void } {
     const watcher = workspace.createFileSystemWatcher(
       oxlintConfigDefaultFilePattern,
@@ -506,7 +533,7 @@ export default class LinterTool implements ToolInterface {
       this.allowedToStartServer = true;
       this.updateStatusBar(config.enableOxlint);
       if (this.client && !this.client.isRunning() && config.enableOxlint) {
-        await this.client.start();
+        await this.startClientIfAllowed();
       }
     });
 

@@ -22,10 +22,10 @@ import {
 
 import { OxcCommands } from "../commands";
 import { ConfigService } from "../ConfigService";
+import { canRunBinaryInCurrentWorkspace, type BinarySearchResult } from "../findBinary";
 import StatusBarItemHandler from "../StatusBarItemHandler";
 import { createTraceOutputChannel, onClientNotification, runExecutable } from "./lsp_helper";
 import ToolInterface from "./ToolInterface";
-import type { BinarySearchResult } from "../findBinary";
 
 const languageClientName = "oxc";
 
@@ -345,6 +345,18 @@ export default class FormatterTool implements ToolInterface {
       return Promise.resolve();
     }
 
+    if (!canRunBinaryInCurrentWorkspace()) {
+      this.statusBarItemHandler.updateTool(
+        "formatter",
+        false,
+        "Restricted Mode blocks oxfmt server startup.",
+      );
+      this.outputChannel.appendLine(
+        "Restricted Mode blocks oxfmt server startup. Formatter will not be activated.",
+      );
+      return Promise.resolve();
+    }
+
     this.outputChannel.info(`Using server binary at: ${binary?.path}`);
 
     const run: Executable = await runExecutable(
@@ -408,7 +420,7 @@ export default class FormatterTool implements ToolInterface {
     };
 
     if (this.configService.vsCodeConfig.enableOxfmt) {
-      await this.client.start();
+      await this.startClientIfAllowed();
     }
     this.updateStatusBar();
   }
@@ -441,7 +453,7 @@ export default class FormatterTool implements ToolInterface {
       }
     } else {
       if (this.configService.vsCodeConfig.enableOxfmt) {
-        await this.client.start();
+        await this.startClientIfAllowed();
       }
     }
   }
@@ -500,5 +512,20 @@ export default class FormatterTool implements ToolInterface {
       text,
       this.client?.initializeResult?.serverInfo?.version,
     );
+  }
+
+  private async startClientIfAllowed(): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    if (!canRunBinaryInCurrentWorkspace()) {
+      this.outputChannel.appendLine(
+        "Restricted Mode blocks oxfmt server startup. Formatter start skipped.",
+      );
+      return;
+    }
+
+    await this.client.start();
   }
 }
