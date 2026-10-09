@@ -1,4 +1,4 @@
-import { ConfigurationChangeEvent } from "vscode";
+import { ConfigurationChangeEvent, WorkspaceFoldersChangeEvent } from "vscode";
 import type { BinarySearchResult } from "../findBinary";
 
 export default interface ToolInterface {
@@ -35,4 +35,10 @@ export default interface ToolInterface {
    * Handles configuration changes.
    */
   onConfigChange(event: ConfigurationChangeEvent): Promise<void>;
+
+  /**
+   * Handles added or removed workspace folders.
+   * They decide which documents the tool handles, see the `ClientLifecycle` semantics.
+   */
+  onWorkspaceFoldersChange(event: WorkspaceFoldersChangeEvent): Promise<void>;
 }
