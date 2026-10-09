@@ -3,7 +3,6 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const multiRootWorkspaceFile = "./tests/multi-root.test.code-workspace";
-
 mkdirSync("./tests/test_workspace", { recursive: true });
 mkdirSync("./tests/test_workspace_second", { recursive: true });
 
@@ -108,6 +107,16 @@ const allTestSuites = new Map([
         SERVER_PATH_DEV_OXFMT: fakeOxfmtBin,
         FAKE_OXLINT_CODE_ACTION_MS: "5000",
         FAKE_OXLINT_DIAGNOSTIC_MS: "5000",
+      },
+    },
+  ],
+  [
+    "untrusted-workspace",
+    {
+      ...baseTest,
+      files: "out_test/untrusted/**/*.spec.js",
+      env: {
+        SINGLE_FOLDER_WORKSPACE: "true",
       },
     },
   ],
