@@ -130,6 +130,10 @@ export class ConfigService implements IDisposable {
     settingsBinary: string | undefined,
     defaultBinaryName: string,
   ): Promise<BinarySearchResult | undefined> {
+    if (!workspace.isTrusted) {
+      return undefined;
+    }
+
     if (settingsBinary) {
       return searchSettingsBin(defaultBinaryName, settingsBinary);
     }

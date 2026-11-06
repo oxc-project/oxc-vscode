@@ -13,6 +13,11 @@ export type BinarySearchResult = {
   args?: string[]; // extra args before `--lsp`, e.g. `vp lint`
 };
 
+/** No bundled server is available to run safely in Restricted Mode. */
+export function canRunBinaryInCurrentWorkspace(): boolean {
+  return workspace.isTrusted;
+}
+
 /** @internal only used for testing */
 export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: string): string {
   // Walk up from the resolved main file to find the nearest package.json
@@ -93,6 +98,10 @@ export function clearWorkspacePackageJsonNodeModulesCache(): void {
 export async function searchProjectNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
+  if (!workspace.isTrusted) {
+    return undefined;
+  }
+
   // try to find shared binary inside `node_modules/.bin` of each workspace folder
   const workspaceNodeModules = (workspace.workspaceFolders ?? []).map((folder) =>
     path.join(folder.uri.fsPath, "node_modules"),
@@ -129,6 +138,10 @@ export function searchVitePlusBin(
   command: "lint" | "fmt",
   folders: string[] = (workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath),
 ): BinarySearchResult | undefined {
+  if (!workspace.isTrusted) {
+    return undefined;
+  }
+
   try {
     // `bin/vp` is a Node.js script, which avoids package manager shims in `node_modules/.bin`.
     const vpPath = replaceTargetFromMainToBin(
@@ -218,11 +231,15 @@ export async function searchYarnPnpBin(
 export async function searchGlobalNodeModulesBin(
   binaryName: string,
 ): Promise<BinarySearchResult | undefined> {
+  if (!workspace.isTrusted) {
+    return undefined;
+  }
+
   const globalPaths = await globalNodeModulesPaths();
 
   // try to find shared binary inside `node_modules/.bin` of each workspace folder
   const result = await searchNodeModulesDefaultBinPath(binaryName, globalPaths);
-  if (result) {
+  if (result && canRunBinaryInCurrentWorkspace()) {
     return result;
   }
   // fallback to direct binary lookup via require.resolve
@@ -231,7 +248,10 @@ export async function searchGlobalNodeModulesBin(
       require.resolve(binaryName, { paths: globalPaths }),
       binaryName,
     );
-    return { path: resolvedPath, loader: "node" };
+    const resolved = { path: resolvedPath, loader: "node" } satisfies BinarySearchResult;
+    if (canRunBinaryInCurrentWorkspace()) {
+      return resolved;
+    }
   } catch {}
 }
 
@@ -242,6 +262,10 @@ export async function searchGlobalNodeModulesBin(
 export async function searchEnvPath(
   defaultBinaryName: string,
 ): Promise<BinarySearchResult | undefined> {
+  if (!workspace.isTrusted) {
+    return undefined;
+  }
+
   const envPath = env.PATH;
 
   if (!envPath) {
@@ -271,7 +295,7 @@ export async function searchEnvPath(
     }),
   );
 
-  return binary.find(Boolean);
+  return binary.find((candidate) => candidate !== undefined && canRunBinaryInCurrentWorkspace());
 }
 
 /**
