@@ -7,3 +7,6 @@
 export interface IDisposable {
   dispose(): void | Promise<void>;
 }
+
+/** The tools handled by this extension, each one has its own language server. */
+export type OxcTool = "oxlint" | "oxfmt";
