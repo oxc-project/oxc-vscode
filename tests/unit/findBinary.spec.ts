@@ -12,6 +12,7 @@ import * as path from "node:path";
 import { tmpdir } from "node:os";
 import { Uri, workspace } from "vscode";
 import {
+  canRunBinaryInCurrentWorkspace,
   clearGlobalNodeModulesPathsCache,
   clearWorkspacePackageJsonNodeModulesCache,
   replaceTargetFromMainToBin,
@@ -208,6 +209,36 @@ suite("findBinary", () => {
 
     test("should return undefined when vite-plus is not installed", () => {
       strictEqual(searchVitePlusBin("lint", [tmpDir]), undefined);
+    });
+
+    test("should return undefined when the workspace is not trusted", () => {
+      installVitePlus(tmpDir);
+      const descriptor = Object.getOwnPropertyDescriptor(workspace, "isTrusted")!;
+      Object.defineProperty(workspace, "isTrusted", { configurable: true, get: () => false });
+
+      try {
+        strictEqual(searchVitePlusBin("lint", [tmpDir]), undefined);
+      } finally {
+        Object.defineProperty(workspace, "isTrusted", descriptor);
+      }
+    });
+  });
+
+  suite("workspace trust filtering", () => {
+    test("should block all binary discovery and startup when untrusted", async () => {
+      const descriptor = Object.getOwnPropertyDescriptor(workspace, "isTrusted")!;
+      Object.defineProperty(workspace, "isTrusted", { configurable: true, get: () => false });
+      try {
+        strictEqual(canRunBinaryInCurrentWorkspace(), false);
+        strictEqual(await searchProjectNodeModulesBin(binaryName), undefined);
+        strictEqual(await searchGlobalNodeModulesBin(binaryName), undefined);
+        strictEqual(await searchEnvPath(binaryName), undefined);
+        strictEqual(await searchYarnPnpBin(binaryName), undefined);
+        strictEqual(await searchSettingsBin(binaryName, process.execPath), undefined);
+      } finally {
+        Object.defineProperty(workspace, "isTrusted", descriptor);
+      }
+      strictEqual(canRunBinaryInCurrentWorkspace(), true);
     });
   });
 
