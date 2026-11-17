@@ -80,12 +80,12 @@ suite("commands", () => {
       return;
     }
     const service = new ConfigService();
-    strictEqual(service.vsCodeConfig.enableOxlint, true);
+    strictEqual(service.vsCodeConfig.isEnabled("oxlint"), true);
 
     await commands.executeCommand("oxc.toggleEnable");
     await sleep(500);
 
-    strictEqual(service.vsCodeConfig.enableOxlint, false);
+    strictEqual(service.vsCodeConfig.isEnabled("oxlint"), false);
 
     // enable it for other tests
     await commands.executeCommand("oxc.toggleEnable");
@@ -98,12 +98,12 @@ suite("commands", () => {
       return;
     }
     const service = new ConfigService();
-    strictEqual(service.vsCodeConfig.enableOxfmt, true);
+    strictEqual(service.vsCodeConfig.isEnabled("oxfmt"), true);
 
     await commands.executeCommand("oxc.toggleEnableFormatter");
     await sleep(500);
 
-    strictEqual(service.vsCodeConfig.enableOxfmt, false);
+    strictEqual(service.vsCodeConfig.isEnabled("oxfmt"), false);
 
     // restore it for other tests
     await commands.executeCommand("oxc.toggleEnableFormatter");

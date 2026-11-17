@@ -1,10 +1,10 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { strictEqual } from "assert";
+import { deepStrictEqual, strictEqual } from "assert";
 import { ConfigurationTarget, workspace } from "vscode";
 import { DiagnosticPullMode } from "vscode-languageclient";
 import { FixKind, RuleCustomization, WorkspaceConfig } from "../../client/WorkspaceConfig.js";
-import { WORKSPACE_FOLDER } from "../test-helpers.js";
+import { resetOxcSettings, WORKSPACE_FOLDER, WORKSPACE_SECOND_FOLDER } from "../test-helpers.js";
 
 const keys = [
   "lint.run",
@@ -17,6 +17,11 @@ const keys = [
   "lint.customization",
   "fmt.configPath",
   "fmt.disableNestedConfig",
+  "workingDirectories",
+  "enable",
+  "enable.oxlint",
+  "enable.oxfmt",
+  "requireConfig",
   // deprecated
   "flags",
 ];
@@ -24,22 +29,28 @@ const keys = [
 suite("WorkspaceConfig", () => {
   const updateConfiguration = async (key: string, value: unknown) => {
     const workspaceConfig = workspace.getConfiguration("oxc", WORKSPACE_FOLDER);
-    const globalConfig = workspace.getConfiguration("oxc");
+    const globalConfig = workspace.getConfiguration("oxc", null);
 
     await Promise.all([
       workspaceConfig.update(key, value, ConfigurationTarget.WorkspaceFolder),
       // VSCode will not save different workspace configuration inside a `.code-workspace` file.
       // Do not fail, we will make sure the global config is empty too.
       globalConfig.update(key, value),
+      // the user settings are shared by every suite, they must not keep a value
+      globalConfig.update(key, value, ConfigurationTarget.Global),
     ]);
   };
 
-  setup(async () => {
-    await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
-  });
-  teardown(async () => {
-    await Promise.all(keys.map((key) => updateConfiguration(key, undefined)));
-  });
+  const resetKeys = () =>
+    resetOxcSettings(keys, [
+      WORKSPACE_FOLDER,
+      ...(WORKSPACE_SECOND_FOLDER === undefined ? [] : [WORKSPACE_SECOND_FOLDER]),
+      ConfigurationTarget.Workspace,
+      ConfigurationTarget.Global,
+    ]);
+
+  setup(resetKeys);
+  teardown(resetKeys);
 
   test("resolves path variables in path settings", async () => {
     process.env.OXC_TEST_CONFIG_DIR = "/opt/oxc";
@@ -77,6 +88,10 @@ suite("WorkspaceConfig", () => {
     strictEqual(config.rulesCustomization, null);
     strictEqual(config.formattingConfigPath, null);
     strictEqual(config.formattingDisableNestedConfig, false);
+    deepStrictEqual(config.workingDirectories, []);
+    strictEqual(config.isEnabled("oxlint"), true);
+    strictEqual(config.isEnabled("oxfmt"), true);
+    strictEqual(config.requireConfig, false);
   });
 
   test("deprecated values are respected", async () => {
@@ -137,6 +152,7 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxlintConfig.disableNestedConfig, false);
     strictEqual(oxlintConfig.fixKind, undefined);
     strictEqual(oxlintConfig.rulesCustomization, undefined);
+    deepStrictEqual(oxlintConfig.workingDirectories, []);
 
     await Promise.all([
       config.updateRunTrigger(DiagnosticPullMode.onSave),
@@ -168,6 +184,7 @@ suite("WorkspaceConfig", () => {
     const oxfmtConfig = config.toOxfmtConfig();
     strictEqual(oxfmtConfig["fmt.configPath"], undefined);
     strictEqual(oxfmtConfig["fmt.disableNestedConfig"], false);
+    deepStrictEqual(oxfmtConfig.workingDirectories, []);
 
     await Promise.all([
       config.updateFormattingConfigPath("./oxfmt.json"),
@@ -180,6 +197,95 @@ suite("WorkspaceConfig", () => {
     strictEqual(oxfmtConfigUpdated["fmt.experimental"], true);
     strictEqual(oxfmtConfigUpdated["fmt.configPath"], "./oxfmt.json");
     strictEqual(oxfmtConfigUpdated["fmt.disableNestedConfig"], true);
+  });
+
+  test("workingDirectories is always sent to both the oxlint and the oxfmt config", async () => {
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+
+    // an empty list is sent too, so that clearing the setting is unambiguous
+    deepStrictEqual(config.toOxlintConfig().workingDirectories, []);
+    deepStrictEqual(config.toOxfmtConfig().workingDirectories, []);
+
+    const workingDirectories = ["packages/a", { directory: "client" }];
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_FOLDER)
+      .update("workingDirectories", workingDirectories, ConfigurationTarget.WorkspaceFolder);
+    config.refresh();
+
+    deepStrictEqual(config.toOxlintConfig().workingDirectories, [
+      "packages/a",
+      { directory: "client" },
+    ]);
+    deepStrictEqual(config.toOxfmtConfig().workingDirectories, [
+      "packages/a",
+      { directory: "client" },
+    ]);
+    deepStrictEqual(workspace.getConfiguration("oxc", WORKSPACE_FOLDER).get("workingDirectories"), [
+      "packages/a",
+      { directory: "client" },
+    ]);
+  });
+
+  test("workingDirectories is read per workspace folder", async () => {
+    if (WORKSPACE_SECOND_FOLDER === undefined) {
+      return;
+    }
+
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_FOLDER)
+      .update("workingDirectories", ["packages/a"], ConfigurationTarget.WorkspaceFolder);
+
+    const firstConfig = new WorkspaceConfig(WORKSPACE_FOLDER);
+    const secondConfig = new WorkspaceConfig(WORKSPACE_SECOND_FOLDER);
+
+    deepStrictEqual(firstConfig.workingDirectories, ["packages/a"]);
+    deepStrictEqual(secondConfig.workingDirectories, []);
+  });
+
+  test("enable and requireConfig are read per workspace folder", async () => {
+    if (WORKSPACE_SECOND_FOLDER === undefined) {
+      return;
+    }
+
+    const secondFolderConfiguration = workspace.getConfiguration("oxc", WORKSPACE_SECOND_FOLDER);
+    await Promise.all([
+      secondFolderConfiguration.update("enable.oxlint", false, ConfigurationTarget.WorkspaceFolder),
+      secondFolderConfiguration.update("requireConfig", true, ConfigurationTarget.WorkspaceFolder),
+    ]);
+
+    const firstConfig = new WorkspaceConfig(WORKSPACE_FOLDER);
+    const secondConfig = new WorkspaceConfig(WORKSPACE_SECOND_FOLDER);
+
+    strictEqual(firstConfig.isEnabled("oxlint"), true);
+    strictEqual(firstConfig.requireConfig, false);
+    strictEqual(secondConfig.isEnabled("oxlint"), false);
+    // `oxc.enable.oxfmt` is not affected by `oxc.enable.oxlint`
+    strictEqual(secondConfig.isEnabled("oxfmt"), true);
+    strictEqual(secondConfig.requireConfig, true);
+  });
+
+  test("a folder level `enable.oxlint` wins over a user level `enable`", async () => {
+    // `oxc.enable` only wins when it is set at the same or at a higher precedence level
+    await workspace.getConfiguration("oxc").update("enable", true, ConfigurationTarget.Global);
+    await workspace
+      .getConfiguration("oxc", WORKSPACE_FOLDER)
+      .update("enable.oxlint", false, ConfigurationTarget.WorkspaceFolder);
+
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+
+    strictEqual(config.isEnabled("oxlint"), false);
+    strictEqual(config.isEnabled("oxfmt"), true);
+  });
+
+  test("`enable` of the same level wins over `enable.oxlint`", async () => {
+    const folderConfiguration = workspace.getConfiguration("oxc", WORKSPACE_FOLDER);
+    await folderConfiguration.update("enable", false, ConfigurationTarget.WorkspaceFolder);
+    await folderConfiguration.update("enable.oxlint", true, ConfigurationTarget.WorkspaceFolder);
+
+    const config = new WorkspaceConfig(WORKSPACE_FOLDER);
+
+    strictEqual(config.isEnabled("oxlint"), false);
+    strictEqual(config.isEnabled("oxfmt"), false);
   });
 
   test("workspace-level relative paths resolve from code-workspace location", async () => {

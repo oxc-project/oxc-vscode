@@ -1,8 +1,30 @@
-import { strictEqual } from "assert";
-import { workspace } from "vscode";
-import { VSCodeConfig } from "../../client/VSCodeConfig.js";
+import { notStrictEqual, rejects, strictEqual } from "assert";
+import { ConfigurationTarget, workspace } from "vscode";
+import type { WorkspaceConfiguration } from "vscode";
+import {
+  enableUpdateTarget,
+  enableUpdateTargetValue,
+  VSCodeConfig,
+} from "../../client/VSCodeConfig.js";
+import { resetOxcSettings, sleep } from "../test-helpers.js";
 
 const conf = workspace.getConfiguration("oxc");
+
+suite("enable update target", () => {
+  test("an empty window can only store the value in the user settings", () => {
+    strictEqual(enableUpdateTarget(false), ConfigurationTarget.Global);
+    strictEqual(enableUpdateTarget(true), ConfigurationTarget.Workspace);
+  });
+
+  test("the raw value is read at the level the toggle writes to", () => {
+    const inspected = { globalValue: true, workspaceValue: false };
+
+    strictEqual(enableUpdateTargetValue(inspected, false), true, "the user value");
+    strictEqual(enableUpdateTargetValue(inspected, true), false, "the workspace value");
+    strictEqual(enableUpdateTargetValue({ globalValue: true }, true), undefined);
+    strictEqual(enableUpdateTargetValue(undefined, false), undefined);
+  });
+});
 
 suite("VSCodeConfig", () => {
   const keys = [
@@ -19,19 +41,18 @@ suite("VSCodeConfig", () => {
     "useExecPath",
     "suppressProgramErrors",
   ];
-  setup(async () => {
-    await Promise.all(keys.map((key) => conf.update(key, undefined)));
-  });
+  const resetKeys = () =>
+    resetOxcSettings(keys, [ConfigurationTarget.Workspace, ConfigurationTarget.Global]);
 
-  teardown(async () => {
-    await Promise.all(keys.map((key) => conf.update(key, undefined)));
-  });
+  setup(resetKeys);
+
+  teardown(resetKeys);
 
   test("default values on initialization", () => {
     const config = new VSCodeConfig();
 
-    strictEqual(config.enableOxlint, true, "enableOxlint should default to true");
-    strictEqual(config.enableOxfmt, true, "enableOxfmt should default to true");
+    strictEqual(config.isEnabled("oxlint"), true, "oxlint should be enabled by default");
+    strictEqual(config.isEnabled("oxfmt"), true, "oxfmt should be enabled by default");
     strictEqual(config.requireConfig, false);
     strictEqual(config.trace, "off");
     strictEqual(config.binPathOxlint, undefined);
@@ -53,12 +74,111 @@ suite("VSCodeConfig", () => {
     strictEqual(config.binPathOxlint, "./deprecatedBinary");
   });
 
+  test("the toggle replaces the master key by the tool keys when it governs at that level", async () => {
+    // `oxc.enable` is set in the workspace settings, writing `oxc.enable.oxlint` next to it would
+    // have no effect: the master toggle wins at the same level
+    await conf.update("enable", false, ConfigurationTarget.Workspace);
+
+    const config = new VSCodeConfig();
+    await config.updateEnable("oxlint", true);
+
+    const inspected = workspace.getConfiguration("oxc", null);
+    strictEqual(inspected.inspect("enable.oxlint")?.workspaceValue, true, "the toggled tool");
+    strictEqual(inspected.inspect("enable.oxfmt")?.workspaceValue, false, "the other tool");
+    notStrictEqual(typeof inspected.inspect("enable")?.workspaceValue, "boolean", "master cleared");
+
+    const refreshed = new VSCodeConfig();
+    strictEqual(refreshed.isEnabled("oxlint"), true);
+    strictEqual(refreshed.isEnabled("oxfmt"), false);
+  });
+
+  /** Replaces `update` of every configuration read until the returned function is called. */
+  const stubUpdate = (update: () => Promise<void>) => {
+    const original = workspace.getConfiguration;
+    (workspace as any).getConfiguration = (...args: any[]) => {
+      // the configuration objects of VS Code are frozen
+      const configuration: WorkspaceConfiguration = (original as any).apply(workspace, args);
+      return {
+        get: configuration.get.bind(configuration),
+        has: configuration.has.bind(configuration),
+        inspect: configuration.inspect.bind(configuration),
+        update,
+      };
+    };
+    return () => {
+      (workspace as any).getConfiguration = original;
+    };
+  };
+
+  test("the cached values follow the toggle without waiting for the settings", async () => {
+    await conf.update("enable", false, ConfigurationTarget.Workspace);
+    const config = new VSCodeConfig();
+
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const restore = stubUpdate(() => gate);
+    try {
+      const updating = config.updateEnable("oxlint", true);
+      await sleep(10);
+
+      strictEqual(config.isEnabled("oxlint"), true);
+      strictEqual(config.isEnabled("oxfmt"), false, "the other tool keeps the master value");
+
+      release();
+      await updating;
+    } finally {
+      restore();
+    }
+  });
+
+  test("a rejected write puts the cached values back in line with the settings", async () => {
+    await conf.update("enable", false, ConfigurationTarget.Workspace);
+    const config = new VSCodeConfig();
+
+    const restore = stubUpdate(async () => {
+      throw new Error("the settings file is read only");
+    });
+    try {
+      await rejects(config.updateEnable("oxlint", true), /read only/);
+    } finally {
+      restore();
+    }
+
+    strictEqual(config.isEnabled("oxlint"), false, "the master toggle still disables it");
+  });
+
+  test("the toggles of both tools do not interleave", async () => {
+    await conf.update("enable", true, ConfigurationTarget.Workspace);
+    const config = new VSCodeConfig();
+
+    await Promise.all([config.updateEnable("oxlint", false), config.updateEnable("oxfmt", false)]);
+
+    const refreshed = new VSCodeConfig();
+    strictEqual(refreshed.isEnabled("oxlint"), false);
+    strictEqual(refreshed.isEnabled("oxfmt"), false);
+  });
+
+  test("the toggle writes the tool key when no master is set at that level", async () => {
+    const config = new VSCodeConfig();
+
+    await config.updateEnable("oxfmt", false);
+
+    const inspected = workspace.getConfiguration("oxc", null);
+    strictEqual(inspected.inspect("enable.oxfmt")?.workspaceValue, false);
+    strictEqual(inspected.inspect("enable.oxlint")?.workspaceValue, undefined);
+    // `oxc.enable` holds the tool keys of that level as an object, the master toggle is not set
+    notStrictEqual(typeof inspected.inspect("enable")?.workspaceValue, "boolean");
+    strictEqual(new VSCodeConfig().isEnabled("oxfmt"), false);
+  });
+
   test("update enable, will update enable.oxlint and enable.oxfmt respectively", async () => {
     await conf.update("enable", false);
     const config = new VSCodeConfig();
 
-    strictEqual(config.enableOxlint, false);
-    strictEqual(config.enableOxfmt, false);
+    strictEqual(config.isEnabled("oxlint"), false);
+    strictEqual(config.isEnabled("oxfmt"), false);
   });
 
   test("update `enable.oxlint` to false, while `enable` is true", async () => {
@@ -66,16 +186,16 @@ suite("VSCodeConfig", () => {
     await conf.update("enable.oxlint", false);
     const config = new VSCodeConfig();
 
-    strictEqual(config.enableOxlint, true);
-    strictEqual(config.enableOxfmt, true);
+    strictEqual(config.isEnabled("oxlint"), true);
+    strictEqual(config.isEnabled("oxfmt"), true);
   });
 
   test("updating values updates the workspace configuration", async () => {
     const config = new VSCodeConfig();
 
     await Promise.all([
-      config.updateEnableOxlint(false),
-      config.updateEnableOxfmt(false),
+      config.updateEnable("oxlint", false),
+      config.updateEnable("oxfmt", false),
       config.updateRequireConfig(true),
       config.updateTrace("messages"),
       config.updateBinPathOxlint("./binary"),

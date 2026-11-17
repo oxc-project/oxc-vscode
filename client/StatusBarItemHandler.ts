@@ -3,15 +3,15 @@ import { MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscod
 type StatusBarTool = "linter" | "formatter";
 
 type ToolState = {
-  isEnabled: boolean;
+  isRunning: boolean;
   content: string;
   version?: string;
 };
 
 export default class StatusBarItemHandler {
   private tooltipSections: Map<StatusBarTool, ToolState> = new Map([
-    ["linter", { isEnabled: false, content: "", version: "unknown" }],
-    ["formatter", { isEnabled: false, content: "", version: "unknown" }],
+    ["linter", { isRunning: false, content: "", version: "unknown" }],
+    ["formatter", { isRunning: false, content: "", version: "unknown" }],
   ]);
 
   private statusBarItem: StatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100);
@@ -34,13 +34,13 @@ export default class StatusBarItemHandler {
    */
   public updateTool(
     toolId: StatusBarTool,
-    isEnabled: boolean,
+    isRunning: boolean,
     text: string,
     version?: string,
   ): void {
     const section = this.tooltipSections.get(toolId);
     if (section) {
-      section.isEnabled = isEnabled;
+      section.isRunning = isRunning;
       section.content = text;
       section.version = version ?? "unknown";
       this.updateFullTooltip();
@@ -58,7 +58,7 @@ export default class StatusBarItemHandler {
     const text = sections
       .map(([tool, section]) => {
         const version = section.version ? `v${section.version}` : "unknown version";
-        const statusText = section.isEnabled ? `enabled (${version})` : "disabled";
+        const statusText = section.isRunning ? `running (${version})` : "not running";
         return `**${tool} is ${statusText}**\n\n${section.content}`;
       })
       .join("\n\n---\n\n");
@@ -73,14 +73,14 @@ export default class StatusBarItemHandler {
     const linterState = this.tooltipSections.get("linter")!;
     const formatterState = this.tooltipSections.get("formatter")!;
 
-    if (linterState.isEnabled && formatterState.isEnabled) {
-      // Every tool is enabled.
+    if (linterState.isRunning && formatterState.isRunning) {
+      // Every tool is running.
       return "check-all";
-    } else if (linterState.isEnabled || formatterState.isEnabled) {
-      // Some tools are enabled.
+    } else if (linterState.isRunning || formatterState.isRunning) {
+      // Some tools are running.
       return "check";
     } else {
-      // No tools are enabled.
+      // No tools are running.
       return "circle-slash";
     }
   }

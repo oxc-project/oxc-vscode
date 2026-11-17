@@ -1,6 +1,7 @@
 import { Func } from "mocha";
 import {
   commands,
+  ConfigurationTarget,
   Diagnostic,
   extensions,
   languages,
@@ -69,6 +70,37 @@ export function testMultiFolderMode(title: string, fn: Func) {
 
 export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Removes the `oxc.*` settings from the given targets. The user settings are shared by every
+ * suite, they must not keep a value.
+ */
+export async function resetOxcSettings(
+  keys: readonly string[],
+  targets: readonly (ConfigurationTarget | WorkspaceFolder)[],
+): Promise<void> {
+  await Promise.all(
+    targets.flatMap((target) =>
+      keys.map((key) =>
+        typeof target === "number"
+          ? workspace.getConfiguration("oxc", null).update(key, undefined, target)
+          : workspace
+              .getConfiguration("oxc", target)
+              .update(key, undefined, ConfigurationTarget.WorkspaceFolder),
+      ),
+    ),
+  );
+}
+
+/** Writes the file, runs `fn` and deletes the file again. */
+export async function withTempFile<T>(uri: Uri, content: string, fn: () => Promise<T>): Promise<T> {
+  await workspace.fs.writeFile(uri, Buffer.from(content));
+  try {
+    return await fn();
+  } finally {
+    await workspace.fs.delete(uri, { useTrash: false });
+  }
 }
 
 export async function activateExtension(full: boolean = true): Promise<void> {
