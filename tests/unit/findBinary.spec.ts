@@ -17,6 +17,7 @@ import {
   replaceTargetFromMainToBin,
   searchGlobalNodeModulesBin,
   searchEnvPath,
+  searchNodeModulesDefaultBinPath,
   searchProjectNodeModulesBin,
   searchSettingsBin,
   searchVitePlusBin,
@@ -96,6 +97,82 @@ suite("findBinary", () => {
       mkdirSync(deepDir, { recursive: true });
 
       throws(() => replaceTargetFromMainToBin(path.join(deepDir, "index.js"), "oxlint"));
+    });
+  });
+
+  suite("searchNodeModulesDefaultBinPath", () => {
+    const folders = Array.from({ length: 100 }, (_, index) =>
+      path.join(path.resolve("test-fake-workspace"), `folder-${index}`),
+    );
+    // the candidates are built with the same rule as the search, which adds `.exe` on Windows
+    const candidates = folders.flatMap((folder) => {
+      const basePath = path.join(folder, ".bin", binaryName);
+      return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
+    });
+    const candidateIndex = new Map(
+      candidates.map((candidate, index) => [Uri.file(candidate).fsPath, index]),
+    );
+    const folderCandidate = (folderIndex: number) =>
+      path.join(folders[folderIndex], ".bin", binaryName);
+    const existingStat = (existingCandidates: string[]) =>
+      new Set(existingCandidates.map((candidate) => Uri.file(candidate).fsPath));
+
+    test("should stat candidates in batches of at most 16", async () => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const stat = async () => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        inFlight--;
+        throw new Error("file not found");
+      };
+
+      const result = await searchNodeModulesDefaultBinPath(binaryName, folders, stat);
+
+      strictEqual(result, undefined);
+      strictEqual(maxInFlight > 0, true);
+      strictEqual(maxInFlight <= 16, true);
+    });
+
+    test("should stop statting after the batch with the first existing candidate", async () => {
+      const statCalls: number[] = [];
+      const existing = existingStat([folderCandidate(40), folderCandidate(70)]);
+      const stat = async (uri: Uri) => {
+        statCalls.push(candidateIndex.get(uri.fsPath)!);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (!existing.has(uri.fsPath)) {
+          throw new Error("file not found");
+        }
+      };
+
+      const result = await searchNodeModulesDefaultBinPath(binaryName, folders, stat);
+
+      strictEqual(result?.loader, "native");
+      strictEqual(result?.path, folderCandidate(40));
+      // no stat call may go past the end of the batch containing the winning candidate
+      const winnerIndex = candidateIndex.get(Uri.file(folderCandidate(40)).fsPath)!;
+      const winnerBatchEnd = Math.floor(winnerIndex / 16) * 16 + 15;
+      strictEqual(Math.max(...statCalls) <= winnerBatchEnd, true);
+    });
+
+    test("should return the earliest existing candidate inside a batch", async () => {
+      const existing = existingStat([folderCandidate(3), folderCandidate(5)]);
+      const delays = new Map([
+        [Uri.file(folderCandidate(3)).fsPath, 5],
+        [Uri.file(folderCandidate(5)).fsPath, 0],
+      ]);
+      const stat = async (uri: Uri) => {
+        // the later candidate resolves first, the earlier one must still win
+        await new Promise((resolve) => setTimeout(resolve, delays.get(uri.fsPath) ?? 10));
+        if (!existing.has(uri.fsPath)) {
+          throw new Error("file not found");
+        }
+      };
+
+      const result = await searchNodeModulesDefaultBinPath(binaryName, folders, stat);
+
+      strictEqual(result?.path, folderCandidate(3));
     });
   });
 

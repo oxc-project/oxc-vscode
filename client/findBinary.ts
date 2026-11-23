@@ -38,32 +38,41 @@ export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: str
   throw new Error(`Could not find package.json for "${binaryName}"`);
 }
 
-async function searchNodeModulesDefaultBinPath(
+/** The most `workspace.fs.stat` calls one binary search runs at once. */
+const STAT_BATCH_SIZE = 16;
+
+/** @internal only used for testing */
+export async function searchNodeModulesDefaultBinPath(
   binaryName: string,
   folders: string[],
+  stat: (uri: Uri) => Thenable<unknown> = (uri) => workspace.fs.stat(uri),
 ): Promise<BinarySearchResult | undefined> {
   const candidates = folders.flatMap((folder) => {
     const basePath = path.join(folder, ".bin", binaryName);
     return process.platform === "win32" ? [basePath, `${basePath}.exe`] : [basePath];
   });
 
-  const exists = await Promise.all(
-    candidates.map(async (candidate) => {
-      try {
-        await workspace.fs.stat(Uri.file(candidate));
-        return true;
-      } catch {
-        return false;
-      }
-    }),
-  );
+  for (let batchStart = 0; batchStart < candidates.length; batchStart += STAT_BATCH_SIZE) {
+    const batch = candidates.slice(batchStart, batchStart + STAT_BATCH_SIZE);
+    // oxlint-disable-next-line eslint/no-await-in-loop -- a batch must finish before the next one starts
+    const exists = await Promise.all(
+      batch.map(async (candidate) => {
+        try {
+          await stat(Uri.file(candidate));
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+    );
 
-  const firstExistingCandidateIndex = exists.findIndex(Boolean);
-  if (firstExistingCandidateIndex === -1) {
-    return undefined;
+    const firstExistingCandidateIndex = exists.findIndex(Boolean);
+    if (firstExistingCandidateIndex !== -1) {
+      return { path: batch[firstExistingCandidateIndex], loader: "native" };
+    }
   }
 
-  return { path: candidates[firstExistingCandidateIndex], loader: "native" };
+  return undefined;
 }
 /**
  * Returns node_modules paths derived from all package.json files found in the workspace.
