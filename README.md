@@ -17,24 +17,33 @@ See the official [Oxlint editor setup](https://oxc.rs/docs/guide/usage/linter/ed
 
 ## Oxlint
 
-This is the linter for Oxc. The currently supported features are listed below.
+Oxlint is Oxc's linter. This extension supports the following features:
 
-- Highlighting for warnings or errors identified by Oxlint
-- Quick fixes to fix a warning or error when possible
-- JSON schema validation for supported Oxlint configuration files (does not include ESLint configuration files)
+- Highlighting for warnings or errors identified by Oxlint.
+- Quick fixes to fix a warning or error when possible.
+- JSON schema validation for supported Oxlint configuration files (does not include ESLint configuration files).
 - Command to fix all auto-fixable content within the current text editor.
-- Support for `source.fixAll.oxc` as a code action provider. Configure this in your settings `editor.codeActionsOnSave`
-  to automatically apply fixes when saving the file.
+- Support for `source.fixAll.oxc` as a code action provider.
 - Support for multi-root workspaces.
 - Support for type-aware linting when the `oxlint-tsgolint` package is installed and the `oxc.typeAware` setting is set to true.
 
+To apply Oxlint fixes on save, add the following to your VS Code `settings.json`:
+
+```jsonc
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always",
+  },
+}
+```
+
 ## Oxfmt
 
-This is the formatter for Oxc. The currently supported features are listed below.
+Oxfmt is Oxc's formatter. This extension supports the following features:
 
 - Support for `source.format.oxc` as a code action provider.
 
-To enable it as your default formatter, use a VS Code `settings.json` like:
+To use Oxfmt as your default formatter and format on save, add the following to your VS Code `settings.json`:
 
 ```jsonc
 {
@@ -48,7 +57,7 @@ To enable it as your default formatter, use a VS Code `settings.json` like:
 }
 ```
 
-To run Oxc formatting through VS Code code actions on save, configure `editor.codeActionsOnSave`:
+To format with Oxfmt through code actions on save, add the following to your VS Code `settings.json`:
 
 ```jsonc
 {
